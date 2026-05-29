@@ -31,8 +31,8 @@ WRITE_INTERVAL_SECONDS = 900  # 15分钟写一次快照
 # COS 配置（独立于5002端口）
 COS_KEY = "klines/minute_klines.parquet"  # 分钟K线（完全独立）
 COS_HOURLY_KEY = "klines/hourly_klines_5003.parquet"  # 1h K线缓存（独立于5002）
-COS_REGION = os.environ.get('COS_REGION', 'ap-seoul')
-COS_ENDPOINT = os.environ.get('COS_ENDPOINT', 'cos.ap-seoul.myqcloud.com')
+COS_REGION = os.environ.get('COS_REGION', '')
+COS_ENDPOINT = os.environ.get('COS_ENDPOINT', '')
 COS_SECRET_ID = os.environ.get('COS_SECRET_ID', '')
 COS_SECRET_KEY = os.environ.get('COS_SECRET_KEY', '')
 COS_BUCKET = os.environ.get('COS_BUCKET', '')
@@ -51,7 +51,7 @@ SURGE_EXCLUDE_SYMBOLS = {'BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XAUUSDT', 'XAGUSDT', 
 # ========== 布林爬坡检测配置 (V7 最优参数) ==========
 BB_CLIMB_CONFIG = {
     "period": 20,                    # 布林周期(日线)
-    "std_mult": 2.5,                 # 标准差倍数
+    "std_mult": 2.0,                 # 标准差倍数 (与 backtester 统一)
     "upper_tolerance_pct": 0.08,    # 收盘价在上轨±8%范围内
     "buy_ratio_threshold": 0.55,    # buy_ratio阈值（仅对真实数据检查）
     "buy_ratio_skip_default": True,
@@ -124,10 +124,12 @@ data_lock = threading.Lock()
 
 # ========== Flask ==========
 app = Flask(__name__)
-app.config["SECRET_KEY"] = "market-monitor-2024"
+app.config["SECRET_KEY"] = os.environ.get("FLASK_SECRET_KEY", os.urandom(24).hex())
 app.config["TEMPLATES_AUTO_RELOAD"] = True
 app.template_folder = os.path.join(os.path.dirname(__file__), "templates")
-socketio = SocketIO(app, async_mode="threading", cors_allowed_origins="*", ping_timeout=60, ping_interval=25)
+socketio = SocketIO(app, async_mode="threading",
+                    cors_allowed_origins=os.environ.get("CORS_ORIGINS", "http://localhost:5003").split(","),
+                    ping_timeout=60, ping_interval=25)
 
 
 # ========== 全局 HTTP Session ==========
@@ -1424,7 +1426,8 @@ def _diagnose_bb(symbol: str, klines: list, cfg: dict) -> tuple:
 
         if cmpl_prev["c"] < cmpl_prev["o"] and cmpl["c"] >= cmpl["o"]:
             # 前阴+昨阳 → 查反包
-            engulfing = (cmpl["o"] <= cmpl_prev["c"] and cmpl["c"] >= cmpl_prev["o"])
+            tol = cmpl_prev["c"] * 0.001  # 0.1%容差，避免现货/合约tick差异
+            engulfing = (cmpl["o"] <= cmpl_prev["c"] + tol and cmpl["c"] >= cmpl_prev["o"] - tol)
             if engulfing:
                 detail["engulfing"] = True
                 detail["prev_close"] = round(cmpl_prev["c"], 6)
@@ -1635,6 +1638,14 @@ def api_sector_heatmap():
             return jsonify({"code": 0, "data": json.load(f)})
     except:
         return jsonify({"code": 0, "data": []})
+
+@app.route("/api/liq_heatmap")
+def api_liq_heatmap():
+    try:
+        with open("/tmp/liquidation_heatmap.json", "r") as f:
+            return jsonify({"code": 0, "data": json.load(f)})
+    except:
+        return jsonify({"code": 0, "data": {}})
 
 
 NOTES_FILE = "/tmp/trading_notes.json"
@@ -1869,7 +1880,7 @@ def api_ask():
             resp = _req.post(
                 "https://api.deepseek.com/anthropic/v1/messages",
                 headers={
-                    "x-api-key": "sk-aa0ce45ba5ca4d4a9a89878b713161fa",
+                    "x-api-key": os.environ.get("DEEPSEEK_API_KEY", ""),
                     "anthropic-version": "2023-06-01",
                     "content-type": "application/json",
                 },
@@ -1943,26 +1954,33 @@ def page_accumulation():
 
 @app.route("/api/sector_coins")
 def api_sector_coins():
-    """返回某个板块的币种列表"""
+    """返回某个板块的币种列表（实时价格优先，日线兜底）"""
     sector = request.args.get("name", "")
     _load_sectors()
     coins = []
     with data_lock:
         syms = dict(market_data.get("symbols", {}))
+    with _daily_kline_lock:
+        spot_cache = dict(_daily_kline_cache)
+    with _daily_kline_lock_futures:
+        fut_cache = dict(_daily_kline_cache_futures)
     for bsym, labels in SECTOR_MAP.items():
         if sector in (labels or []):
+            # 实时价格
             info = syms.get(bsym, {})
-            if info:
-                price = info.get("price", 0)
-                # 用日线开盘价，和get_table_data一致
-                with _daily_kline_lock:
-                    dkl = _daily_kline_cache.get(bsym, [])
-                o = 0
-                if dkl:
+            price = info.get("price", 0) if info else 0
+            # 开盘价：日线当天open（有实时价格）或前一天close（日线兜底）
+            dkl = spot_cache.get(bsym) or fut_cache.get(bsym)
+            o = 0
+            if dkl and len(dkl) >= 2:
+                if price > 0:
                     o = dkl[-1].get("o", 0)
-                if o <= 0:
-                    o = price
-                gain = (price - o) / o * 100 if o > 0 else 0
+                else:
+                    # 没有实时价格，全用日线
+                    price = dkl[-1].get("c", 0)
+                    o = dkl[-2].get("c", 0)
+            if price > 0 and o > 0:
+                gain = (price - o) / o * 100
                 coins.append({
                     "symbol": bsym,
                     "gain_pct": round(gain, 1),
@@ -2335,7 +2353,8 @@ def _refresh_bb_daily_cache():
             continue  # 还没到检测时间
         # 查反包：不靠时间戳，直接用存储的阴线数据
         if cmpl["c"] >= cmpl["o"]:
-            engulfing = (cmpl["o"] <= info["bearish_c"] and cmpl["c"] >= info["bearish_o"])
+            tol = info["bearish_c"] * 0.001  # 0.1%容差，避免现货/合约tick差异
+            engulfing = (cmpl["o"] <= info["bearish_c"] + tol and cmpl["c"] >= info["bearish_o"] - tol)
             if engulfing:
                 results.append({
                     "symbol": symbol, "upper": 0, "middle": 0,
@@ -3852,7 +3871,11 @@ def api_backtest_current_params():
 
 @app.route("/api/backtest/deploy", methods=["POST"])
 def api_backtest_deploy_params():
-    """部署参数到 sim_trade.py + hybrid.rs 并重启交易服务"""
+    """部署参数到 sim_trade.py + hybrid.rs 并重启交易服务 (需API Key)"""
+    auth = request.headers.get("Authorization", "")
+    expected = os.environ.get("DEPLOY_API_KEY", "")
+    if not expected or auth != f"Bearer {expected}":
+        return jsonify({"error": "unauthorized", "deployed": False}), 401
     try:
         data = request.get_json(force=True) or {}
         result = _import_backtest_runner().deploy_params(**data)

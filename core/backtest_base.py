@@ -122,6 +122,32 @@ class BacktestResult:
         failure_stats = self._calculate_failure_stats()
         self.metrics.update(failure_stats)
 
+        # 交易绩效指标（需要子类提供trade数据）
+        trades = getattr(self, 'trades', [])
+        if trades:
+            closed = [t for t in trades if t.get('pnl') is not None]
+            wins = [t for t in closed if t.get('pnl', 0) > 0]
+            self.metrics['win_rate'] = len(wins) / len(closed) * 100 if closed else 0
+            gross_profit = sum(t['pnl'] for t in wins)
+            gross_loss = abs(sum(t['pnl'] for t in closed if t['pnl'] <= 0))
+            self.metrics['profit_factor'] = gross_profit / gross_loss if gross_loss > 0 else 0
+            self.metrics['total_trades'] = len(closed)
+        else:
+            self.metrics['win_rate'] = 0
+            self.metrics['profit_factor'] = 0
+            self.metrics['total_trades'] = 0
+
+        # avg_holding_period: 从trades数据计算 (每根K线=15分钟)
+        if closed:
+            holding_minutes = [
+                (t.get("k_index", 0) - t.get("entry_k_index", 0)) * 15
+                for t in closed
+                if t.get("entry_k_index") is not None and t.get("k_index") is not None
+            ]
+            self.metrics['avg_holding_period'] = (sum(holding_minutes) / len(holding_minutes)) if holding_minutes else 0
+        else:
+            self.metrics['avg_holding_period'] = 0
+
     def _calculate_condition_stats(self) -> Dict[str, float]:
         """计算条件满足率统计"""
         if not self.signals:
@@ -234,7 +260,7 @@ class BacktestBase:
             start_dt = TimezoneUtils.beijing_to_utc(start_time)
 
         if end_time is None:
-            end_dt = datetime.now(timezone.utc).replace(tzinfo=None)
+            end_dt = datetime.now(timezone.utc)
         elif isinstance(end_time, str):
             end_dt = TimezoneUtils.parse_beijing_time_to_utc(end_time)
         else:

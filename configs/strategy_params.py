@@ -1,17 +1,24 @@
 """
 策略参数配置
+
+⚠️ 与 backtester/config/current_params.json 对应关系:
+  - bollinger.period         → BB_CLIMB_PERIOD
+  - bollinger.std            → BB_CLIMB_STD_MULT
+  - strategy1.min_hours      → BB_CLIMB_MIN_HOURS
+  - strategy1.min_volume_24h → VOLUME_24H_FILTER
+请保持两处数值一致，否则回测与实盘行为将不一致。
 """
 
 STRATEGY_PARAMS = {
     'strategy1': {
         'name': '稳步抬升',
-        'min_hours': 3,
+        'min_hours': 2,  # matches current_params.json BB_CLIMB_MIN_HOURS: 2
         'min_range': 0.005,
         'max_range': 0.05,
         'scan_hours_before': 6,
         'scan_hours_after': 0,
         'top_n': 600,
-        'min_volume_24h': 15_000_000,
+        'min_volume_24h': 3_000_000,  # matches current_params.json VOLUME_24H_FILTER: 3000000
         'description': '连续N小时震幅0.5%~5%，最低价逐步抬高'
     },
 

@@ -22,17 +22,23 @@ def parse_volume(v: Union[str, int, float]) -> float:
     if isinstance(v, (int, float)):
         return float(v)
     
-    v = str(v).upper()
-    if 'B' in v:
-        return float(v.replace('B', '')) * 1e9
-    elif 'M' in v:
-        return float(v.replace('M', '')) * 1e6
-    elif 'K' in v:
-        return float(v.replace('K', '')) * 1e3
-    return float(v)
+    v = str(v).upper().strip()
+    if not v:
+        return 0.0
+    try:
+        if 'B' in v:
+            return float(v.replace('B', '').replace('I', '').replace('L', '')) * 1e9
+        elif 'M' in v:
+            return float(v.replace('M', '').replace('I', '').replace('L', '')) * 1e6
+        elif 'K' in v:
+            return float(v.replace('K', '')) * 1e3
+        return float(v)
+    except ValueError:
+        return 0.0
 
 
 def convert_to_4h(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()  # 避免原地修改输入DataFrame
     df = df.sort_values(['symbol', 'timestamp'])
     df['hour'] = df['timestamp'].dt.floor('4h')
     
@@ -50,12 +56,14 @@ def convert_to_4h(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def get_beijing_now():
-    from datetime import datetime, timedelta
-    return datetime.utcnow() + timedelta(hours=8)
+    from datetime import datetime, timedelta, timezone
+    return datetime.now(timezone.utc) + timedelta(hours=8)
 
 
 def normalize_symbol(symbol: str) -> str:
-    symbol = symbol.replace('/USDT:USDT', '').replace('/USDT', '')
+    """标准化币种符号，移除交易所后缀"""
+    for suffix in ['/USDT:USDT', '/USDC:USDC', '/USDT', '/USDC', '/BUSD', ':USDT', ':USDC']:
+        symbol = symbol.replace(suffix, '')
     return symbol
 
 

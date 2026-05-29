@@ -57,8 +57,7 @@ class TimezoneUtils:
         Returns:
             当前北京时间
         """
-        utc_now = datetime.now(timezone.utc)
-        return utc_now.replace(tzinfo=None) + TimezoneUtils.BEIJING_OFFSET
+        return datetime.now(timezone.utc) + TimezoneUtils.BEIJING_OFFSET
 
     @staticmethod
     def get_utc_now() -> datetime:
@@ -66,10 +65,9 @@ class TimezoneUtils:
         获取当前UTC时间
 
         Returns:
-            当前UTC时间（无时区信息）
+            当前UTC时间（带时区信息 timezone.utc，aware datetime）
         """
-        utc_now = datetime.now(timezone.utc)
-        return utc_now.replace(tzinfo=None)
+        return datetime.now(timezone.utc)
 
     @staticmethod
     def parse_beijing_time(time_str: str, format_str: str = '%Y-%m-%d %H:%M:%S') -> datetime:
@@ -153,6 +151,12 @@ class TimezoneUtils:
     def _is_likely_utc(dt: datetime) -> bool:
         """
         判断时间是否可能是UTC时间（启发式判断）
+
+        *** DEPRECATED: This heuristic is unreliable. ***
+        It misclassifies UTC 16:00-23:00 by assuming hour<=15 means UTC.
+        For example, 2024-01-01 18:00 UTC would be classified as Beijing time.
+        TODO: Remove this heuristic and require explicit timezone info (e.g., tzinfo attribute).
+              Until then, prefer checking dt.tzinfo directly for aware datetimes.
 
         规则：如果时间的小时部分在0-23范围内，且没有明显的北京时间特征
         """

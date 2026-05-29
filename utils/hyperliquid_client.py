@@ -26,6 +26,9 @@ class HyperliquidClient:
         self.api_url = api_url
         self.session = requests.Session()
         self.session.headers.update({"Content-Type": "application/json"})
+
+    def __del__(self):
+        self.session.close()
     
     def _post(self, data: dict, timeout: int = 10) -> Any:
         """发送POST请求"""
@@ -142,18 +145,21 @@ class HyperliquidWebSocket:
         self.on_error = on_error
         self.on_close = on_close
         self.ws = None
-        self.subscriptions = set()
+        self.subscriptions = {}
         self._running = False
-    
+
     def _on_open(self, ws):
         print("[Hyperliquid WS] 已连接")
         self._running = True
-        for sub in self.subscriptions:
+        for sub in self.subscriptions.values():
             ws.send(json.dumps({"method": "subscribe", "subscription": sub}))
-    
+
     def _on_message(self, ws, message):
         if self.on_message:
-            self.on_message(json.loads(message))
+            try:
+                self.on_message(json.loads(message))
+            except json.JSONDecodeError:
+                print(f"[Hyperliquid WS] 非JSON消息: {message[:200]}")
     
     def _on_error(self, ws, error):
         print(f"[Hyperliquid WS] 错误: {error}")
@@ -169,14 +175,16 @@ class HyperliquidWebSocket:
     def subscribe_trades(self, coin: str):
         """订阅成交数据"""
         sub = {"type": "trades", "coin": coin}
-        self.subscriptions.add(sub)
+        key = f"trades:{coin}"
+        self.subscriptions[key] = sub
         if self.ws and self._running:
             self.ws.send(json.dumps({"method": "subscribe", "subscription": sub}))
-    
+
     def subscribe_l2_book(self, coin: str):
         """订阅订单簿"""
         sub = {"type": "l2Book", "coin": coin}
-        self.subscriptions.add(sub)
+        key = f"l2Book:{coin}"
+        self.subscriptions[key] = sub
         if self.ws and self._running:
             self.ws.send(json.dumps({"method": "subscribe", "subscription": sub}))
     

@@ -3,6 +3,7 @@
 """
 import io
 import time
+import threading
 import pandas as pd
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Union, Tuple
@@ -24,17 +25,20 @@ class DataLoader:
     _cache_minutes: int = config.DATA_CACHE_MINUTES
 
     _cos_client: Optional[CosS3Client] = None
+    _cos_lock = threading.Lock()
 
     @classmethod
     def _get_cos_client(cls) -> CosS3Client:
         if cls._cos_client is None:
-            cos_config = CosConfig(
-                Region=config.COS_REGION,
-                SecretId=config.COS_SECRET_ID,
-                SecretKey=config.COS_SECRET_KEY,
-                Endpoint=config.COS_ENDPOINT
-            )
-            cls._cos_client = CosS3Client(cos_config)
+            with cls._cos_lock:
+                if cls._cos_client is None:
+                    cos_config = CosConfig(
+                        Region=config.COS_REGION,
+                        SecretId=config.COS_SECRET_ID,
+                        SecretKey=config.COS_SECRET_KEY,
+                        Endpoint=config.COS_ENDPOINT
+                    )
+                    cls._cos_client = CosS3Client(cos_config)
         return cls._cos_client
 
     @classmethod
@@ -50,7 +54,12 @@ class DataLoader:
 
                 df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
                 for col in ['open', 'high', 'low', 'close', 'volume']:
+                    before_nan = df[col].isna().sum()
                     df[col] = pd.to_numeric(df[col], errors='coerce')
+                    after_nan = df[col].isna().sum()
+                    new_nan = after_nan - before_nan
+                    if new_nan > 0:
+                        logger.warning(f"列 '{col}' 中有 {new_nan} 行无效数值被强制转为NaN")
 
                 df = df.dropna(subset=['symbol', 'close', 'volume'])
                 df['quote_volume'] = df['close'] * df['volume']
@@ -123,7 +132,7 @@ class DataLoader:
             start_dt = TimezoneUtils.beijing_to_utc(start_time)
 
         if end_time is None:
-            end_dt = datetime.now(timezone.utc).replace(tzinfo=None)
+            end_dt = TimezoneUtils.get_utc_now()
         elif isinstance(end_time, str):
             end_dt = TimezoneUtils.parse_beijing_time_to_utc(end_time)
         else:
@@ -192,6 +201,10 @@ class DataLoader:
             (开始时间, 结束时间) 的元组（UTC时间）
         """
         df = cls.get_klines(use_cache=False)
+        if df.empty:
+            logger.warning("没有可用数据，返回空时间范围")
+            return None
+
         min_time = df['timestamp'].min()
         max_time = df['timestamp'].max()
 

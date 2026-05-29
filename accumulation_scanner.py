@@ -18,7 +18,7 @@ def scan():
         resp = requests.get('https://fapi.binance.com/fapi/v1/exchangeInfo', timeout=15)
         symbols = [s['symbol'] for s in resp.json()['symbols']
                    if s.get('status')=='TRADING' and s.get('quoteAsset')=='USDT' and s.get('contractType')=='PERPETUAL']
-    except:
+    except Exception:
         symbols = []
 
     results = []
@@ -52,11 +52,15 @@ def scan():
 
             if signals:
                 last = signals[-1]
-                sig_idx = next(i for i in range(n-1,-1,-1)
-                    if abs((closes[i]-closes[i-1])/closes[i-1]*100)<3
+                sig_idx = next((i for i in range(n-1,-1,-1)
+                    if i > 0 and closes[i-1] > 0
+                    and abs((closes[i]-closes[i-1])/closes[i-1]*100)<3
+                    and sum(vols[max(0,i-20):i]) > 0
                     and vols[i]/(sum(vols[max(0,i-20):i])/20)>5
-                    and closes[i]<ema50[i]*1.05)
-                fwd = (closes[-1]-closes[sig_idx])/closes[sig_idx]*100
+                    and closes[i]<ema50[i]*1.05), None)
+                if sig_idx is None:
+                    continue
+                fwd = (closes[-1]-closes[sig_idx])/closes[sig_idx]*100 if closes[sig_idx] > 0 else 0
                 results.append({
                     'symbol': sym,
                     'signal_date': last['date'],
@@ -67,7 +71,7 @@ def scan():
                     'signals_count': len(signals),
                     'vs_ema50': round(closes[-1]/ema50[-1], 2),
                 })
-        except:
+        except Exception:
             pass
 
     results.sort(key=lambda x: -x['fwd_return'])

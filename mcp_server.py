@@ -43,19 +43,24 @@ TOOLS = {
 }
 
 def execute_tool(name: str, params: dict) -> str:
-    if name == "get_price":
-        sym = params.get("symbol", "BTCUSDT")
-        r = requests.get(f"{BINANCE}/ticker/price", params={"symbol": sym}, timeout=5)
-        return json.dumps(r.json())
+    try:
+        if name == "get_price":
+            sym = str(params.get("symbol", "BTCUSDT"))
+            r = requests.get(f"{BINANCE}/ticker/price", params={"symbol": sym}, timeout=5)
+            r.raise_for_status()
+            return json.dumps(r.json())
 
-    elif name == "get_klines":
-        sym = params.get("symbol", "BTCUSDT")
-        limit = int(params.get("limit", 30))
-        r = requests.get(f"{BINANCE}/klines", params={"symbol": sym, "interval": "1d", "limit": min(limit, 90)}, timeout=10)
-        kls = r.json()
-        # 精简返回关键数据
-        result = []
-        for k in kls[-5:]:  # 返回最近5根
+        elif name == "get_klines":
+            sym = str(params.get("symbol", "BTCUSDT"))
+            try:
+                limit = int(params.get("limit", 30))
+            except (ValueError, TypeError):
+                limit = 30
+            r = requests.get(f"{BINANCE}/klines", params={"symbol": sym, "interval": "1d", "limit": min(limit, 90)}, timeout=10)
+            r.raise_for_status()
+            kls = r.json()
+            result = []
+            for k in kls[-5:]:
             result.append({"t": k[0]//1000, "o": float(k[1]), "h": float(k[2]), "l": float(k[3]), "c": float(k[4]), "v": float(k[5])})
         return json.dumps({"recent_days": len(kls), "last_5": result})
 

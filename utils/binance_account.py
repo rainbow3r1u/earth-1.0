@@ -11,6 +11,7 @@ import json
 import threading
 import websocket
 import datetime
+from urllib.parse import urlencode
 from typing import Dict, List, Optional
 import sys
 from pathlib import Path
@@ -27,20 +28,19 @@ class BinanceAccount:
     _cache_time: Optional[float] = None
     _cache_ttl: int = 5
     _banned_until: float = 0  # 全局熔断时间戳
+    _lock = threading.Lock()
     
     @classmethod
     def _generate_signature(cls, params: dict, timestamp: int) -> str:
-        query_string = f"timestamp={timestamp}"
-        for k, v in sorted(params.items()):
-            if v is not None:
-                query_string += f"&{k}={v}"
-        
+        encoded = urlencode({k: v for k, v in sorted(params.items()) if v is not None})
+        query_string = f"timestamp={timestamp}&{encoded}" if encoded else f"timestamp={timestamp}"
+
         signature = hmac.new(
             config.BINANCE_SECRET_KEY.encode('utf-8'),
             query_string.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
-        
+
         return signature, query_string
     
     @classmethod
@@ -72,22 +72,24 @@ class BinanceAccount:
                 cls._banned_until = time.time() + retry_after
                 logger.error(f"🚨 [REST API] 触发币安封禁 ({e.response.status_code})，全局熔断 {retry_after} 秒！")
             else:
-                logger.error(f"请求失败 {endpoint}: {e}")
+                logger.error(f"请求失败 {endpoint}: {type(e).__name__}")
             return None
         except Exception as e:
-            logger.error(f"请求失败 {endpoint}: {e}")
+            logger.error(f"请求失败 {endpoint}: {type(e).__name__}")
             return None
     
     @classmethod
     def get_balance(cls, use_cache: bool = True) -> Dict:
-        if use_cache and cls._cache is not None and cls._cache_time is not None:
-            if time.time() - cls._cache_time < cls._cache_ttl:
-                return cls._cache.get('balance', {})
-        
+        if use_cache:
+            with cls._lock:
+                if cls._cache is not None and cls._cache_time is not None:
+                    if time.time() - cls._cache_time < cls._cache_ttl:
+                        return cls._cache.get('balance', {})
+
         data = cls._request('/fapi/v2/balance')
         if not data:
             return {}
-        
+
         balance = {}
         for item in data:
             asset = item.get('asset', '')
@@ -101,19 +103,22 @@ class BinanceAccount:
                 }
                 break
         
-        if cls._cache is None:
-            cls._cache = {}
-        cls._cache['balance'] = balance
-        cls._cache_time = time.time()
-        
+        with cls._lock:
+            if cls._cache is None:
+                cls._cache = {}
+            cls._cache['balance'] = balance
+            cls._cache_time = time.time()
+
         return balance
-    
+
     @classmethod
     def get_positions(cls, use_cache: bool = True) -> List[Dict]:
-        if use_cache and cls._cache is not None and cls._cache_time is not None:
-            if time.time() - cls._cache_time < cls._cache_ttl:
-                if 'positions' in cls._cache:
-                    return cls._cache.get('positions', [])
+        if use_cache:
+            with cls._lock:
+                if cls._cache is not None and cls._cache_time is not None:
+                    if time.time() - cls._cache_time < cls._cache_ttl:
+                        if 'positions' in cls._cache:
+                            return cls._cache.get('positions', [])
         
         data = cls._request('/fapi/v2/positionRisk')
         if not data:
@@ -152,11 +157,12 @@ class BinanceAccount:
         
         positions.sort(key=lambda x: abs(x['unRealizedProfit']), reverse=True)
         
-        if cls._cache is None:
-            cls._cache = {}
-        cls._cache['positions'] = positions
-        cls._cache_time = time.time()
-        
+        with cls._lock:
+            if cls._cache is None:
+                cls._cache = {}
+            cls._cache['positions'] = positions
+            cls._cache_time = time.time()
+
         return positions
     
     @classmethod
@@ -207,7 +213,9 @@ class BinanceAccountWS:
     @classmethod
     def get_instance(cls):
         if cls._instance is None:
-            cls._instance = cls()
+            with BinanceAccount._lock:
+                if cls._instance is None:
+                    cls._instance = cls()
         return cls._instance
     
     @classmethod
@@ -242,9 +250,10 @@ class BinanceAccountWS:
             # 读取 Retry-After 响应头
             if resp.status_code == 418:
                 wait_sec = int(resp.headers.get('Retry-After', 300))
-                _banned_until = time.time() + wait_sec
-                _retry_delay = min(_retry_delay * 2, 3600)
-                logger.warning(f"获取listenKey触发418，封锁至 {datetime.datetime.fromtimestamp(_banned_until)}")
+                banned_until = time.time() + wait_sec
+                BinanceAccount._banned_until = banned_until
+                cls._retry_delay = min(cls._retry_delay * 2, 3600)
+                logger.warning(f"获取listenKey触发418，封锁至 {datetime.datetime.fromtimestamp(banned_until)}")
                 return None
             
             resp.raise_for_status()
@@ -255,7 +264,7 @@ class BinanceAccountWS:
                 BinanceAccount._banned_until = time.time() + retry_after
                 logger.error(f"🚨 [WS API] 获取 listenKey 触发币安封禁 ({e.response.status_code})，全局熔断 {retry_after} 秒！")
                 return 'BANNED'
-            logger.error(f"获取 listenKey 失败: {e}")
+            logger.error(f"获取 listenKey 失败: {type(e).__name__}")
             return None
         except Exception as e:
             logger.error(f"获取 listenKey 失败: {e}")
@@ -319,7 +328,7 @@ class BinanceAccountWS:
                 cls._listen_key = listen_key
                 ws_url = cls.WS_URL + listen_key
                 
-                logger.info(f"连接 WebSocket: {ws_url[:50]}...")
+                logger.info("连接 WebSocket: wss://fstream.binance.com/ws/***")
                 
                 cls._ws = websocket.WebSocketApp(
                     ws_url,
@@ -348,7 +357,11 @@ class BinanceAccountWS:
                 time.sleep(1800)
                 if cls._running and cls._ws:
                     cls._keepalive_listen_key()
-        threading.Thread(target=keepalive, daemon=True).start()
+        # 停止旧keepalive线程防止累积 (MEDIUM-012 fix)
+        if hasattr(cls, '_keepalive_thread') and cls._keepalive_thread and cls._keepalive_thread.is_alive():
+            cls._keepalive_thread = None  # daemon线程在进程退出时自动清理
+        cls._keepalive_thread = threading.Thread(target=keepalive, daemon=True)
+        cls._keepalive_thread.start()
     
     @classmethod
     def _on_message(cls, ws, message):
@@ -398,7 +411,7 @@ class BinanceAccountWS:
                         'unRealizedProfit': unrealized,
                         'liquidationPrice': 0,
                         'leverage': int(account.get('l', 1)),
-                        'marginType': 'cross',
+                        'marginType': pos.get('mt', 'cross'),  # 读取仓位级保证金模式
                         'positionInitialMargin': float(pos.get('iw', 0)),
                         'direction': '多' if pos_amt > 0 else '空',
                         'roi': 0

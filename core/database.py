@@ -121,7 +121,7 @@ class Database:
             cursor = conn.execute('''
                 SELECT * FROM signals
                 WHERE symbol = ?
-                AND timestamp >= datetime('now', ?)
+                AND timestamp >= datetime('now', 'utc', ?)
                 ORDER BY timestamp DESC
             ''', (symbol, f'-{days} days'))
             rows = cursor.fetchall()

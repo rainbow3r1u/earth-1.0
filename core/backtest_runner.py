@@ -126,19 +126,41 @@ def deploy_params(bb_period: int, bb_std: float, bb_min_hours: int,
 
 def _update_hybrid_defaults(bb_period, bb_std, bb_min_hours, bb_hl_window, bb_hl_min, daily_gain, fut_max_daily_tp):
     """同步更新 hybrid.rs 默认参数"""
+    # 参数校验 (HIGH-055 fix)
+    if bb_period < 2 or bb_std <= 0 or bb_min_hours < 1:
+        print(f"ERROR: 非法参数 period={bb_period} std={bb_std} min_hours={bb_min_hours}, 拒绝写入")
+        return
+    if bb_hl_window < 1 or bb_hl_min < 1 or bb_hl_min > bb_hl_window:
+        print(f"ERROR: 非法参数 hl_window={bb_hl_window} hl_min={bb_hl_min}, 拒绝写入")
+        return
+
     filepath = "/home/myuser/backtester-rs/src/hybrid.rs"
     with open(filepath) as f:
         content = f.read()
 
     import re
-    # Update BBParams default
-    content = re.sub(r'period:\s*\d+', f'period: {bb_period}', content)
-    content = re.sub(r'std_mult:\s*[0-9.]+', f'std_mult: {bb_std}', content)
-    content = re.sub(r'min_hours:\s*\d+', f'min_hours: {bb_min_hours}', content)
-    content = re.sub(r'hl_window:\s*\d+', f'hl_window: {bb_hl_window}', content)
-    content = re.sub(r'hl_min:\s*\d+', f'hl_min: {bb_hl_min}', content)
-    content = re.sub(r'daily_gain_pct:\s*[0-9.]+', f'daily_gain_pct: {daily_gain}', content)
-    content = re.sub(r'max_daily_tp:\s*\d+', f'max_daily_tp: {fut_max_daily_tp}', content)
+    # BBParams struct内替换 (HIGH-054 fix: 限定在BBParams块内)
+    bb_block = re.search(r'struct BBParams\s*\{[^}]*\}', content)
+    if bb_block:
+        old_block = bb_block.group(0)
+        new_block = old_block
+        new_block = re.sub(r'period:\s*\d+', f'period: {bb_period}', new_block)
+        new_block = re.sub(r'std_mult:\s*[0-9.]+', f'std_mult: {bb_std}', new_block)
+        new_block = re.sub(r'min_hours:\s*\d+', f'min_hours: {bb_min_hours}', new_block)
+        new_block = re.sub(r'hl_window:\s*\d+', f'hl_window: {bb_hl_window}', new_block)
+        new_block = re.sub(r'hl_min:\s*\d+', f'hl_min: {bb_hl_min}', new_block)
+        new_block = re.sub(r'daily_gain_pct:\s*[0-9.]+', f'daily_gain_pct: {daily_gain}', new_block)
+        new_block = re.sub(r'max_daily_tp:\s*\d+', f'max_daily_tp: {fut_max_daily_tp}', new_block)
+        content = content.replace(old_block, new_block)
+    else:
+        print("WARNING: 未找到BBParams struct, 回退到全局替换")
+        content = re.sub(r'period:\s*\d+', f'period: {bb_period}', content)
+        content = re.sub(r'std_mult:\s*[0-9.]+', f'std_mult: {bb_std}', content)
+        content = re.sub(r'min_hours:\s*\d+', f'min_hours: {bb_min_hours}', content)
+        content = re.sub(r'hl_window:\s*\d+', f'hl_window: {bb_hl_window}', content)
+        content = re.sub(r'hl_min:\s*\d+', f'hl_min: {bb_hl_min}', content)
+        content = re.sub(r'daily_gain_pct:\s*[0-9.]+', f'daily_gain_pct: {daily_gain}', content)
+        content = re.sub(r'max_daily_tp:\s*\d+', f'max_daily_tp: {fut_max_daily_tp}', content)
 
     with open(filepath, 'w') as f:
         f.write(content)

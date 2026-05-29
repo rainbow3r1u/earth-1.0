@@ -1,30 +1,86 @@
 #!/usr/bin/env python3
 """进程守护 — 每分钟检查关键服务，挂了自动重启"""
-import subprocess, time, os, sys
+import subprocess, time, os, sys, re, shlex, json
+
+ENV_FILE = '/home/myuser/websocket_new/.env'
+ENV_PREFIX = f'source {ENV_FILE} 2>/dev/null; export $(grep -v "^#" {ENV_FILE} | cut -d= -f1 2>/dev/null); '
 
 CHECKS = [
-    {
-        "name": "web5003",
-        "check": "port", "port": 5003,
-        "start": "cd /home/myuser/websocket_new && nohup python3 run_web.py > /tmp/web5003.log 2>&1 &",
-    },
-    {
-        "name": "sim_trade",
-        "check": "process", "pattern": "sim_trade.py",
-        "start": "screen -dmS trade bash -c 'cd /home/myuser/websocket_new && python3 -u sim_trade.py > /tmp/trade.log 2>&1'",
-    },
+    # ── 常驻进程 ──
+    # sim_trade已停 (改用auto_dual_trade.py cron每天0点运行)
     {
         "name": "OI采集",
         "check": "process", "pattern": "oi_collector.py",
-        "start": "screen -dmS oi_collector bash -c 'cd /home/myuser/backtester/cos_service && python3 -u oi_collector.py > /tmp/oi_collector.log 2>&1'",
+        "start": "screen -dmS oi_collector bash -c 'source /home/myuser/websocket_new/.env 2>/dev/null; export $(grep -v \"^#\" /home/myuser/websocket_new/.env | cut -d= -f1); cd /home/myuser/backtester/cos_service && python3 -u oi_collector.py > /tmp/oi_collector.log 2>&1'",
     },
     {
         "name": "CDD链上",
         "check": "process", "pattern": "blockchair_collector.py",
-        "start": "screen -dmS bc_collector bash -c 'python3 -u /home/myuser/blockchair_collector.py > /tmp/bc_collector.log 2>&1'",
+        "start": "screen -dmS bc_collector bash -c 'source /home/myuser/websocket_new/.env 2>/dev/null; export $(grep -v \"^#\" /home/myuser/websocket_new/.env | cut -d= -f1); python3 -u /home/myuser/blockchair_collector.py > /tmp/bc_collector.log 2>&1'",
     },
+    {
+        "name": "情绪采集",
+        "check": "process", "pattern": "sentiment_collector.py",
+        "start": "screen -dmS sentiment bash -c 'source /home/myuser/websocket_new/.env 2>/dev/null; export $(grep -v \"^#\" /home/myuser/websocket_new/.env | cut -d= -f1); python3 -u /home/myuser/websocket_new/sentiment_collector.py > /tmp/sentiment.log 2>&1'",
+    },
+    # ── cron定时任务 (检查输出文件新鲜度) ──
+    # FIX: 板块热力图是一次性脚本非常驻服务，改为cron每小时运行，从guardian移除
+    # {
+    #     "name": "板块热力图(每小时)",
+    #     "check": "file_age", "path": "/tmp/sector_heatmap.json", "max_age": 7200,
+    #     "start": "/usr/bin/python3 /home/myuser/websocket_new/sector_heatmap.py > /tmp/heatmap_cron.log 2>&1 &",
+    # },
+    {
+        "name": "清算热力图(每小时)",
+        "check": "file_age", "path": "/tmp/liquidation_heatmap.json", "max_age": 7200,
+        "start": "/usr/bin/python3 /home/myuser/websocket_new/liquidation_heatmap.py > /tmp/liq_heatmap_cron.log 2>&1 &",
+    },
+    {
+        "name": "恐慌贪婪(每天)",
+        "check": "file_age", "path": "/tmp/fear_greed_history.json", "max_age": 90000,
+        "start": "/usr/bin/python3 /home/myuser/websocket_new/fear_greed_collector.py > /tmp/fear_greed_cron.log 2>&1 &",
+    },
+    {
+        "name": "稳定币监控(每天)",
+        "check": "file_age", "path": "/home/myuser/stablecoin_data/daily_monitor.csv", "max_age": 90000,
+        "start": "/usr/bin/python3 /home/myuser/stablecoin_data/monitor.py > /tmp/stablecoin_monitor.log 2>&1 &",
+    },
+    {
+        "name": "算力采集(每天)",
+        "check": "file_age", "path": "/home/myuser/hashrate_data/hashrate_daily.csv", "max_age": 90000,
+        "start": "/usr/bin/python3 /home/myuser/hashrate_data/collector.py > /tmp/hashrate_cron.log 2>&1 &",
+    },
+    {
+        "name": "ETF采集(每天)",
+        "check": "file_age", "path": "/home/myuser/openclaw-5001-host/config/.openclaw/workspace/etf_data/etf_flow.json", "max_age": 72000,
+        "start": "cd /home/myuser/openclaw-5001-host/config/.openclaw/workspace/etf_data && /usr/bin/python3 fetch_etf.py > /tmp/etf_cron.log 2>&1 &",
+    },
+    {
+        "name": "板块标签(每天)",
+        "check": "file_age", "path": "/tmp/crypto_sectors.json", "max_age": 90000,
+        "start": "/usr/bin/python3 /home/myuser/websocket_new/sector_fetcher.py > /tmp/sector_fetcher.log 2>&1 &",
+    },
+    {
+        "name": "BTC市值(每天)",
+        "check": "file_age", "path": "/home/myuser/coingecko_data/btc_mcap.json", "max_age": 90000,
+        "start": "/usr/bin/python3 /home/myuser/websocket_new/collect_btc_mcap.py > /tmp/btc_mcap_cron.log 2>&1 &",
+    },
+    {
+        "name": "TVL采集(每天)",
+        "check": "file_age", "path": "/home/myuser/defillama_data/ethereum_tvl.json", "max_age": 90000,
+        "start": "/usr/bin/python3 /home/myuser/websocket_new/collect_tvl.py > /tmp/tvl_cron.log 2>&1 &",
+    },
+    # FIX: Web服务app.py不存在，移除端口检查避免循环重启
+    # {
+    #     "name": "Web服务(端口)",
+    #     "check": "port", "port": 5003,
+    #     "start": "cd /home/myuser/websocket_new && screen -dmS web python3 -u app.py",
+    # },
 ]
 
+# check_port() monitors TCP port liveness for CHECKS entries with "check": "port"
+# To monitor the web service (port 5003), add a CHECKS entry:
+#   {"name": "Web服务", "check": "port", "port": 5003, "start": "..."}
 def check_port(port):
     import socket
     try:
@@ -33,31 +89,108 @@ def check_port(port):
         s.connect(('localhost', port))
         s.close()
         return True
-    except:
+    except Exception:
         return False
 
 def check_process(pattern):
     try:
         result = subprocess.run(['pgrep', '-f', pattern], capture_output=True, text=True)
         return result.returncode == 0
-    except:
+    except Exception:
         return False
+
+def check_file_age(path, max_age):
+    """检查文件是否存在且最近修改时间在max_age秒内"""
+    try:
+        mtime = os.path.getmtime(path)
+        return (time.time() - mtime) < max_age
+    except Exception:
+        return False
+
+def _pid_file(name):
+    """生成PID文件路径"""
+    safe = re.sub(r'[^a-zA-Z0-9_-]', '_', name)
+    return f"/tmp/guardian_{safe}.pid"
+
+def _task_running(name, start_cmd):
+    """检查file_age任务是否已有实例在跑，用pgrep匹配完整脚本路径"""
+    # 从start命令提取脚本路径 (如 /home/myuser/websocket_new/sector_fetcher.py)
+    match = re.search(r'(/[^\s]+\.py)', start_cmd)
+    if match:
+        pattern = match.group(1)
+        try:
+            result = subprocess.run(['pgrep', '-f', pattern], capture_output=True, text=True)
+            return result.returncode == 0
+        except Exception:
+            pass
+    # 退化为PID文件检查
+    pf = _pid_file(name)
+    try:
+        with open(pf) as f:
+            pid = int(f.read().strip())
+        os.kill(pid, 0)
+        return True
+    except Exception:
+        return False
+
+_restart_count = {}  # name -> list of restart timestamps in the last hour
 
 def main():
     log_file = "/tmp/guardian.log"
     status = []
     for svc in CHECKS:
-        alive = check_port(svc["port"]) if svc["check"] == "port" else check_process(svc["pattern"])
+        check_type = svc["check"]
+        if check_type == "port":
+            alive = check_port(svc["port"])
+        elif check_type == "file_age":
+            alive = check_file_age(svc["path"], svc["max_age"])
+        else:
+            alive = check_process(svc["pattern"])
+
         status.append({"name": svc["name"], "alive": alive})
+
         if not alive:
+            # file_age任务：检查是否已有一个实例在跑
+            if check_type == "file_age" and _task_running(svc["name"], svc["start"]):
+                continue
+
+            # Circuit breaker: stop restarting if more than 5 restarts in 1 hour
+            now_ts = time.time()
+            if svc["name"] not in _restart_count:
+                _restart_count[svc["name"]] = []
+            # Purge entries older than 1 hour
+            _restart_count[svc["name"]] = [t for t in _restart_count[svc["name"]] if now_ts - t < 3600]
+            if len(_restart_count[svc["name"]]) >= 5:
+                msg = f"[{time.strftime('%m-%d %H:%M')}] CRITICAL: {svc['name']} restart limit exceeded (5+ restarts in 1hr) — giving up"
+                print(msg)
+                with open(log_file, 'a') as f:
+                    f.write(msg + '\n')
+                continue
+            _restart_count[svc["name"]].append(now_ts)
+
             msg = f"[{time.strftime('%m-%d %H:%M')}] {svc['name']} 挂了，重启..."
             print(msg)
             with open(log_file, 'a') as f:
                 f.write(msg + '\n')
-            os.system(svc["start"])
+            cmd = svc["start"]
+
+            # 如果是screen命令，先杀掉同名旧session防止孤儿进程泄漏
+            screen_match = re.search(r'screen -dmS (\S+)', cmd)
+            if screen_match:
+                old_name = screen_match.group(1)
+                subprocess.run(['screen', '-S', old_name, '-X', 'quit'], capture_output=True)
+                time.sleep(0.3)
+
+            # 所有命令前追加 .env 加载，确保子进程有API密钥
+            cmd = ENV_PREFIX + cmd
+
+            # 包含shell重定向时使用shell=True，否则使用shlex拆分 (SEC-007 fix)
+            if any(c in cmd for c in ('>', '2>&1', '&')):
+                subprocess.run(cmd, shell=True)
+            else:
+                subprocess.run(shlex.split(cmd), shell=False)
     # 写状态文件供网站读取
     with open("/tmp/guardian_status.json", "w") as f:
-        import json
         json.dump({"services": status, "updated": time.time()}, f)
 
 if __name__ == "__main__":

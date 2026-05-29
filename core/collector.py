@@ -14,6 +14,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
 
 from qcloud_cos import CosConfig, CosS3Client
+from qcloud_cos.cos_exception import CosClientError, CosServiceError
 from requests.exceptions import RequestException
 import requests
 
@@ -26,6 +27,7 @@ from utils.logger import get_logger
 logger = get_logger('collector')
 
 request_lock = threading.Lock()
+ban_lock = threading.Lock()
 request_count = 0
 
 
@@ -41,21 +43,25 @@ class BinanceKlineCollector:
         global request_count, _BANNED_UNTIL, _BANNED_RETRY_DELAY
         url = f"{self.api_base}{path}"
         for attempt in range(self.max_retries):
-            # 熔断检查
-            if time.time() < _BANNED_UNTIL:
-                time.sleep(_BANNED_RETRY_DELAY)
-            
+            # 熔断检查 -- protected by ban_lock
+            with ban_lock:
+                banned = time.time() < _BANNED_UNTIL
+                ban_delay = _BANNED_RETRY_DELAY
+            if banned:
+                time.sleep(ban_delay)
+
             try:
                 resp = requests.get(url, params=params, timeout=self.timeout)
-                
-                # 418熔断判断
-                if resp.status_code == 418:
+
+                # 418/429熔断判断
+                if resp.status_code in (418, 429):
                     wait_sec = int(resp.headers.get("Retry-After", 300))
-                    _BANNED_UNTIL = time.time() + wait_sec
-                    _BANNED_RETRY_DELAY = min(_BANNED_RETRY_DELAY * 2, 3600)
-                    logger.error(f"触发418熔断，封锁至 {datetime.fromtimestamp(_BANNED_UNTIL)}，{wait_sec}秒后重试")
+                    with ban_lock:
+                        _BANNED_UNTIL = time.time() + wait_sec
+                        _BANNED_RETRY_DELAY = min(_BANNED_RETRY_DELAY * 2, 3600)
+                    logger.error(f"触发{resp.status_code}熔断，封锁至 {datetime.fromtimestamp(_BANNED_UNTIL)}，{wait_sec}秒后重试")
                     break
-                
+
                 resp.raise_for_status()
                 with request_lock:
                     request_count += 1
@@ -108,11 +114,12 @@ class BinanceKlineCollector:
         return rows
 
     def _fetch_klines_task(self, symbol: str, idx: int, total: int, delay: float = 0.4):
-        global _BANNED_RETRY_DELAY
         rows = self.fetch_klines(symbol)
         if idx % 50 == 0 or idx == total:
             logger.info(f"进度: {idx}/{total}")
-        time.sleep(_BANNED_RETRY_DELAY)
+        with ban_lock:
+            ban_delay = _BANNED_RETRY_DELAY
+        time.sleep(ban_delay)
         return symbol, rows
 
     def _upload_to_cos(self, local_file: str, cos_key: str) -> bool:
@@ -134,13 +141,16 @@ class BinanceKlineCollector:
                 )
                 logger.info(f"上传成功，ETag: {resp['ETag']}")
                 return True
-            except RequestException as e:
+            except (RequestException, CosClientError, CosServiceError) as e:
                 logger.warning(f"上传失败 (尝试 {attempt+1}/{self.max_retries}): {e}")
                 if attempt < self.max_retries - 1:
                     time.sleep(self.retry_delays[attempt])
                 else:
                     logger.error(f"上传最终失败: {local_file}")
                     return False
+            except Exception as e:
+                logger.error(f"上传发生未预期异常: {e}", exc_info=True)
+                return False
         return False
 
     def run(self) -> bool:
@@ -190,13 +200,24 @@ class BinanceKlineCollector:
         logger.info(f"成功: {success_count}, 失败: {fail_count}, 总请求: {request_count}")
 
         local_file = "/tmp/perpetual_klines_latest.parquet"
-        df.to_parquet(local_file, index=False)
+        try:
+            df.to_parquet(local_file, index=False)
+        except Exception as e:
+            logger.error(f"Parquet写入失败: {e}")
+            return False
 
         success = self._upload_to_cos(local_file, config.COS_KEY)
 
         import os
-        if os.path.exists(local_file):
-            os.remove(local_file)
+        if success:
+            if os.path.exists(local_file):
+                os.remove(local_file)
+        else:
+            # Keep local backup if COS upload failed to prevent data loss
+            backup_file = local_file + ".backup"
+            if os.path.exists(local_file):
+                os.rename(local_file, backup_file)
+                logger.warning(f"上传失败，本地备份保留在: {backup_file}")
 
         elapsed = (datetime.now(timezone.utc) - start_time).total_seconds()
         logger.info(f"总耗时: {elapsed:.2f} 秒")

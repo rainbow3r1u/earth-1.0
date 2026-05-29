@@ -42,7 +42,7 @@ FUT_MARGIN = 20                     # 每单保证金 USDT
 FUT_MAX_POSITIONS = 20              # 最大持仓（实际受限于现货）
 FUT_LEVERAGE = 10                   # 杠杆倍数
 FUT_TP_PCT = 50                     # 止盈比例 (%)
-FUT_SL_PCT = 0.02                   # 止损比例 2%
+FUT_SL_PCT = 0.02                   # 止损价格比例 2% (10x杠杆下 ≈ 20%保证金损失)
 FUT_VOL_FILTER = 1_000_000          # 24h最低成交量
 FUT_MIN_RATIO = 4.0                 # 量surge最小倍数
 FUT_MAX_DAILY_TP = 4                # 日最大止盈次数
@@ -77,6 +77,8 @@ spot_account = {
     "peak_balance": SPOT_INITIAL_CAPITAL,
 }
 spot_positions = []  # [{symbol, entry_price, quantity, cost_basis, entry_time, tp_price, sl_price}]
+spot_lock = threading.Lock()
+futures_lock = threading.Lock()
 
 # 合约账户
 futures_account = {
@@ -302,7 +304,8 @@ def open_spot_position(symbol: str, entry_price: float, signal_detail: dict = No
         "sl_price": sl_price,
     }
     
-    spot_positions.append(pos)
+    with spot_lock:
+        spot_positions.append(pos)
     spot_account["balance"] -= cost
     spot_entry_ts[symbol] = pos["entry_time"]
     
@@ -367,7 +370,8 @@ def close_spot_position(pos: dict, reason: str, close_price: float, pnl: float):
     
     print(f"[现货平仓] {reason} {symbol} @ {format_price(close_price)} | 盈亏: {actual_pnl:+.2f} USDT | 余额: {spot_account['balance']:.2f}")
     
-    spot_positions.remove(pos)
+    with spot_lock:
+        spot_positions.remove(pos)
     save_state()
 
 def check_spot_positions():
@@ -527,7 +531,8 @@ def open_futures_position(symbol: str, signal_type: str, entry_price: float,
         "is_long": True,
     }
     
-    futures_positions.append(pos)
+    with futures_lock:
+        futures_positions.append(pos)
     save_state()
     
     log = {
@@ -595,7 +600,8 @@ def close_futures_position(pos: dict, reason: str, close_price: float, pnl: floa
     
     print(f"[合约平仓] {reason} {pos['symbol']} @ {format_price(close_price)} | 盈亏: {actual_pnl:+.2f} USDT | 余额: {futures_account['balance']:.2f} | 胜率: {futures_account['win_rate']:.0f}%")
     
-    futures_positions.remove(pos)
+    with futures_lock:
+        futures_positions.remove(pos)
     save_state()
     
     if reason == "TAKE_PROFIT":
@@ -632,17 +638,19 @@ def check_futures_positions():
             positions_to_close.append((pos, "STOP_LOSS", current_price, pnl))
             continue
     
-    # 联合爆仓检测
-    total_equity = futures_account["balance"] + total_unrealized
-    if total_equity <= 0 and futures_positions:
-        print(f"\n💥 合约联合爆仓！总权益归零: {total_equity:.2f} USDT")
-        for pos in futures_positions:
-            symbol = pos["symbol"]
-            current_price = get_current_price(symbol)
-            if current_price <= 0:
-                current_price = pos["entry_price"] * 0.5
+    # 逐仓爆仓检测 — Binance逐仓保证金模式
+    MAINTENANCE_MARGIN_RATE = 0.005  # 0.5%
+    for pos in futures_positions:
+        if pos in [pc[0] for pc in positions_to_close]:
+            continue
+        symbol = pos["symbol"]
+        current_price = get_current_price(symbol)
+        if current_price <= 0:
+            continue
+        liq_price = pos["entry_price"] * (1 - 1.0 / pos.get("leverage", 10) + MAINTENANCE_MARGIN_RATE)
+        if current_price <= liq_price:
             pnl = calculate_pnl(pos["entry_price"], current_price, pos["quantity"])
-            positions_to_close.append((pos, "LIQUIDATED_CROSS", current_price, pnl))
+            positions_to_close.append((pos, "LIQUIDATED", current_price, pnl))
     
     closed_symbols = set()
     for pos, reason, price, pnl in positions_to_close:

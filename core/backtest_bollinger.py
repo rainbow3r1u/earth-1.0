@@ -23,14 +23,14 @@ from utils.logger import get_logger
 
 
 BOLLINGER_CLIMB_CONFIG = {
-    "period": 30,
+    "period": 20,  # 与 bb_climb.py 的 detect_bb_climb 默认值保持一致
     "std_mult": 2.5,
     "upper_tolerance_pct": 0.08,
     "buy_ratio_threshold": 0.55,
     "buy_ratio_skip_default": True,
     "volume_ratio": 1.2,
-    "hl_tolerance_window": 5,
-    "hl_tolerance_min": 3,
+    "hl_tolerance_window": 3,
+    "hl_tolerance_min": 2,  # 与 bb_climb.py 对齐
     "atr_period": 14,
     "atr_enabled": True,
     "exclude_symbols": {
@@ -211,12 +211,9 @@ class BollingerClimbBacktest(BacktestBase):
         min_count = self.bb_config['hl_tolerance_min']
 
         climb_count = 0
-        check_start = max(0, idx - window + 1)
+        check_start = max(1, idx - window + 1)
 
         for i in range(check_start, idx + 1):
-            if i == 0:
-                climb_count += 1
-                continue
             if df['hl_higher'].iloc[i]:
                 climb_count += 1
 
@@ -529,7 +526,7 @@ def debug_check_at_timestamp(
                 df = df.rename(columns={'v': 'volume'})
             if 'q' in df.columns:
                 df = df.rename(columns={'q': 'quote_volume'})
-            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='s')
+            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
             data_source = 'memory'
     
     if df is None:

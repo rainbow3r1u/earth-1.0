@@ -518,7 +518,7 @@
     setInterval(refreshAll, 15000);
     setTimeout(loadHeatmap, 500);
     setInterval(loadHeatmap, 300000);
-    loadPredictions();
+    setTimeout(loadPredictions, 800);
     setInterval(loadPredictions, 600000);
     setTimeout(checkServices, 500);
     setInterval(checkServices, 60000);
@@ -573,7 +573,7 @@
             if(!grid||!coins.length){alert('无数据');return;}
             let h='<div style=\"grid-column:1/-1;background:#161b22;border:1px solid #ff6b35;border-radius:6px;padding:10px;max-width:100%;box-sizing:border-box;\">'+
                 '<div style=\"display:flex;justify-content:space-between;margin-bottom:6px;\">'+
-                '<span style=\"color:#ff6b35;font-weight:700;\">'+name+' ('+coins.length+'个)</span>'+
+                '<span style=\"color:#ff6b35;font-weight:700;\">'+name+' (共'+d.count+'个, TOP'+coins.length+')</span>'+
                 '<span style=\"cursor:pointer;color:#30363d;font-size:16px;\" onclick=\"this.parentElement.parentElement.remove();loadHeatmap();\">✕</span></div>';
             coins.forEach(c=>{
                 const cl=c.gain_pct>=0?'#ff9500':'#7a4a00';
@@ -776,6 +776,45 @@
             </div>
         </div>
     </div>
+
+    <!-- BTC清算热力图 -->
+    <div class="surge-panel" id="liq_panel" style="margin-top:10px; border-color: #ff4444;">
+        <h2 class="collapsible" onclick="togglePanel('liq_grid')" style="color: #ff4444;">💥 BTC清算热力图 (多头爆仓=下方/空头爆仓=上方)<span class="toggle-icon">▼</span></h2>
+        <div class="surge-grid" id="liq_grid"></div>
+    </div>
+    <script>
+    function loadLiqHeatmap(){
+        fetch('/api/liq_heatmap').then(r=>r.json()).then(d=>{
+            const g=document.getElementById('liq_grid');
+            if(!g||!d.data||!d.data.levels)return;
+            const h=d.data, lvls=h.levels, price=h.price;
+            const maxV=Math.max(...lvls.map(l=>l.total));
+            let html=`<div style="grid-column:1/-1;padding:4px;font-size:11px;color:#8b949e">
+                BTC $${price.toLocaleString()} | OI $${(h.oi_usd/1e9).toFixed(1)}B | 费率 ${(h.funding_rate*100).toFixed(3)}% | 多偏${(h.long_ratio*100).toFixed(0)}%
+                | 模型:${h.model||'gaussian'} | 更新:${new Date(h.updated*1000).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})}
+                </div>`;
+            lvls.reverse().forEach(l=>{
+                const pct=(l.total/maxV*100).toFixed(0);
+                const isLong=l.ratio==='long';
+                const bar=isLong?'#ff4444':'#44ff44';
+                const bg=isLong?'rgba(255,68,68,0.1)':'rgba(68,255,68,0.05)';
+                const marker=Math.abs(l.price-price)<h.bucket_size?' ←当前':'';
+                html+=`<div style="display:flex;align-items:center;padding:2px 4px;background:${bg};font-size:11px;">
+                    <span style="width:70px;color:#8b949e;text-align:right;margin-right:6px;">$${l.price.toLocaleString()}</span>
+                    <span style="flex:1;height:14px;background:#161b22;border-radius:2px;overflow:hidden;">
+                        <span style="display:block;height:100%;width:${pct}%;background:${bar};opacity:0.7;border-radius:2px;"></span>
+                    </span>
+                    <span style="width:55px;text-align:right;color:${bar};font-size:10px;margin-left:4px;">$${(l.total/1e6).toFixed(0)}M</span>
+                    <span style="width:22px;text-align:center;color:${bar};font-size:10px;font-weight:700;">${isLong?'多':'空'}</span>
+                    <span style="color:#8b949e;font-size:9px;">${marker}</span>
+                </div>`;
+            });
+            g.innerHTML=html;
+        }).catch(()=>{});
+    }
+    setTimeout(loadLiqHeatmap,1000);
+    setInterval(loadLiqHeatmap,3600000);
+    </script>
 
     <!-- 布林爬坡预警面板 -->
     <div class="surge-panel" id="climb_panel" style="display:none">

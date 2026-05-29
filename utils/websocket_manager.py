@@ -23,18 +23,21 @@ class BinanceWebSocketManager:
         return cls._instance
     
     def __init__(self):
-        if not hasattr(self, 'initialized'):
-            self.initialized = True
-            self.subscriptions: Set[str] = set()
-            self.sub_lock = threading.Lock()
-            self.ws = None
-            self.loop = None
-            self.thread = None
-            self.running = False
-            self.socketio = None
-            self.kline_cache: Dict[str, list] = {}
-            self._reconnect_depth = 0  # 递归重连深度计数
-            self._max_reconnect_depth = 10  # 最大递归深度
+        if hasattr(self, '_initialized'):
+            return
+        self.subscriptions: Set[str] = set()
+        self.sub_lock = threading.Lock()
+        self.kline_lock = threading.Lock()
+        self.ws = None
+        self.loop = None
+        self.thread = None
+        self.running = False
+        self._stopping = False
+        self.socketio = None
+        self.kline_cache: Dict[str, list] = {}
+        self._reconnect_depth = 0  # 递归重连深度计数
+        self._max_reconnect_depth = 10  # 最大递归深度
+        self._initialized = True
     
     def set_socketio(self, socketio):
         self.socketio = socketio
@@ -99,16 +102,19 @@ class BinanceWebSocketManager:
     
     def stop(self):
         self.running = False
+        self._stopping = True
         if self.loop:
             self.loop.call_soon_threadsafe(self.loop.stop)
         if self.thread:
-            self.thread.join(timeout=2)
+            self.thread.join(timeout=10)
         self.ws = None
         self.loop = None
         self.thread = None
+        self._stopping = False
         logger.info("WebSocket管理器停止")
     
     def _run_loop(self):
+        self._stopping = False
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
         try:
@@ -128,17 +134,21 @@ class BinanceWebSocketManager:
             return
         
         streams = [f"{symbol.lower()}@kline_1h" for symbol in subscriptions]
+        if len(streams) > 200:
+            logger.error(f"订阅流数量 {len(streams)} 超过币安限制(200)，拒绝连接。请减少订阅或实现多连接分片。")
+            return
         stream_url = f"wss://fstream.binance.com/stream?streams={'/'.join(streams)}"
-        
+
         logger.info(f"连接币安WebSocket: {len(streams)} 个数据流")
-        
+
         try:
             async with websockets.connect(stream_url, ping_interval=20, ping_timeout=10) as ws:
                 self.ws = ws
+                self._reconnect_depth = 0  # 连接成功，重置重连深度
                 logger.info("WebSocket连接成功")
-                
+
                 async for message in ws:
-                    if not self.running:
+                    if not self.running or self._stopping:
                         break
                     
                     try:
@@ -189,19 +199,21 @@ class BinanceWebSocketManager:
             'trades': kline.get('n', 0)
         }
         
-        if symbol not in self.kline_cache:
-            self.kline_cache[symbol] = []
-        
-        if is_closed:
-            self.kline_cache[symbol].append(kline_info)
-            if len(self.kline_cache[symbol]) > 100:
-                self.kline_cache[symbol] = self.kline_cache[symbol][-100:]
-        
+        with self.kline_lock:
+            if symbol not in self.kline_cache:
+                self.kline_cache[symbol] = []
+
+            if is_closed:
+                self.kline_cache[symbol].append(kline_info)
+                if len(self.kline_cache[symbol]) > 100:
+                    self.kline_cache[symbol] = self.kline_cache[symbol][-100:]
+
         if self.socketio:
             self.socketio.emit('kline_update', kline_info, namespace='/realtime')
-    
+
     def get_kline_cache(self, symbol: str) -> list:
-        return self.kline_cache.get(symbol.upper(), [])
+        with self.kline_lock:
+            return list(self.kline_cache.get(symbol.upper(), []))
 
 
 ws_manager = BinanceWebSocketManager()

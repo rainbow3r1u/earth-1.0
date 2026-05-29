@@ -65,6 +65,10 @@ static/charts/*.png
 # Local config
 configs/config.local.py
 
+# Kronos pretrained models (too large for GitHub, 400MB+)
+kronos_finetune/kronos_pretrained/
+
+
 # Chart caches
 static/charts/*.png
 source/static/charts/*.png
