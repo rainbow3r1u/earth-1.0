@@ -11,6 +11,9 @@ CHAINS = [
     ("binance", "bsc"),
     ("arbitrum", "arbitrum"),
     ("base", "base"),
+    ("ton", "ton"),
+    ("sui", "sui"),
+    ("polygon", "polygon"),
 ]
 
 def fetch_chain_tvl(chain_name):

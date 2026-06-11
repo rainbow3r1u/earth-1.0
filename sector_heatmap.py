@@ -60,14 +60,20 @@ def fetch():
         print(f"Heatmap: {len(all_sectors)}板块, 去重{len(all_syms)}币种, 拉K线...")
 
         gains = {}
-        with ThreadPoolExecutor(max_workers=3) as pool:  # 降至3以避免Binance IP封禁
+        with ThreadPoolExecutor(max_workers=10) as pool:
             futures = {pool.submit(_fetch_coin_gain, sym): sym for sym in all_syms}
-            for f in as_completed(futures, timeout=30):
-                sym, gain = f.result(timeout=15)
-                if gain is not None:
-                    gains[sym] = gain
+            try:
+                for f in as_completed(futures, timeout=90):
+                    try:
+                        sym, gain = f.result(timeout=8)
+                        if gain is not None:
+                            gains[sym] = gain
+                    except Exception:
+                        pass
+            except TimeoutError:
+                pass  # 超时仍保留已完成的结果
 
-        print(f"Heatmap: {len(gains)}币种有K线数据")
+        print(f"Heatmap: {len(gains)}/{len(all_syms)}币种有K线数据")
 
         # TOP15均涨幅 = 板块热度
         TOPN = 15

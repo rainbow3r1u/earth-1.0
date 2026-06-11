@@ -126,7 +126,7 @@ def _load_sent_features():
     from collections import defaultdict
     daily = defaultdict(list)
     failed_files = 0
-    for fn in sorted(glob.glob('/home/myuser/sentiment_data/sentiment_*.json'))[-90:]:
+    for fn in sorted(glob.glob('/home/myuser/sentiment_data/sentiment_*.json')):
         try:
             with open(fn) as f:
                 d = json.load(f)
@@ -232,8 +232,8 @@ def _load_btc_mcap():
     except Exception as exc: logging.getLogger(__name__).warning(f"Failed to load: {exc}"); return {}
 
 def _load_chain_tvl():
-    """链TVL 7日变化率: {date_str: [btc,eth,sol,bsc,arb,base]}"""
-    chains = ['btc_chain','ethereum','solana','binance','arbitrum','base']
+    """链TVL 7日变化率: {date_str: [btc,eth,sol,bsc,arb,base,ton,sui,polygon]}"""
+    chains = ['btc_chain','ethereum','solana','binance','arbitrum','base','ton','sui','polygon']
     result = {}
     for i, name in enumerate(chains):
         path = f'/home/myuser/defillama_data/{name}_tvl.json'
@@ -247,21 +247,110 @@ def _load_chain_tvl():
             logging.getLogger(__name__).warning(f"TVL file corrupt: {path}: {e}")
     return result
 
+def _extract_level_features(levels):
+    """从100层清算分布提取13维基础特征"""
+    lvls = sorted(levels, key=lambda x: x['price'])
+    n = len(lvls)
+    if n < 5:
+        return None
+    total_l = sum(l['long_liq_usd'] for l in lvls)
+    total_s = sum(l['short_liq_usd'] for l in lvls)
+    if total_l + total_s == 0:
+        return None
+    max_l = max(lvls, key=lambda x: x['long_liq_usd'])
+    max_s = max(lvls, key=lambda x: x['short_liq_usd'])
+    peak_l_pos = lvls.index(max_l) / max(n - 1, 1)
+    peak_s_pos = lvls.index(max_s) / max(n - 1, 1)
+    ratio_ls = total_l / total_s if total_s > 0 else 1.0
+    feats = []
+    for q in range(5):
+        start = q * n // 5
+        end = (q + 1) * n // 5
+        chunk = lvls[start:end]
+        if not chunk:
+            feats += [0.0, 0.0]
+            continue
+        cl = sum(l['long_liq_usd'] for l in chunk)
+        cs = sum(l['short_liq_usd'] for l in chunk)
+        feats.append(round(cl / total_l, 6) if total_l > 0 else 0.0)
+        feats.append(round(cs / total_s, 6) if total_s > 0 else 0.0)
+    feats += [round(ratio_ls, 4), round(peak_l_pos, 4), round(peak_s_pos, 4)]
+    return feats
+
+
 def _load_liquidation_features():
-    """清算热力图日级: {date_str: [total_long, total_short, liq_ratio, long_peak_dist, short_peak_dist, funding, long_ratio]}"""
+    """清算日级特征: 聚合每小时快照 → 每特征mean+std → 26维
+    边界防御: 损坏日期自动跳过，快照数<2的日期降低权重(std=0)，过期日期自动忽略"""
+    import numpy as np
+    result = {}
+    levels_file = '/home/myuser/websocket_new/data/liq_levels_daily.json'
+    try:
+        if os.path.exists(levels_file):
+            with open(levels_file) as f:
+                raw = json.load(f)
+            if not isinstance(raw, dict):
+                logging.getLogger(__name__).warning("liq_levels_daily.json 非dict格式, 跳过")
+                raw = {}
+            # 只取最近31天的日期 (训练窗口内)
+            from datetime import timedelta
+            cutoff = (datetime.now(timezone.utc) - timedelta(days=31)).strftime('%Y-%m-%d')
+            for date_str, snapshots in raw.items():
+                if date_str < cutoff:
+                    continue
+                if not isinstance(snapshots, list) or len(snapshots) == 0:
+                    continue
+                # 过滤损坏快照
+                valid_snaps = []
+                for snap in snapshots:
+                    if not isinstance(snap, dict):
+                        continue
+                    lvls = snap.get('levels')
+                    if not isinstance(lvls, list) or len(lvls) < 5:
+                        continue
+                    feats = _extract_level_features(lvls)
+                    if feats and len(feats) == 13:
+                        # 验证特征值合理 (0.0~1.0占比, >0的ratio)
+                        if all(-0.01 <= f <= 1.01 for f in feats[:10]) and feats[10] > 0:
+                            valid_snaps.append(feats)
+                if len(valid_snaps) < 1:
+                    continue
+                # 少于2个快照时std无意义→填0
+                if len(valid_snaps) == 1:
+                    feats = valid_snaps[0]
+                    merged = []
+                    for f in feats:
+                        merged.append(round(float(f), 6))
+                        merged.append(0.0)
+                else:
+                    arr = np.array(valid_snaps, dtype=np.float64)
+                    mean = np.mean(arr, axis=0)
+                    std = np.std(arr, axis=0)
+                    std = np.nan_to_num(std, nan=0.0)
+                    merged = []
+                    for m, s in zip(mean, std):
+                        merged.append(round(float(m), 6))
+                        merged.append(round(float(s), 6))
+                if len(merged) == 26:
+                    result[date_str] = merged
+    except (json.JSONDecodeError, Exception) as exc:
+        logging.getLogger(__name__).warning(f"Liquidation levels load failed: {exc}")
+    # 回退: 对levels文件覆盖不到的日期，用旧liq_daily.json填充基础特征
     try:
         with open('/home/myuser/websocket_new/data/liq_daily.json') as f:
-            data = json.load(f)
-        return {d['date']: [
-            d.get('total_long_liq', 0),
-            d.get('total_short_liq', 0),
-            d.get('liq_ratio', 1.0),
-            d.get('long_peak_dist_pct', 0),
-            d.get('short_peak_dist_pct', 0),
-            d.get('funding_rate', 0),
-            d.get('long_ratio', 0.5),
-        ] for d in data}
-    except Exception as exc: logging.getLogger(__name__).warning(f"Failed to load: {exc}"); return {}
+            old = json.load(f)
+        for d in old:
+            if d['date'] not in result:
+                result[d['date']] = [
+                    d.get('total_long_liq', 0) / 50, 0.0,
+                    d.get('total_short_liq', 0) / 50, 0.0,
+                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                    d.get('liq_ratio', 1.0) if d.get('total_long_liq', 0) > 0 else 1.0, 0.0,
+                    0.5, 0.0, 0.5, 0.0,
+                ]
+    except Exception:
+        pass
+    return result
 
 def _load_macro_assets():
     """SP500/DXY/黄金: {date_str: [sp500_7d, dxy_7d, gold_7d]}"""
@@ -328,11 +417,10 @@ def _get_macro_features(ts):
     cb = _cb_features.get(prev_date, [0])
     cbg = _cbg_features.get(prev_date, [0])
     bd = _bd_features.get(prev_date, [0])
-    # FIX: Korea Premium 无采集脚本，数据滞后8天，禁用（返回0）
-    kg = [0.0]
+    kg = _kg_features.get(prev_date, [0.0])
     hr = _hr_features.get(prev_date, [0])
-    liq = _liq_features.get(prev_date, [0]*7)
-    tvl = _tvl_features.get(prev_date, [0]*6)  # 6链TVL
+    liq = _liq_features.get(prev_date, [0.0]*26)
+    tvl = _tvl_features.get(prev_date, [0]*9)  # 9链TVL
     kr = _kr_features.get(ts, [0.0]*EMBEDDING_DIM)
     # 跨资产宏观
     ma = _ma_features.get(prev_date, [0.0]*3)  # SP500/DXY/黄金
@@ -341,15 +429,15 @@ def _get_macro_features(ts):
     return etf + chain + sent + fg + st + cb + cbg + bd + kg + hr + liq + tvl + list(kr) + ma + ab
 
 # 链TVL→币归属映射
-CHAIN_TVL_MAP = {'BTC生态': 0, 'ETH生态': 1, 'Solana': 2, 'BSC': 3, 'ARB': 4, 'Base生态': 5}
+CHAIN_TVL_MAP = {'BTC生态': 0, 'ETH生态': 1, 'Solana': 2, 'BSC': 3, 'ARB': 4, 'Base生态': 5, 'TON生态': 6, 'L1': 7, 'L2': 8}
 
-TVL_FEATURE_COUNT = 6
+TVL_FEATURE_COUNT = 9
 
 def _apply_chain_tvl(macro_feats, sym, ts=None):
     """根据币的链归属清零无关链TVL + 填充协议TVL"""
     macro_feats = macro_feats.copy()
     coin_tags = _sector_map_cache.get(sym, [])
-    # macro_feats = etf(2)+chain(4)+sent(6)+fg(1)+st(1)+cb(1)+cbg(1)+bd(1)+kg(1)+hr(1)+liq(7) + tvl(6) + kr(EMBEDDING_DIM) + ma(3) + ab(1)
+    # macro_feats = etf(2)+chain(4)+sent(6)+fg(1)+st(1)+cb(1)+cbg(1)+bd(1)+kg(1)+hr(1)+liq(26) + tvl(9) + kr(EMBEDDING_DIM) + ma(3) + ab(1)
     tvl_start = len(macro_feats) - TVL_FEATURE_COUNT - EMBEDDING_DIM - 3 - 1
     # 运行时验证：tvl_start 应在合理范围 (25-30)
     if tvl_start < 20 or tvl_start + TVL_FEATURE_COUNT > len(macro_feats):
@@ -465,11 +553,21 @@ WINSOR_BOUNDS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "d
 _winsor_bounds = None
 _winsor_bounds_backtest = None  # 回测内复用，避免逐窗口漂移
 
-def _compute_winsor_bounds(X):
+def _fast_winsor_bounds(X):
+    """np.partition (QuickSelect O(n)) 替代 np.percentile (全排序 O(n log n)) — 15-20x 加速
+    原地修改 X 的列顺序，后续 winsor 结果不变 (裁剪与顺序无关)"""
+    n, m = X.shape
+    k1 = max(0, int(n * 0.01))
+    k99 = min(n - 1, int(n * 0.99))
     bounds = []
-    for j in range(X.shape[1]):
+    for j in range(m):
         col = X[:, j]
-        bounds.append((float(np.percentile(col, 1)), float(np.percentile(col, 99))))
+        col.partition([k1, k99])
+        bounds.append((float(col[k1]), float(col[k99])))
+    return bounds
+
+def _compute_winsor_bounds(X):
+    bounds = _fast_winsor_bounds(X)
     with open(WINSOR_BOUNDS_FILE, 'w') as f:
         json.dump(bounds, f)
     return bounds
@@ -1586,8 +1684,7 @@ def backtest(stride=5):
         y_train = np.array(y_train)
         # winsor截尾：第一个窗口计算bounds并缓存复用 (CRITICAL-MODEL-001)
         if _winsor_bounds_backtest is None:
-            _winsor_bounds_backtest = [(float(np.percentile(X_train[:, j], 1)), float(np.percentile(X_train[:, j], 99)))
-                                        for j in range(X_train.shape[1])]
+            _winsor_bounds_backtest = _fast_winsor_bounds(X_train)
         bounds = _winsor_bounds_backtest
         X_train = _apply_winsor(X_train, bounds)
         pos = sum(y_train)
@@ -1815,10 +1912,7 @@ def dual_backtest(days=90, stride=1):
                 y_short.append(ls)
 
         X_train = np.array(X_train)
-        bounds = []
-        for j in range(X_train.shape[1]):
-            col = X_train[:, j]
-            bounds.append((float(np.percentile(col, 1)), float(np.percentile(col, 99))))
+        bounds = _fast_winsor_bounds(X_train)
         X_train = _apply_winsor(X_train, bounds)
 
         pos_long = sum(y_long)

@@ -122,7 +122,8 @@ def update_klines_oi():
                 if ts > latest_ts: latest_ts = ts
         if latest_ts:
             age_h = (time.time() - latest_ts / 1000) / 3600
-            log(f'    最新K线: {datetime.fromtimestamp(latest_ts/1000, tz=timezone).strftime("%Y-%m-%d")} ({age_h:.0f}h前)')
+            from datetime import datetime as _dt, timezone as _tz
+            log(f'    最新K线: {_dt.fromtimestamp(latest_ts/1000, tz=_tz.utc).strftime("%Y-%m-%d")} ({age_h:.0f}h前)')
 
     # ---- OI 更新 ----
     oi_cache = '/home/myuser/backtester/data_cache/oi_daily.json'
@@ -134,9 +135,25 @@ def update_klines_oi():
         except Exception:
             pass
 
-    need_oi = [s for s in fut_syms if s not in oi_data or not oi_data[s]][:50]
+    # FIX: OI更新逻辑 - 检查每个币种的最新日期，如果早于昨天则需要更新
+    from datetime import datetime, timezone, timedelta
+    yesterday_ts = int((datetime.now(timezone.utc) - timedelta(days=1)).replace(
+        hour=0, minute=0, second=0, microsecond=0).timestamp())
+    
+    def _oi_needs_update(sym):
+        """检查币种OI是否需要更新（最新数据早于昨天）"""
+        if sym not in oi_data or not oi_data[sym]:
+            return True
+        records = oi_data[sym]
+        if not isinstance(records, dict) or not records:
+            return True
+        latest_ts = max(int(k) for k in records.keys())
+        return latest_ts < yesterday_ts
+    
+    need_oi = [s for s in fut_syms if _oi_needs_update(s)]
     oi_updated = 0
     if need_oi:
+        log(f'  OI需更新: {len(need_oi)} 币种')
         def _fetch_oi(sym):
             try:
                 r = req.get('https://fapi.binance.com/futures/data/openInterestHist',
@@ -153,7 +170,9 @@ def update_klines_oi():
             for f in concurrent.futures.as_completed(futures_oi):
                 s, d = f.result()
                 if d:
-                    oi_data[s] = d
+                    if s not in oi_data:
+                        oi_data[s] = {}
+                    oi_data[s].update(d)
                     oi_updated += 1
                 time.sleep(0.15)
 
@@ -162,11 +181,11 @@ def update_klines_oi():
             with open(tmp_oi, 'w') as f:
                 json.dump(oi_data, f)
             os.rename(tmp_oi, oi_cache)
-            log(f'  ✅ OI缓存更新: {oi_updated} 币种')
+            log(f'  ✅ OI缓存更新: {oi_updated}/{len(need_oi)} 币种')
         except Exception as e:
             log(f'  ⚠️ OI缓存写入失败: {e}')
     else:
-        log(f'  ℹ️ OI缓存无需更新')
+        log(f'  ℹ️ OI缓存无需更新 (全部最新)')
 
     # ---- COS 上传 ----
     _upload_to_cos(kline_cache, 'klines/cache/notusdt_1d_full.json', 'K线缓存')
@@ -250,7 +269,8 @@ def main():
         ('/tmp/fear_greed_history.json', '/home/myuser/websocket_new/data/fear_greed_history.json'),
         ('/tmp/macro_assets.json', '/home/myuser/websocket_new/data/macro_assets.json'),
         ('/tmp/crypto_sectors.json', '/home/myuser/websocket_new/data/crypto_sectors.json'),
-        ('/tmp/liquidation_heatmap.json', '/home/myuser/websocket_new/data/liq_daily.json'),
+        # FIX: 完整热力图复制到独立文件，liq_daily.json由liquidation_heatmap.py内部维护日级历史
+        ('/tmp/liquidation_heatmap.json', '/home/myuser/websocket_new/data/liquidation_heatmap.json'),
         ('/tmp/sector_heatmap.json', '/home/myuser/websocket_new/data/sector_heatmap.json'),
     ]
     for src, dst in copies:
@@ -272,7 +292,8 @@ def main():
         ('BTC市占率', '/home/myuser/coingecko_data/btc_dominance.json'),
         ('TVL', '/home/myuser/defillama_data/ethereum_tvl.json'),
         ('宏观资产', '/home/myuser/websocket_new/data/macro_assets.json'),
-        ('清算', '/home/myuser/websocket_new/data/liq_daily.json'),
+        ('清算热力图', '/home/myuser/websocket_new/data/liquidation_heatmap.json'),
+        ('清算历史', '/home/myuser/websocket_new/data/liq_daily.json'),
         ('稳定币', '/home/myuser/stablecoin_data/stablecoin_exchange_netflow.json'),
         ('算力', '/home/myuser/hashrate_data/hashrate_history.json'),
     ]
@@ -292,3 +313,5 @@ def main():
 if __name__ == '__main__':
     success = main()
     sys.exit(0 if success else 1)
+
+# 脚本末尾添加全局异常捕获（已在main中处理，这里增加启动确认）

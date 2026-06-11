@@ -14,6 +14,7 @@ from collections import defaultdict
 from xgboost import XGBClassifier
 sys.path.insert(0, os.path.dirname(__file__))
 import daily_predictor as dp
+from experiments.knn_market_structure import precompute_knn_features, feature_names as knn_feature_names
 
 RECENT_DAYS = 365
 STOP_LOSS = 10.0
@@ -165,6 +166,9 @@ def _build_samples(klines, oi_data, sector_map, sector_heats_all, btc_rets):
                 feat = [ret_1d_norm, ret_3d_norm, ret_5d_norm, volatility, vol_ratio, price_position, amplitude,
                         streak, div_sign, oi_chg] + vol_col + [
                         beta, alpha, r2, residual, rsi7, rsi14, rsi30] + rsi_div + sector_feats + macro_feats
+                # 追加 KNN 市场结构特征 (15维)
+                knn_fd = knn_cache.get(sym, {}).get(ts, {})
+                feat += [float(knn_fd.get(k, 0)) for k in knn_feature_names()]
 
                 # 标签: 2日收益
                 next_ret = (closes[i + 1] - closes[j]) / closes[j] if closes[j] > 0 and i + 1 < n else 0
@@ -452,6 +456,14 @@ def run_clean_backtest():
             ts = k.get('t', 0) // 1000 if isinstance(k, dict) else int(k[0]) // 1000
             all_ts_for_kronos.add(ts)
     dp._precompute_kronos_features(list(all_ts_for_kronos))
+
+    # KNN市场结构特征预计算
+    print("预计算 KNN 市场结构特征...")
+    knn_cache = {}
+    for sym, kls in klines.items():
+        if len(kls) >= 200:
+            knn_cache[sym] = precompute_knn_features(kls)
+    print(f"  KNN预计算完成: {len(knn_cache)} 币种")
 
     # 构建样本
     print("\n构建样本 (完整特征)...")

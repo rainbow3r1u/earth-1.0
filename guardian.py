@@ -3,7 +3,8 @@
 import subprocess, time, os, sys, re, shlex, json
 
 ENV_FILE = '/home/myuser/websocket_new/.env'
-ENV_PREFIX = f'source {ENV_FILE} 2>/dev/null; export $(grep -v "^#" {ENV_FILE} | cut -d= -f1 2>/dev/null); '
+ENV_PREFIX = f'. {ENV_FILE} 2>/dev/null; export $(grep -v "^#" {ENV_FILE} | cut -d= -f1 2>/dev/null); '
+RESTART_COUNT_FILE = '/tmp/guardian_restart_count.json'
 
 CHECKS = [
     # ── 常驻进程 ──
@@ -24,12 +25,11 @@ CHECKS = [
         "start": "screen -dmS sentiment bash -c 'source /home/myuser/websocket_new/.env 2>/dev/null; export $(grep -v \"^#\" /home/myuser/websocket_new/.env | cut -d= -f1); python3 -u /home/myuser/websocket_new/sentiment_collector.py > /tmp/sentiment.log 2>&1'",
     },
     # ── cron定时任务 (检查输出文件新鲜度) ──
-    # FIX: 板块热力图是一次性脚本非常驻服务，改为cron每小时运行，从guardian移除
-    # {
-    #     "name": "板块热力图(每小时)",
-    #     "check": "file_age", "path": "/tmp/sector_heatmap.json", "max_age": 7200,
-    #     "start": "/usr/bin/python3 /home/myuser/websocket_new/sector_heatmap.py > /tmp/heatmap_cron.log 2>&1 &",
-    # },
+    {
+        "name": "板块热力图(每小时)",
+        "check": "file_age", "path": "/tmp/sector_heatmap.json", "max_age": 7200,
+        "start": "/usr/bin/python3 /home/myuser/websocket_new/sector_heatmap.py > /tmp/heatmap_cron.log 2>&1 &",
+    },
     {
         "name": "清算热力图(每小时)",
         "check": "file_age", "path": "/tmp/liquidation_heatmap.json", "max_age": 7200,
@@ -133,11 +133,33 @@ def _task_running(name, start_cmd):
     except Exception:
         return False
 
-_restart_count = {}  # name -> list of restart timestamps in the last hour
+def _load_restart_count():
+    """从文件加载重启计数，使circuit breaker在cron调用间持续生效"""
+    try:
+        if os.path.exists(RESTART_COUNT_FILE):
+            with open(RESTART_COUNT_FILE) as f:
+                data = json.load(f)
+            now = time.time()
+            result = {}
+            for name, timestamps in data.items():
+                result[name] = [t for t in timestamps if now - t < 3600]
+            return result
+    except Exception:
+        pass
+    return {}
+
+def _save_restart_count(counts):
+    try:
+        with open(RESTART_COUNT_FILE, 'w') as f:
+            json.dump(counts, f)
+    except Exception:
+        pass
 
 def main():
     log_file = "/tmp/guardian.log"
+    restart_count = _load_restart_count()
     status = []
+    restarted_any = False
     for svc in CHECKS:
         check_type = svc["check"]
         if check_type == "port":
@@ -156,22 +178,21 @@ def main():
 
             # Circuit breaker: stop restarting if more than 5 restarts in 1 hour
             now_ts = time.time()
-            if svc["name"] not in _restart_count:
-                _restart_count[svc["name"]] = []
-            # Purge entries older than 1 hour
-            _restart_count[svc["name"]] = [t for t in _restart_count[svc["name"]] if now_ts - t < 3600]
-            if len(_restart_count[svc["name"]]) >= 5:
+            if svc["name"] not in restart_count:
+                restart_count[svc["name"]] = []
+            restart_count[svc["name"]] = [t for t in restart_count[svc["name"]] if now_ts - t < 3600]
+            if len(restart_count[svc["name"]]) >= 5:
                 msg = f"[{time.strftime('%m-%d %H:%M')}] CRITICAL: {svc['name']} restart limit exceeded (5+ restarts in 1hr) — giving up"
                 print(msg)
-                with open(log_file, 'a') as f:
-                    f.write(msg + '\n')
                 continue
-            _restart_count[svc["name"]].append(now_ts)
+            restart_count[svc["name"]].append(now_ts)
+            restarted_any = True
 
-            msg = f"[{time.strftime('%m-%d %H:%M')}] {svc['name']} 挂了，重启..."
+            if check_type == "file_age":
+                msg = f"[{time.strftime('%m-%d %H:%M')}] {svc['name']} 文件过期，启动更新..."
+            else:
+                msg = f"[{time.strftime('%m-%d %H:%M')}] {svc['name']} 挂了，重启..."
             print(msg)
-            with open(log_file, 'a') as f:
-                f.write(msg + '\n')
             cmd = svc["start"]
 
             # 如果是screen命令，先杀掉同名旧session防止孤儿进程泄漏
@@ -189,6 +210,8 @@ def main():
                 subprocess.run(cmd, shell=True)
             else:
                 subprocess.run(shlex.split(cmd), shell=False)
+    if restarted_any:
+        _save_restart_count(restart_count)
     # 写状态文件供网站读取
     with open("/tmp/guardian_status.json", "w") as f:
         json.dump({"services": status, "updated": time.time()}, f)

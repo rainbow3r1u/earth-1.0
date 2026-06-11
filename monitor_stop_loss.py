@@ -170,7 +170,15 @@ def main():
                         qty = round_qty(symbol, abs(amt))
                         log(f'>>> 触发止损！{symbol} {side} 亏损{ret_pct:.2f}% 市价平仓 {qty}')
                         result = place_market_order(symbol, close_side, qty, reduce_only=True)
-                        if 'orderId' in result:
+                        # 轮询确认成交 (市价单可能返回NEW)
+                        if 'orderId' in result and result.get('status') == 'NEW':
+                            oid = result['orderId']
+                            for pi in range(5):
+                                time.sleep(1)
+                                result = signed_request('GET', '/fapi/v1/order', {'symbol': symbol, 'orderId': oid})
+                                if result and result.get('status') in ('FILLED', 'PARTIALLY_FILLED', 'EXPIRED', 'CANCELED'):
+                                    break
+                        if 'orderId' in result and result.get('status') in ('FILLED', 'PARTIALLY_FILLED'):
                             log(f'>>> 平仓成功: orderId={result["orderId"]}')
                             # 取消该symbol所有挂单 (残留的止损单)
                             cancel = signed_request('DELETE', '/fapi/v1/allOpenOrders', {'symbol': symbol})

@@ -2,7 +2,7 @@
 """
 自动多空二选一交易脚本
 每天运行：检查持仓(止损/2天平仓) → 训练+预测 → 开仓+止损单+止盈单
-特征维度: 10(基)+3(vol)+7(信号)+4(RSI背离)+22(板块)+~876(宏观+Kronos) ≈ 922维
+特征维度: 10(基)+3(vol)+7(信号)+4(RSI背离)+22(板块)+~898(宏观+Kronos) ≈ 936维
 """
 import os, sys, json, time, hmac, hashlib, math, warnings, fcntl, pickle
 from datetime import datetime, timezone
@@ -60,7 +60,7 @@ SHARED_CONFIG = os.path.join(os.path.dirname(__file__), '..', 'backtester', 'con
 _DEFAULTS = {
     'STOP_LOSS_PCT': 10.0, 'TAKE_PROFIT_PCT': 10.0,  # FIX: 对称止盈
     'PROB_THRESHOLD': 60.0, 'LEVERAGE': 2,
-    'TOP_N_SYMBOLS': 150, 'MIN_VOLUME_24H': 500000, 'TRAIN_DAYS': 365,
+     'TOP_N_SYMBOLS': 150, 'MIN_VOLUME_24H': 500000, 'TRAIN_DAYS': 9999,
 }
 try:
     with open(SHARED_CONFIG) as _cf:
@@ -171,34 +171,39 @@ def place_market_order(symbol, side, quantity, reduce_only=False):
     return signed_request('POST', '/fapi/v1/order', params)
 
 def place_stop_loss_order(symbol, side, stop_price):
-    """FIX: 使用标准合约止损单接口，closePosition=true平仓全部
-    FIX: workingType=MARK_PRICE 按标记价格触发，避免插针误触发
+    """FIX: 使用 Algo Order API — /fapi/v1/algoOrder
+    closePosition=true平仓全部, workingType=MARK_PRICE按标记价格触发
     """
-    return signed_request('POST', '/fapi/v1/order', {
+    return signed_request('POST', '/fapi/v1/algoOrder', {
+        'algoType': 'CONDITIONAL',
         'symbol': symbol,
         'side': side,
         'type': 'STOP_MARKET',
-        'stopPrice': stop_price,
+        'triggerPrice': stop_price,
         'closePosition': 'true',
         'workingType': 'MARK_PRICE',
+        'priceProtect': 'true',
     })
 
 def place_take_profit_order(symbol, side, take_price):
-    """FIX: 新增止盈单 — 与回测对称+10%对齐
-    FIX: workingType=MARK_PRICE 按标记价格触发，避免插针误触发
+    """FIX: 使用 Algo Order API — /fapi/v1/algoOrder
+    closePosition=true平仓全部, workingType=MARK_PRICE按标记价格触发
     """
-    return signed_request('POST', '/fapi/v1/order', {
+    return signed_request('POST', '/fapi/v1/algoOrder', {
+        'algoType': 'CONDITIONAL',
         'symbol': symbol,
         'side': side,
         'type': 'TAKE_PROFIT_MARKET',
-        'stopPrice': take_price,
+        'triggerPrice': take_price,
         'closePosition': 'true',
         'workingType': 'MARK_PRICE',
+        'priceProtect': 'true',
     })
 
 def cancel_all_orders(symbol):
-    """取消某币种所有挂单"""
-    return signed_request('DELETE', '/fapi/v1/allOpenOrders', {'symbol': symbol})
+    """取消某币种所有挂单 + Algo条件单"""
+    signed_request('DELETE', '/fapi/v1/allOpenOrders', {'symbol': symbol})
+    signed_request('DELETE', '/fapi/v1/algoOpenOrders', {'symbol': symbol})
 
 def close_with_retry(symbol, close_side, qty, max_retries=3):
     """平仓市价单, 最多重试3次指数退避, 验证成交数量
@@ -211,6 +216,14 @@ def close_with_retry(symbol, close_side, qty, max_retries=3):
         if remaining <= 0:
             return True, last_result or {'orderId': 'completed', 'status': 'FILLED'}
         result = place_market_order(symbol, close_side, remaining, reduce_only=True)
+        # 轮询确认成交 (市价单可能返回NEW)
+        if 'orderId' in result and result.get('status') == 'NEW':
+            oid = result['orderId']
+            for pi in range(5):
+                time.sleep(1)
+                result = signed_request('GET', '/fapi/v1/order', {'symbol': symbol, 'orderId': oid})
+                if result and result.get('status') in ('FILLED', 'PARTIALLY_FILLED', 'EXPIRED', 'CANCELED'):
+                    break
         if 'orderId' in result and result.get('status') in ('FILLED', 'PARTIALLY_FILLED'):
             filled = safe_float(result.get('executedQty'), 0)
             total_filled += filled
@@ -373,7 +386,7 @@ def check_and_close(state):
             continue
 
         if pos_key in state.get('positions', {}):
-            open_ts = state['positions'][pos_key].get('open_ts', 0)
+            open_ts = state['positions'][pos_key].get('open_ts') or 0
             hold_hours = (int(time.time()) - open_ts) / 3600
             if hold_hours >= 48:
                 close_side = 'SELL' if side == 'LONG' else 'BUY'
@@ -581,7 +594,7 @@ def fetch_oi_for_symbols(symbols):
 
 # ============ 78维特征工程（完整版，与回测一致） ============
 def build_features_78d(klines, oi_data, sector_map, sector_heats_all):
-    """构建914维特征（含832维Kronos），与dual_backtest_365d一致"""
+    """构建936维特征（含832维Kronos），与dual_backtest_365d一致"""
     all_samples = []
     btc_kls = klines.get('BTCUSDT', [])
     btc_closes = [k['c'] for k in btc_kls]
@@ -705,22 +718,19 @@ def train_and_predict(by_day, today_ts, klines):
     # 运行时维度断言：确保特征维度与 FEATURE_NAMES 一致
     n_features = X_train.shape[1]
     # 动态计算期望维度 (FEATURE_NAMES 在下方定义)
-    EXPECTED_N = 10 + 3 + 7 + 4 + 22 + (2+4+6+1+1+1+1+1+1+1+7+6 + dp.EMBEDDING_DIM + 3 + 1)
+    EXPECTED_N = 10 + 3 + 7 + 4 + 22 + (2+4+6+1+1+1+1+1+1+1+26+9 + dp.EMBEDDING_DIM + 3 + 1)
     if n_features != EXPECTED_N:
         log(f'[CRITICAL] 特征维度不匹配! 实际={n_features} 期望={EXPECTED_N} (Kronos={dp.EMBEDDING_DIM}D)')
         # 如果只差 Kronos 维度，尝试调整期望
         for test_dim in [832, 20]:
-            test_expected = 10 + 3 + 7 + 4 + 22 + (2+4+6+1+1+1+1+1+1+1+7+6 + test_dim + 3 + 1)
+            test_expected = 10 + 3 + 7 + 4 + 22 + (2+4+6+1+1+1+1+1+1+1+26+9 + test_dim + 3 + 1)
             if n_features == test_expected:
                 log(f'  → 匹配 Kronos={test_dim}D，回测/实盘维度异构!')
                 break
     else:
         log(f'特征维度验证: {n_features} == {EXPECTED_N} OK')
     
-    bounds = []
-    for j in range(X_train.shape[1]):
-        col = X_train[:, j]
-        bounds.append((float(np.percentile(col, 1)), float(np.percentile(col, 99))))
+    bounds = dp._fast_winsor_bounds(X_train)
     X_train = dp._apply_winsor(X_train, bounds)
     
     pos_long = sum(y_long)
@@ -747,7 +757,7 @@ def train_and_predict(by_day, today_ts, klines):
     except Exception: pass
 
     if model_long is None:
-        model_long = XGBClassifier(n_estimators=150, max_depth=5, learning_rate=0.05,
+        model_long = XGBClassifier(n_estimators=200, max_depth=5, learning_rate=0.05,
                                    scale_pos_weight=(len(y_long) - pos_long) / pos_long,
                                    random_state=42, eval_metric='logloss', verbosity=0)
         model_long.fit(X_train, y_long)
@@ -756,7 +766,7 @@ def train_and_predict(by_day, today_ts, klines):
         except Exception as e: log(f'多头模型保存失败: {e}')
 
     if model_short is None:
-        model_short = XGBClassifier(n_estimators=150, max_depth=5, learning_rate=0.05,
+        model_short = XGBClassifier(n_estimators=200, max_depth=5, learning_rate=0.05,
                                     scale_pos_weight=(len(y_short) - pos_short) / pos_short,
                                     random_state=43, eval_metric='logloss', verbosity=0)
         model_short.fit(X_train, y_short)
@@ -885,7 +895,7 @@ def main():
         return
 
     log('=' * 60)
-    log('自动多空二选一交易启动 (78维完整版 FIXED)')
+    log('自动多空二选一交易启动 (933维)')
     log('=' * 60)
     
     # 1. 账户
@@ -954,7 +964,7 @@ def main():
         all_syms.append('BTCUSDT')
     
     klines = fetch_klines_full(all_syms)
-    min_required = TRAIN_DAYS + 35
+    min_required = 400
     klines_before = len(klines)
     klines = {sym: kls for sym, kls in klines.items() if len(kls) >= min_required}
     log(f'K线加载: {klines_before}币种, 达标(>{min_required}天): {len(klines)}')
@@ -962,19 +972,24 @@ def main():
     oi_data = fetch_oi_for_symbols(list(klines.keys()))
     log(f'OI获取: {len(oi_data)}币种')
 
-    # 持仓检查
+    # 持仓检查 + 每日同步: 清除 state.json 中交易所已不存在的持仓记录
     positions = get_positions()
     active = [p for p in positions if abs(float(p.get('positionAmt', 0))) > 0] if isinstance(positions, list) else []
     if active:
         syms = [p['symbol'] for p in active]
         log(f'当前{len(active)}个持仓: {syms} (48h到期自动平)')
     
-    # 余额不足 → 数据已更新，跳过交易
-    if no_trade:
-        log('本金不足10u，K线/OI缓存已更新，跳过交易')
+    # 同步: 币安无持仓但state有记录的 → 清理
+    binance_keys = {f"{p['symbol']}_{'LONG' if float(p.get('positionAmt',0))>0 else 'SHORT'}"
+                    for p in active}
+    stale = [k for k in state.get('positions', {}) if k not in binance_keys]
+    if stale:
+        for k in stale:
+            del state['positions'][k]
+            log(f'[SYNC] 清理过期持仓记录: {k}')
         save_state(state)
-        return
     
+    # FIX: 余额不足时仍然训练模型，保持模型最新，只是不执行交易
     # 7. 预计算板块热度 + Kronos
     log('预计算板块热度...')
     sector_heats_all = dp._precompute_sector_heats(klines, sector_map) if sector_map else {}
@@ -1013,7 +1028,7 @@ def main():
     by_day = build_features_78d(klines, oi_data, sector_map, sector_heats_all)
     log(f'样本: {len(by_day)}天, 总样本{sum(len(v) for v in by_day.values())}')
     
-    # 9. 训练预测
+    # 9. 训练预测（无论余额是否充足，都训练模型保持最新）
     if len(by_day) < 2:
         log('数据不足')
         save_state(state)
@@ -1033,8 +1048,37 @@ def main():
     
     best_long, best_short, top10_long, top10_short = train_and_predict(by_day, today_ts, klines)
     
+    # COS备份：模型+训练数据+重要性日志 (跟随每日训练同步上传)
+    try:
+        from qcloud_cos import CosConfig, CosS3Client
+        _cos = CosS3Client(CosConfig(
+            Region=os.environ.get('COS_REGION', 'ap-seoul'),
+            SecretId=os.environ['COS_SECRET_ID'],
+            SecretKey=os.environ['COS_SECRET_KEY'],
+            Endpoint=os.environ.get('COS_ENDPOINT', 'cos.ap-seoul.myqcloud.com')))
+        _bucket = os.environ['COS_BUCKET']
+        backups = [
+            (os.path.join(DATA_DIR, 'models', 'xgb_daily_long.pkl'), 'klines/cache/xgb_daily_long.pkl', '多头模型'),
+            (os.path.join(DATA_DIR, 'models', 'xgb_daily_short.pkl'), 'klines/cache/xgb_daily_short.pkl', '空头模型'),
+            (os.path.join(DATA_DIR, 'train_data_latest.npz'), 'klines/cache/train_data_latest.npz', '训练数据'),
+            (os.path.join(DATA_DIR, 'kronos_importance_log.json'), 'klines/cache/kronos_importance_log.json', '重要性日志'),
+        ]
+        for local_path, cos_key, label in backups:
+            if os.path.exists(local_path) and time.time() - os.path.getmtime(local_path) < 600:
+                with open(local_path, 'rb') as f:
+                    _cos.put_object(Bucket=_bucket, Key=cos_key, Body=f.read())
+                log(f'{label}已备份COS')
+    except Exception as e:
+        log(f'COS备份上传失败: {e}')
+    
     if best_long is None and best_short is None:
         log('无有效信号')
+        save_state(state)
+        return
+    
+    # 余额不足 → 模型已训练更新，跳过交易执行
+    if no_trade:
+        log('本金不足10u，模型已更新，跳过交易')
         save_state(state)
         return
     
@@ -1164,8 +1208,16 @@ def main():
         save_state(state)
         return
 
-    # 市价单
+    # 市价单 (轮询确认成交 — 币安市价单可能立即返回NEW未成交)
     order = place_market_order(symbol, side, qty)
+    if 'orderId' in order and order.get('status') == 'NEW':
+        oid = order['orderId']
+        for poll_i in range(5):
+            time.sleep(1)
+            order = signed_request('GET', '/fapi/v1/order', {'symbol': symbol, 'orderId': oid})
+            if order and order.get('status') in ('FILLED', 'PARTIALLY_FILLED', 'EXPIRED', 'CANCELED'):
+                break
+            log(f'  订单状态轮询 {poll_i+1}/5: {order.get("status") if order else "无响应"}')
     if ('orderId' in order
             and order.get('status') in ('FILLED', 'PARTIALLY_FILLED')
             and float(order.get('executedQty', 0)) > 0):
@@ -1203,64 +1255,35 @@ def main():
             sl_price = round(actual_price * (1 + STOP_LOSS_PCT / 100), decimals)
             tp_price = round(actual_price * (1 - TAKE_PROFIT_PCT / 100), decimals)
 
-        # 止损单
+        # 止损单 — Algo Order API 返回 algoId
         sl_order = None
         for sl_attempt in range(3):
             sl_order = place_stop_loss_order(symbol, sl_side, sl_price)
-            if 'orderId' in sl_order:
+            if sl_order and ('algoId' in sl_order or 'orderId' in sl_order):
+                log(f'  止损单成功: algoId={sl_order.get("algoId", sl_order.get("orderId"))}')
                 break
             if sl_attempt < 2:
                 wait = 2 ** sl_attempt
-                log(f'  止损单重试 {sl_attempt+1}/3, 等待{wait}s: {sl_order}')
+                log(f'  止损单重试 {sl_attempt+1}/3, 等待{wait}s')
                 time.sleep(wait)
 
-        # 止盈单
+        # 止盈单 — Algo Order API 返回 algoId
         tp_order = None
         for tp_attempt in range(3):
             tp_order = place_take_profit_order(symbol, tp_side, tp_price)
-            if 'orderId' in tp_order:
+            if tp_order and ('algoId' in tp_order or 'orderId' in tp_order):
+                log(f'  止盈单成功: algoId={tp_order.get("algoId", tp_order.get("orderId"))}')
                 break
             if tp_attempt < 2:
                 wait = 2 ** tp_attempt
-                log(f'  止盈单重试 {tp_attempt+1}/3, 等待{wait}s: {tp_order}')
+                log(f'  止盈单重试 {tp_attempt+1}/3, 等待{wait}s')
                 time.sleep(wait)
 
-        # 检查止损+止盈是否至少有一个成功
-        sl_ok = sl_order and 'orderId' in sl_order
-        tp_ok = tp_order and 'orderId' in tp_order
-
-        # FIX: Binance API -4120 = STOP_MARKET/TAKE_PROFIT_MARKET 不再支持标准接口
-        # 遇到此错误不回滚，记录裸仓状态继续持仓（比来回打脸强）
-        sl_api_err = isinstance(sl_order, dict) and sl_order.get('code') == -4120
-        tp_api_err = isinstance(tp_order, dict) and tp_order.get('code') == -4120
-        api_not_supported = sl_api_err or tp_api_err
+        # 兜底: 止损止盈均失败不自动回滚，持仓裸奔 (API挂了也不该自动平仓)
+        sl_ok = sl_order and ('algoId' in sl_order or 'orderId' in sl_order)
+        tp_ok = tp_order and ('algoId' in tp_order or 'orderId' in tp_order)
 
         if not sl_ok and not tp_ok:
-            if api_not_supported:
-                log(f'[WARN] Binance API不再支持STOP_MARKET/TAKE_PROFIT_MARKET标准接口，持仓裸奔（请尽快手动挂止损）')
-                state['positions'][f'{symbol}_{direction}'] = {
-                    'symbol': symbol, 'direction': direction, 'qty': actual_qty,
-                    'margin': margin, 'prob': prob, 'open_ts': int(time.time()),
-                    'open_price': actual_price, 'notional': actual_qty * actual_price,
-                    'stop_loss_price': sl_price, 'take_profit_price': tp_price,
-                    'sl_order_id': None, 'tp_order_id': None, 'naked': True,
-                }
-                save_state(state)
-                log('裸仓状态已记录（API限制），继续持仓')
-                return
-            log(f'[CRITICAL] 止损+止盈单均失败，回滚平仓')
-            rollback_side = 'SELL' if side == 'BUY' else 'BUY'
-            for rb_attempt in range(3):
-                rollback = place_market_order(symbol, rollback_side, actual_qty, reduce_only=True)
-                if 'orderId' in rollback:
-                    log(f'  回滚成功: orderId={rollback.get("orderId")}')
-                    save_state(state)
-                    log('止损+止盈均失败已回滚，交易中止')
-                    return
-                wait = 2 ** rb_attempt
-                log(f'  回滚失败重试 {rb_attempt+1}/3, 等待{wait}s: {rollback}')
-                time.sleep(wait)
-            log(f'[CRITICAL] {symbol} 止损+止盈+回滚均失败！仓位裸奔！请立即人工处理！')
             state['positions'][f'{symbol}_{direction}'] = {
                 'symbol': symbol, 'direction': direction, 'qty': actual_qty,
                 'margin': margin, 'prob': prob, 'open_ts': int(time.time()),
@@ -1268,18 +1291,18 @@ def main():
                 'stop_loss_price': 0, 'naked': True,
             }
             save_state(state)
-            log('裸仓状态已记录，中止')
+            log('[WARN] 止损+止盈均失败，持仓裸奔，不自动回滚')
             return
 
         if sl_ok:
-            log(f'  止损单成功: orderId={sl_order["orderId"]} 触发价{sl_price}')
+            log(f'  止损单成功: algoId={sl_order.get("algoId", sl_order.get("orderId"))} 触发价{sl_price}')
         else:
-            log(f'  [WARN] 止损单失败，但止盈单成功 — 有 upside 无 downside 保护')
+            log(f'  [WARN] 止损单失败，但止盈单成功')
 
         if tp_ok:
-            log(f'  止盈单成功: orderId={tp_order["orderId"]} 触发价{tp_price}')
+            log(f'  止盈单成功: algoId={tp_order.get("algoId", tp_order.get("orderId"))} 触发价{tp_price}')
         else:
-            log(f'  [WARN] 止盈单失败，但止损单成功 — 有 downside 无 upside 保护')
+            log(f'  [WARN] 止盈单失败，但止损单成功')
 
         state['positions'][f'{symbol}_{direction}'] = {
             'symbol': symbol,
@@ -1290,8 +1313,8 @@ def main():
             'open_ts': int(time.time()),
             'open_price': actual_price,
             'notional': actual_qty * actual_price,
-            'sl_order_id': sl_order.get('orderId') if sl_ok else None,
-            'tp_order_id': tp_order.get('orderId') if tp_ok else None,
+            'sl_order_id': sl_order.get('algoId') or sl_order.get('orderId') if sl_ok else None,
+            'tp_order_id': tp_order.get('algoId') or tp_order.get('orderId') if tp_ok else None,
             'stop_loss_price': sl_price if sl_ok else 0,
             'take_profit_price': tp_price if tp_ok else 0,
         }

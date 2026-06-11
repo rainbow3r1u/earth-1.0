@@ -193,12 +193,16 @@ def compute(dist_pct=15, buckets=100):
     # 保存日级历史数据供XGBoost使用
     try:
         HISTORY_FILE = "/home/myuser/websocket_new/data/liq_daily.json"
+        LEVELS_FILE = "/home/myuser/websocket_new/data/liq_levels_daily.json"
         os.makedirs(os.path.dirname(HISTORY_FILE), exist_ok=True)
         total_long = sum(l['long_liq_usd'] for l in result['levels'])
         total_short = sum(l['short_liq_usd'] for l in result['levels'])
+        today_str = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+
+        # 旧7维汇总 (保持兼容)
         daily_record = {
-            'date': datetime.now(timezone.utc).strftime('%Y-%m-%d'),
-            'total_long_liq': round(total_long / 1e8, 2),  # 亿美元
+            'date': today_str,
+            'total_long_liq': round(total_long / 1e8, 2),
             'total_short_liq': round(total_short / 1e8, 2),
             'liq_ratio': round(total_long / total_short, 4) if total_short > 0 else 1.0,
             'long_peak_dist_pct': round((top_l['price'] - mid_price) / mid_price * 100, 2) if top_l else 0,
@@ -210,12 +214,76 @@ def compute(dist_pct=15, buckets=100):
         if os.path.exists(HISTORY_FILE):
             with open(HISTORY_FILE) as f:
                 history = json.load(f)
-        history = [h for h in history if h.get('date') != daily_record['date']]
+        if not isinstance(history, list):
+            history = []
+        history = [h for h in history if isinstance(h, dict) and h.get('date') != daily_record['date']]
         history.append(daily_record)
         history.sort(key=lambda x: x['date'])
         with open(HISTORY_FILE, 'w') as f:
             json.dump(history, f, indent=2)
-        print(f"  日级记录已保存: {daily_record['date']}")
+
+        # 新：按日期累积每小时快照 → 训练时聚合24h信息
+        # 边界检查：小时必须在0-23，日期必须合法
+        now_hour = datetime.now(timezone.utc).hour
+        if not (0 <= now_hour <= 23):
+            now_hour = 0
+        if not isinstance(today_str, str) or len(today_str) != 10:
+            print(f"  ⚠️ 清算历史保存跳过: 日期格式异常 {today_str}")
+            return
+        # 验证levels结构完整性
+        if not isinstance(result.get('levels'), list) or len(result['levels']) < 5:
+            print(f"  ⚠️ 清算历史保存跳过: levels数据异常 ({len(result.get('levels', []))}层)")
+            return
+        # 读历史文件 (防御损坏)
+        levels_history = {}
+        if os.path.exists(LEVELS_FILE):
+            try:
+                with open(LEVELS_FILE) as f:
+                    raw = json.load(f)
+                if isinstance(raw, dict):
+                    levels_history = raw
+                else:
+                    print(f"  ⚠️ liq_levels_daily.json 格式损坏(type={type(raw).__name__}), 重建")
+            except (json.JSONDecodeError, Exception) as e:
+                print(f"  ⚠️ liq_levels_daily.json 读取失败: {e}, 重建")
+        # 去重同小时 + 追加
+        if today_str not in levels_history:
+            levels_history[today_str] = []
+        # 防御：确保是合法快照列表
+        if not isinstance(levels_history[today_str], list):
+            levels_history[today_str] = []
+        levels_history[today_str] = [
+            s for s in levels_history[today_str]
+            if isinstance(s, dict) and s.get('h') != now_hour
+        ]
+        levels_history[today_str].append({'h': now_hour, 'levels': result['levels']})
+        levels_history[today_str].sort(key=lambda x: x.get('h', 0))
+        # 防御：每个日期最多24个快照
+        if len(levels_history[today_str]) > 24:
+            levels_history[today_str] = levels_history[today_str][-24:]
+        # 清理过期日期 (保留90天) + 清理无效快照
+        for d in list(levels_history.keys()):
+            if not isinstance(levels_history[d], list):
+                del levels_history[d]
+                continue
+            levels_history[d] = [
+                s for s in levels_history[d]
+                if isinstance(s, dict) and isinstance(s.get('levels'), list) and len(s['levels']) >= 5
+            ]
+            if not levels_history[d]:
+                del levels_history[d]
+        sorted_dates = sorted(levels_history.keys())
+        if len(sorted_dates) > 90:
+            for old in sorted_dates[:-90]:
+                del levels_history[old]
+        # 原子写：先.tmp再rename，防止写一半崩溃损坏
+        tmp_file = LEVELS_FILE + '.tmp'
+        with open(tmp_file, 'w') as f:
+            json.dump(levels_history, f)
+        os.rename(tmp_file, LEVELS_FILE)
+
+        print(f"  日级记录已保存: {daily_record['date']} | 清算分布: {len(result['levels'])}层 "
+              f"(第{now_hour}时, 今日累计{len(levels_history[today_str])}个快照)")
     except Exception as e:
         print(f"  历史保存失败: {e}")
 
