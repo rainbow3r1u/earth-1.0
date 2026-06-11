@@ -1,0 +1,32 @@
+[
+  {
+    "date": "2026-06-09",
+    "total_long_liq": 42.21,
+    "total_short_liq": 39.63,
+    "liq_ratio": 1.0653,
+    "long_peak_dist_pct": 2.3,
+    "short_peak_dist_pct": -1.9,
+    "funding_rate": 3.4e-05,
+    "long_ratio": 0.5
+  },
+  {
+    "date": "2026-06-10",
+    "total_long_liq": 41.39,
+    "total_short_liq": 40.69,
+    "liq_ratio": 1.0172,
+    "long_peak_dist_pct": -2.5,
+    "short_peak_dist_pct": 4.7,
+    "funding_rate": -3.6e-05,
+    "long_ratio": 0.5
+  },
+  {
+    "date": "2026-06-11",
+    "total_long_liq": 49.8,
+    "total_short_liq": 48.63,
+    "liq_ratio": 1.0239,
+    "long_peak_dist_pct": -0.1,
+    "short_peak_dist_pct": 3.2,
+    "funding_rate": 1.6e-05,
+    "long_ratio": 0.5
+  }
+]
