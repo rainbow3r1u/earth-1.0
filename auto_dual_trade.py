@@ -2,11 +2,12 @@
 """
 自动多空二选一交易脚本
 每天运行：检查持仓(止损/2天平仓) → 训练+预测 → 开仓+止损单+止盈单
-特征维度: 10(基)+3(vol)+7(信号)+4(RSI背离)+22(板块)+~898(宏观+Kronos) ≈ 936维
+特征维度: 104维 (纯手工特征, Kronos已禁用 — Permutation Test验证通过)
 """
-import os, sys, json, time, hmac, hashlib, math, warnings, fcntl, pickle
+import os, sys, json, time, hmac, hashlib, math, warnings, fcntl, pickle, traceback, gc
 from datetime import datetime, timezone
 from urllib.parse import urlencode
+from array import array
 import numpy as np
 import requests
 from xgboost import XGBClassifier
@@ -45,6 +46,9 @@ STATE_FILE = os.path.join(DATA_DIR, 'state.json')
 LOG_FILE = os.path.join(DATA_DIR, 'trade.log')
 FUTURES_INFO_CACHE = os.path.join(DATA_DIR, 'binance_futures_info.json')
 
+# Kronos toggle: False = BASELINE 104D (Permutation Test验证通过), True = 936D
+USE_KRONOS = False
+
 def log(msg):
     ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     import re as _re
@@ -60,7 +64,7 @@ SHARED_CONFIG = os.path.join(os.path.dirname(__file__), '..', 'backtester', 'con
 _DEFAULTS = {
     'STOP_LOSS_PCT': 10.0, 'TAKE_PROFIT_PCT': 10.0,  # FIX: 对称止盈
     'PROB_THRESHOLD': 60.0, 'LEVERAGE': 2,
-     'TOP_N_SYMBOLS': 150, 'MIN_VOLUME_24H': 500000, 'TRAIN_DAYS': 9999,
+     'TOP_N_SYMBOLS': 150, 'MIN_VOLUME_24H': 500000, 'TRAIN_DAYS': 180,
 }
 try:
     with open(SHARED_CONFIG) as _cf:
@@ -205,39 +209,157 @@ def cancel_all_orders(symbol):
     signed_request('DELETE', '/fapi/v1/allOpenOrders', {'symbol': symbol})
     signed_request('DELETE', '/fapi/v1/algoOpenOrders', {'symbol': symbol})
 
-def close_with_retry(symbol, close_side, qty, max_retries=3):
-    """平仓市价单, 最多重试3次指数退避, 验证成交数量
-    FIX: remaining下限保护，防止负数
+def get_open_algo_orders(symbol):
+    """查询某币种所有未触发的 Algo 条件单"""
+    r = signed_request('GET', '/fapi/v1/algoOpenOrders', {'symbol': symbol})
+    if isinstance(r, list):
+        return r
+    return []
+
+def verify_algo_order(symbol, algo_id, max_wait=10, interval=1.5):
+    """轮询确认 algo_id 确实在交易所未触发订单列表中。
+    返回 (verified, order_info)
+    """
+    deadline = time.time() + max_wait
+    while time.time() < deadline:
+        orders = get_open_algo_orders(symbol)
+        for o in orders:
+            if o.get('algoId') == algo_id or o.get('orderId') == algo_id:
+                return True, o
+        time.sleep(interval)
+    return False, None
+
+def place_and_verify_algo_order(place_fn, symbol, side, trigger_price, max_attempts=3):
+    """下 Algo 条件单并验证它真的挂在交易所。
+    place_fn: place_stop_loss_order 或 place_take_profit_order
+    返回 (ok, order_dict)
+    """
+    last_order = None
+    for attempt in range(max_attempts):
+        order = place_fn(symbol, side, trigger_price)
+        last_order = order
+        oid = order.get('algoId') or order.get('orderId') if order else None
+        if not oid:
+            log(f'  Algo单未返回ID: {order}')
+            if attempt < max_attempts - 1:
+                wait = 2 ** attempt
+                time.sleep(wait)
+            continue
+
+        verified, info = verify_algo_order(symbol, oid, max_wait=8, interval=1.0)
+        if verified:
+            log(f'  Algo单已确认挂在交易所: algoId={oid}')
+            return True, order
+        else:
+            log(f'  Algo单未在openOrders中找到，可能未挂成功: algoId={oid}')
+            if attempt < max_attempts - 1:
+                wait = 2 ** attempt
+                log(f'  Algo单重试 {attempt+1}/{max_attempts}, 等待{wait}s')
+                time.sleep(wait)
+            else:
+                # 最后一次也没找到，返回最后一次下单结果（可能交易所延迟）
+                return False, last_order
+    return False, last_order
+
+def _rearm_stop_loss(symbol, side, amt, entry_price):
+    """平仓失败后重新挂Algo止损单，防止仓位裸奔"""
+    try:
+        close_side = 'SELL' if side == 'LONG' else 'BUY'
+        if side == 'LONG':
+            stop_price = round(entry_price * (1 - STOP_LOSS_PCT / 100), 2)
+        else:
+            stop_price = round(entry_price * (1 + STOP_LOSS_PCT / 100), 2)
+        if stop_price <= 0:
+            log(f'  [REARM] {symbol} 止损价异常={stop_price}, 跳过')
+            return
+        ok, order = place_and_verify_algo_order(
+            place_stop_loss_order, symbol, close_side, stop_price)
+        if ok:
+            log(f'  [REARM] {symbol} Algo止损已重新挂单 @{stop_price}')
+        else:
+            log(f'  [REARM] {symbol} Algo止损重挂失败! 仓位裸奔!')
+    except Exception as e:
+        log(f'  [REARM] {symbol} 止损重挂异常: {e}')
+
+def poll_order_fill(symbol, order_id, max_wait=15, interval=1.5):
+    """轮询市价单成交状态，返回最终 order 状态。
+    MARKET 单可能先返回 NEW，需要轮询直到 FILLED / PARTIALLY_FILLED / EXPIRED / CANCELED / REJECTED。
+    """
+    deadline = time.time() + max_wait
+    final_order = None
+    while time.time() < deadline:
+        order = signed_request('GET', '/fapi/v1/order', {'symbol': symbol, 'orderId': order_id})
+        if order and 'orderId' in order:
+            final_order = order
+            status = order.get('status')
+            if status in ('FILLED', 'PARTIALLY_FILLED', 'EXPIRED', 'CANCELED', 'REJECTED'):
+                return order
+        time.sleep(interval)
+    return final_order
+
+
+def place_market_order_with_retry(symbol, side, qty, reduce_only=False, max_retries=3):
+    """下市价单并轮询成交，支持部分成交后补单。
+    返回 (success_bool, last_order_dict, total_filled_qty)
     """
     remaining = max(qty, 0)
-    total_filled = 0
-    last_result = None
+    total_filled = 0.0
+    last_order = None
     for attempt in range(max_retries):
         if remaining <= 0:
-            return True, last_result or {'orderId': 'completed', 'status': 'FILLED'}
-        result = place_market_order(symbol, close_side, remaining, reduce_only=True)
-        # 轮询确认成交 (市价单可能返回NEW)
-        if 'orderId' in result and result.get('status') == 'NEW':
-            oid = result['orderId']
-            for pi in range(5):
-                time.sleep(1)
-                result = signed_request('GET', '/fapi/v1/order', {'symbol': symbol, 'orderId': oid})
-                if result and result.get('status') in ('FILLED', 'PARTIALLY_FILLED', 'EXPIRED', 'CANCELED'):
-                    break
-        if 'orderId' in result and result.get('status') in ('FILLED', 'PARTIALLY_FILLED'):
-            filled = safe_float(result.get('executedQty'), 0)
-            total_filled += filled
-            # FIX: 用原始qty判断，避免remaining缩小后比例失真
-            if total_filled >= qty * 0.95:
-                return True, result
-            remaining = max(remaining - filled, 0)
-            log(f'  部分成交 {filled}/{qty}, 累计{total_filled}, 补单剩余{remaining}')
-        else:
-            last_result = result
+            return True, last_order or {'orderId': 'completed', 'status': 'FILLED'}, total_filled
+
+        order = place_market_order(symbol, side, remaining, reduce_only)
+        last_order = order
+        if not order or 'orderId' not in order:
+            log(f'  下单失败(无orderId): {order}')
             wait = 2 ** attempt
-            log(f'  平仓重试 {attempt+1}/{max_retries}, 等待{wait}s: {result}')
+            log(f'  重试 {attempt+1}/{max_retries}, 等待{wait}s')
             time.sleep(wait)
-    return False, last_result or {'error': True, 'msg': 'max retries'}
+            continue
+
+        # 轮询确认成交
+        polled = poll_order_fill(symbol, order['orderId'])
+        if polled:
+            last_order = polled
+            status = polled.get('status')
+            if status in ('FILLED', 'PARTIALLY_FILLED'):
+                filled = safe_float(polled.get('executedQty'), 0)
+                total_filled += filled
+                if total_filled >= qty * 0.98:
+                    return True, polled, total_filled
+                remaining = max(qty - total_filled, 0)
+                log(f'  部分成交 {filled:.6f}/{qty:.6f}, 累计{total_filled:.6f}, 补单剩余{remaining:.6f}')
+                time.sleep(1)
+                continue
+            elif status == 'REJECTED':
+                log(f'  订单被拒: {polled}')
+                return False, polled, total_filled
+            else:  # EXPIRED / CANCELED
+                log(f'  订单失效: {status} {polled}')
+                wait = 2 ** attempt
+                log(f'  重试 {attempt+1}/{max_retries}, 等待{wait}s')
+                time.sleep(wait)
+                continue
+        else:
+            log(f'  轮询超时未获取最终状态: order={order}')
+            wait = 2 ** attempt
+            time.sleep(wait)
+            continue
+
+    return False, last_order, total_filled
+
+
+def close_with_retry(symbol, close_side, qty, max_retries=3):
+    """平仓市价单, 最多重试3次, 验证成交数量 >= 95%
+    FIX: remaining下限保护，防止负数
+    """
+    success, result, total_filled = place_market_order_with_retry(
+        symbol, close_side, qty, reduce_only=True, max_retries=max_retries)
+    if success and total_filled >= qty * 0.95:
+        return True, result
+    log(f'  平仓最终失败/未足量: filled={total_filled:.6f}/{qty:.6f}')
+    return False, result or {'error': True, 'msg': 'close failed'}
 
 def get_symbol_price(symbol):
     r = signed_request('GET', '/fapi/v1/ticker/price', {'symbol': symbol})
@@ -369,12 +491,18 @@ def check_and_close(state):
         
         pos_key = f"{symbol}_{side}"
         
+        # 孤儿仓位: 纳入管理但不强制平仓 (用户手动管理止损/止盈)
+        is_orphan = pos_key not in state.get('positions', {}) or \
+                    state['positions'].get(pos_key, {}).get('source') == 'orphan'
+        if is_orphan:
+            continue
+        
         if ret_pct <= -STOP_LOSS_PCT:
             close_side = 'SELL' if side == 'LONG' else 'BUY'
             qty = round_qty(symbol, abs(amt))
             if qty > 0:
                 log(f'[STOP LOSS] {symbol} {side} 亏损{ret_pct:.2f}% 平{qty}')
-                # FIX: 先取消所有挂单，再市价平（避免双重平仓）
+                # 撤旧Algo单 → 市价平 → 失败则重新设止损
                 cancel_all_orders(symbol)
                 time.sleep(0.5)
                 ok, result = close_with_retry(symbol, close_side, qty)
@@ -382,7 +510,8 @@ def check_and_close(state):
                     log(f'  -> 平仓成功: orderId={result["orderId"]}')
                     closed.append(pos_key)
                 else:
-                    log(f'  -> 平仓失败(已重试): {result}')
+                    log(f'  -> 平仓失败(已重试): {result}, 重新设Algo止损')
+                    _rearm_stop_loss(symbol, side, amt, entry_price)
             continue
 
         if pos_key in state.get('positions', {}):
@@ -400,7 +529,8 @@ def check_and_close(state):
                         log(f'  -> 平仓成功: orderId={result["orderId"]}')
                         closed.append(pos_key)
                     else:
-                        log(f'  -> 平仓失败(已重试): {result}')
+                        log(f'  -> 平仓失败(已重试): {result}, 重新设Algo止损')
+                        _rearm_stop_loss(symbol, side, amt, entry_price)
     
     # 孤儿仓位 (跳过刚刚平仓的)
     closed_set = set(closed)
@@ -420,8 +550,8 @@ def check_and_close(state):
                 'symbol': symbol,
                 'direction': side,
                 'qty': abs(amt),
-                # FIX: 保守估计已持40h（避免实际47h时又被延到71h）
-                'open_ts': int(time.time()) - 40*3600,
+                # 孤儿仓位: open_ts 从当前开始计算48h, 不回溯猜测
+                'open_ts': int(time.time()),
                 'open_price': float(p.get('entryPrice', 0)),
                 'notional': abs(amt) * float(p.get('markPrice', 0)),
                 'stop_loss_price': 0,
@@ -594,8 +724,9 @@ def fetch_oi_for_symbols(symbols):
 
 # ============ 78维特征工程（完整版，与回测一致） ============
 def build_features_78d(klines, oi_data, sector_map, sector_heats_all):
-    """构建936维特征（含832维Kronos），与dual_backtest_365d一致"""
-    all_samples = []
+    """构建936维特征（含832维Kronos），与dual_backtest_365d一致
+    优化: feat用array('f') float32, 去掉all_samples中间list, 省~3GB"""
+    by_day = defaultdict(list)
     btc_kls = klines.get('BTCUSDT', [])
     btc_closes = [k['c'] for k in btc_kls]
     btc_rets = dp._compute_returns(btc_closes) if btc_closes else []
@@ -613,7 +744,8 @@ def build_features_78d(klines, oi_data, sector_map, sector_heats_all):
         coin_rets = dp._compute_returns(closes)
         n = len(kls)
         
-        for i in range(25, n - 2):
+        # FIX: n-2 → n-1, 包含预测样本 i=n-2 (最新已收盘K线, 无标签)
+        for i in range(25, n - 1):
             j = i - 1
             try:
                 ret_1d = (closes[j] - closes[j-1]) / closes[j-1] if closes[j-1] > 0 else 0
@@ -676,19 +808,18 @@ def build_features_78d(klines, oi_data, sector_map, sector_heats_all):
                     vol_col, beta, alpha, r2, residual, rsi7, rsi14, rsi30,
                     rsi_div, sector_feats, macro_feats)
 
-                # FIX: 2日收益标签，与回测对齐
-                next_ret = (closes[i+1] - closes[j]) / closes[j] if closes[j] > 0 and i + 1 < n else 0
+                # FIX: 预测样本(i=n-2)无未来收盘价, 标签设0; 训练样本计算2日收益标签
+                if i >= n - 2:
+                    next_ret = 0  # 预测样本, 无标签 (closes[i+1]未收盘)
+                else:
+                    next_ret = (closes[i+1] - closes[j]) / closes[j] if closes[j] > 0 and i + 1 < n else 0
                 if abs(next_ret) > 5.0:
                     continue
                 label_long = 1 if next_ret > 0.05 else 0
                 label_short = 1 if next_ret < -0.05 else 0
-                all_samples.append((ts, sym, feat, label_long, label_short, next_ret * 100))
+                by_day[ts].append((sym, array('f', feat), label_long, label_short, next_ret * 100))
             except Exception:
                 continue
-    
-    by_day = defaultdict(list)
-    for ts, sym, feat, ll, ls, ret in all_samples:
-        by_day[ts].append((sym, feat, ll, ls, ret))
     
     return by_day
 
@@ -702,31 +833,75 @@ def train_and_predict(by_day, today_ts, klines):
         return None, None, [], []
     
     train_days = train_days[-TRAIN_DAYS:]
-    
+
+    # Kronos toggle: set False to run BASELINE (104D, no Kronos)
+    KRONOS_START = 10 + 3 + 7 + 4 + 22 + (2+4+6+1+1+1+1+1+1+1+26+9)  # = 100
+    KRONOS_END = KRONOS_START + dp.EMBEDDING_DIM  # = 932
+
     X_train, y_long, y_short = [], [], []
     for ts in train_days:
         for sym, feat, ll, ls, ret in by_day[ts]:
             X_train.append(feat)
             y_long.append(ll)
             y_short.append(ls)
+        del by_day[ts]
+    gc.collect()
     
-    X_train = np.array(X_train)
+    X_train = np.array(X_train, dtype=np.float32)
+    # 修复NaN (SP500/DXY/黄金列在某些历史日期缺失)
+    _nan_count = int(np.isnan(X_train).sum())
+    if _nan_count > 0:
+        log(f'⚠️ 训练数据有{_nan_count}个NaN, 已填充为0')
+    X_train = np.nan_to_num(X_train, nan=0.0, copy=False)
+    
+    # 训练数据完整性校验
+    _validation_issues = []
+    # 1. 全零行检查 (整行特征全零的样本)
+    _zero_rows = np.where(np.all(X_train == 0, axis=1))[0]
+    if len(_zero_rows) > 0:
+        _validation_issues.append(f'{len(_zero_rows)}个全零样本行')
+        log(f'⚠️ 发现{len(_zero_rows)}个全零样本行, 已剔除')
+        _keep = np.ones(len(X_train), dtype=bool)
+        _keep[_zero_rows] = False
+        X_train = X_train[_keep]
+        y_long = [y_long[i] for i in range(len(y_long)) if _keep[i]]
+        y_short = [y_short[i] for i in range(len(y_short)) if _keep[i]]
+    
+    # 2. 异常全零列检查 (排除置零区域)
+    if not USE_KRONOS:
+        X_train[:, KRONOS_START:KRONOS_END] = 0.0
+        X_train[:, 72:91] = 0.0   # liq 19维→回退78D
+        log('Kronos 832D + liq 19D 已置零 (non-Kronos: 85D)')
+    else:
+        log('Kronos 832D 已置零 (BASELINE 104D)')
+    
+    _expected_zero = set(range(KRONOS_START, KRONOS_END)) | set(range(72, 91)) if not USE_KRONOS else set(range(KRONOS_START, KRONOS_END))
+    _zero_cols = np.where(np.all(X_train == 0, axis=0))[0]
+    _unexpected_zero = [c for c in _zero_cols if c not in _expected_zero]
+    if len(_unexpected_zero) > 5:
+        _validation_issues.append(f'{len(_unexpected_zero)}个异常全零列(前10: {_unexpected_zero[:10]})')
+        log(f'⚠️ 发现{len(_unexpected_zero)}个异常全零列: {_unexpected_zero[:10]}')
+    
+    # 3. 极端值检查 (单元素绝对值>1e6)
+    _extreme_count = int(np.sum(np.abs(X_train) > 1e6))
+    if _extreme_count > 0:
+        _validation_issues.append(f'{_extreme_count}个极端值(>1e6)')
+        log(f'⚠️ 发现{_extreme_count}个极端值, winsor将处理')
+    
+    if _validation_issues:
+        log(f'训练数据校验: {"; ".join(_validation_issues)}')
+    else:
+        log('训练数据校验: 全部通过')
+    
     if len(X_train) < 100:
         log(f'样本不足: {len(X_train)}')
         return None, None, [], []
 
-    # 运行时维度断言：确保特征维度与 FEATURE_NAMES 一致
+    # 运行时维度断言
     n_features = X_train.shape[1]
-    # 动态计算期望维度 (FEATURE_NAMES 在下方定义)
     EXPECTED_N = 10 + 3 + 7 + 4 + 22 + (2+4+6+1+1+1+1+1+1+1+26+9 + dp.EMBEDDING_DIM + 3 + 1)
     if n_features != EXPECTED_N:
-        log(f'[CRITICAL] 特征维度不匹配! 实际={n_features} 期望={EXPECTED_N} (Kronos={dp.EMBEDDING_DIM}D)')
-        # 如果只差 Kronos 维度，尝试调整期望
-        for test_dim in [832, 20]:
-            test_expected = 10 + 3 + 7 + 4 + 22 + (2+4+6+1+1+1+1+1+1+1+26+9 + test_dim + 3 + 1)
-            if n_features == test_expected:
-                log(f'  → 匹配 Kronos={test_dim}D，回测/实盘维度异构!')
-                break
+        log(f'[CRITICAL] 特征维度不匹配! 实际={n_features} 期望={EXPECTED_N}')
     else:
         log(f'特征维度验证: {n_features} == {EXPECTED_N} OK')
     
@@ -747,28 +922,45 @@ def train_and_predict(by_day, today_ts, klines):
     model_long_file = os.path.join(models_dir, 'xgb_daily_long.pkl')
     model_short_file = os.path.join(models_dir, 'xgb_daily_short.pkl')
     model_long = None; model_short = None
+    n_features = X_train.shape[1]
     try:
         if os.path.exists(model_long_file) and time.time() - os.path.getmtime(model_long_file) < 1*86400:
             with open(model_long_file,'rb') as f: model_long = pickle.load(f)
-            log(f'加载预训练多头模型: {model_long_file}')
+            if hasattr(model_long, 'n_features_in_') and model_long.n_features_in_ != n_features:
+                log(f'多头模型维度不匹配 (缓存{model_long.n_features_in_}D, 当前{n_features}D), 丢弃缓存')
+                model_long = None
+            else:
+                log(f'加载预训练多头模型: {model_long_file}')
         if os.path.exists(model_short_file) and time.time() - os.path.getmtime(model_short_file) < 1*86400:
             with open(model_short_file,'rb') as f: model_short = pickle.load(f)
-            log(f'加载预训练空头模型: {model_short_file}')
+            if hasattr(model_short, 'n_features_in_') and model_short.n_features_in_ != n_features:
+                log(f'空头模型维度不匹配 (缓存{model_short.n_features_in_}D, 当前{n_features}D), 丢弃缓存')
+                model_short = None
+            else:
+                log(f'加载预训练空头模型: {model_short_file}')
     except Exception: pass
 
     if model_long is None:
-        model_long = XGBClassifier(n_estimators=200, max_depth=5, learning_rate=0.05,
+        # Top1参数 (90d Sharpe=7.98, 180d Sharpe=6.00): d6-w1-L10-A10-s0.8-c0.6
+        model_long = XGBClassifier(n_estimators=200, max_depth=6, learning_rate=0.05,
+                                   min_child_weight=1, reg_lambda=10, reg_alpha=10,
+                                   subsample=0.8, colsample_bytree=0.6,
                                    scale_pos_weight=(len(y_long) - pos_long) / pos_long,
-                                   random_state=42, eval_metric='logloss', verbosity=0)
+                                   random_state=42, eval_metric='logloss', verbosity=0,
+                                   tree_method='hist')
         model_long.fit(X_train, y_long)
         try:
             with open(model_long_file,'wb') as f: pickle.dump(model_long, f)
         except Exception as e: log(f'多头模型保存失败: {e}')
 
     if model_short is None:
-        model_short = XGBClassifier(n_estimators=200, max_depth=5, learning_rate=0.05,
+        # Top1参数: d6-w1-L10-A10-s0.8-c0.6
+        model_short = XGBClassifier(n_estimators=200, max_depth=6, learning_rate=0.05,
+                                    min_child_weight=1, reg_lambda=10, reg_alpha=10,
+                                    subsample=0.8, colsample_bytree=0.6,
                                     scale_pos_weight=(len(y_short) - pos_short) / pos_short,
-                                    random_state=43, eval_metric='logloss', verbosity=0)
+                                    random_state=43, eval_metric='logloss', verbosity=0,
+                                    tree_method='hist')
         model_short.fit(X_train, y_short)
         try:
             with open(model_short_file,'wb') as f: pickle.dump(model_short, f)
@@ -788,10 +980,18 @@ def train_and_predict(by_day, today_ts, klines):
         ['etf_btc','etf_eth','chain_vol','chain_tx','chain_fee','chain_cdd',
          'sent_funding','sent_ls_btc','sent_ls_eth','sent_ls_avg10','sent_ls_high','sent_ls_low',
          'fear_greed','stablecoin','coinbase_prem','coinbase_gap','btc_mcap','korea_prem','hashrate_7d_chg',
-         'liq_total_long','liq_total_short','liq_ratio','liq_long_peak_dist','liq_short_peak_dist',
-         'liq_funding','liq_long_ratio','chain_tvl_btc','chain_tvl_eth','chain_tvl_sol',
-         'chain_tvl_bsc','chain_tvl_arb','chain_tvl_base'] +
-        [f'kronos_emb_{i}' for i in range(832)] +
+         # 清算特征 26维: 5分位 × (long_mean, long_std, short_mean, short_std) + ratio/peak_dist 的 mean/std
+         'liq_q0_long_mean','liq_q0_long_std','liq_q0_short_mean','liq_q0_short_std',
+         'liq_q1_long_mean','liq_q1_long_std','liq_q1_short_mean','liq_q1_short_std',
+         'liq_q2_long_mean','liq_q2_long_std','liq_q2_short_mean','liq_q2_short_std',
+         'liq_q3_long_mean','liq_q3_long_std','liq_q3_short_mean','liq_q3_short_std',
+         'liq_q4_long_mean','liq_q4_long_std','liq_q4_short_mean','liq_q4_short_std',
+         'liq_ratio_mean','liq_ratio_std','liq_long_peak_dist_mean','liq_long_peak_dist_std',
+         'liq_short_peak_dist_mean','liq_short_peak_dist_std',
+         # TVL 9维
+         'chain_tvl_btc','chain_tvl_eth','chain_tvl_sol','chain_tvl_bsc','chain_tvl_arb',
+         'chain_tvl_base','chain_tvl_ton','chain_tvl_sui','chain_tvl_polygon'] +
+        [f'kronos_emb_{i}' for i in range(dp.EMBEDDING_DIM)] +
         ['sp500_1d','dxy_1d','gold_1d','alt_btc_spread']
     )
 
@@ -801,10 +1001,11 @@ def train_and_predict(by_day, today_ts, klines):
         top_idx = np.argsort(imp)[-15:][::-1]
         log(f'[{label}] 特征重要性 TOP15:')
         for idx in top_idx:
-            log(f'  {FEATURE_NAMES[idx]:25s} {imp[idx]:.4f}')
+            name = FEATURE_NAMES[idx] if idx < len(FEATURE_NAMES) else f'unnamed_feat_{idx}'
+            log(f'  {name:25s} {imp[idx]:.4f}')
         # Kronos维度累积 (832D)
         kronos_imp = {}
-        for i in range(832):
+        for i in range(dp.EMBEDDING_DIM):
             idx = FEATURE_NAMES.index(f'kronos_emb_{i}')
             kronos_imp[f'kronos_emb_{i}'] = float(imp[idx])
         # 保存到累积文件
@@ -837,11 +1038,8 @@ def train_and_predict(by_day, today_ts, klines):
     except Exception as e:
         log(f'训练数据保存失败: {e}')
     
-    # FIX: 运行过拟合测试（Permutation Test）
-    perm_passed = _run_permutation_test(X_train, y_long, model_long, by_day, today_ts, bounds)
-    if not perm_passed:
-        log('[PERM-TEST] 信号不真实，跳过今日交易')
-        return None, None, [], []
+    # FIX: 运行过拟合测试（Permutation Test）— 多空双测，按边阻断
+    long_ok, short_ok = _run_permutation_test(X_train, y_long, y_short, model_long, model_short, by_day, today_ts, bounds, klines)
     
     pred_samples = by_day.get(today_ts, [])
     if not pred_samples:
@@ -849,29 +1047,22 @@ def train_and_predict(by_day, today_ts, klines):
         return None, None, [], []
     
     X_pred = np.array([s[1] for s in pred_samples])
+    X_pred = np.nan_to_num(X_pred, nan=0.0, copy=False)
     X_pred = dp._apply_winsor(X_pred, bounds)
+    # 与回溯端对齐: Kronos 832D + liq 19D 置零
+    if not USE_KRONOS:
+        KRONOS_START_PRED = 100
+        KRONOS_END_PRED = KRONOS_START_PRED + dp.EMBEDDING_DIM  # 932
+        X_pred[:, KRONOS_START_PRED:KRONOS_END_PRED] = 0.0
+        X_pred[:, 72:91] = 0.0   # liq 19维置零
     probs_long = model_long.predict_proba(X_pred)[:, 1]
     probs_short = model_short.predict_proba(X_pred)[:, 1]
-    
-    # 收集所有有效预测结果，输出Top10
-    valid_long = []
-    valid_short = []
-    
-    for idx, ((sym, feat, ll, ls, ret), pl, ps) in enumerate(zip(pred_samples, probs_long, probs_short)):
-        kls = klines.get(sym, [])
-        if len(kls) < 30:
-            continue
-        k_idx = next((i for i, k in enumerate(kls)
-                     if (k['t'] if isinstance(k, dict) else int(k[0])) >= today_ts * 1000), len(kls))
-        if k_idx < 5:
-            continue
-        recent_vol = np.mean([k['q'] for k in kls[k_idx-5:k_idx]])
-        if recent_vol < MIN_VOLUME_24H:
-            continue
-        
-        valid_long.append((sym, pl, ret))
-        valid_short.append((sym, ps, ret))
-    
+
+    # 收集所有有效预测结果，输出Top10 (复用过滤函数, 与Perm Test保持同一份样本集)
+    valid_samples, valid_indices = _filter_valid_samples(pred_samples, klines, today_ts)
+    valid_long = [(s[0], probs_long[i], s[4]) for s, i in zip(valid_samples, valid_indices)]
+    valid_short = [(s[0], probs_short[i], s[4]) for s, i in zip(valid_samples, valid_indices)]
+
     # 排序取Top10
     top10_long = sorted(valid_long, key=lambda x: x[1], reverse=True)[:10]
     top10_short = sorted(valid_short, key=lambda x: x[1], reverse=True)[:10]
@@ -879,6 +1070,16 @@ def train_and_predict(by_day, today_ts, klines):
     # Best用于交易决策
     best_long = top10_long[0] if top10_long else None
     best_short = top10_short[0] if top10_short else None
+    
+    # Permutation Test 按边阻断：只禁失败侧，不波及对侧
+    if not long_ok:
+        log('[PERM-TEST] LONG 过拟合，禁止多头交易')
+        best_long = None
+        top10_long = []
+    if not short_ok:
+        log('[PERM-TEST] SHORT 过拟合，禁止空头交易')
+        best_short = None
+        top10_short = []
     
     return best_long, best_short, top10_long, top10_short
 
@@ -895,7 +1096,7 @@ def main():
         return
 
     log('=' * 60)
-    log('自动多空二选一交易启动 (933维)')
+    log('自动多空二选一交易启动 (104维 BASELINE, Kronos已禁用)')
     log('=' * 60)
     
     # 1. 账户
@@ -921,6 +1122,31 @@ def main():
     
     # 4. 持仓检查 + 数据更新（余额不足时仍更新缓存）
     no_trade = wallet < 10
+
+    # 4.5 数据新鲜度检查: 若OI/K线陈旧(>20h), 自动补采 (冗余机制)
+    try:
+        import time as _time
+        _stale_threshold = 20 * 3600  # 20小时
+        _now = _time.time()
+        _oi_path = '/home/myuser/backtester/data_cache/oi_daily.json'
+        _kline_path = '/home/myuser/backtester/data_cache/notusdt_1d_full.json'
+        _need_refresh = False
+        if not os.path.exists(_oi_path) or (_now - os.path.getmtime(_oi_path)) > _stale_threshold:
+            _need_refresh = True
+            log(f'OI缓存陈旧, 触发补采: {_oi_path}')
+        if not os.path.exists(_kline_path) or (_now - os.path.getmtime(_kline_path)) > _stale_threshold:
+            _need_refresh = True
+            log(f'K线缓存陈旧, 触发补采: {_kline_path}')
+        if _need_refresh:
+            try:
+                import daily_data_collection as _ddc
+                log('开始补采K线+OI...')
+                _ddc.update_klines_oi()
+                log('补采完成')
+            except Exception as _e:
+                log(f'补采失败(继续使用现有数据): {_e}')
+    except Exception as _e:
+        log(f'数据新鲜度检查失败: {_e}')
 
     # 5. 加载外部数据 + 更新K线/OI缓存（始终执行）
     log('加载外部数据...')
@@ -992,36 +1218,48 @@ def main():
     # FIX: 余额不足时仍然训练模型，保持模型最新，只是不执行交易
     # 7. 预计算板块热度 + Kronos
     log('预计算板块热度...')
-    sector_heats_all = dp._precompute_sector_heats(klines, sector_map) if sector_map else {}
+    try:
+        sector_heats_all = dp._precompute_sector_heats(klines, sector_map) if sector_map else {}
+        log(f'板块热度完成: {len(sector_heats_all)}天')
+    except Exception as e:
+        log(f'板块热度失败: {e}')
+        import traceback
+        log(traceback.format_exc())
+        sector_heats_all = {}
     
     # FIX: Kronos只预计算交易日（样本中的日期），而非所有K线时间戳
-    log('预计算Kronos...')
-    all_ts_for_kronos = set()
-    for sym, kls in klines.items():
-        if len(kls) < min_required:
-            continue
-        timestamps = [k['t'] // 1000 for k in kls]
-        for i in range(25, len(kls) - 2):
-            all_ts_for_kronos.add(timestamps[i])
-    dp._precompute_kronos_features(list(all_ts_for_kronos))
-    log(f'Kronos预计算: {len(all_ts_for_kronos)}个交易日')
+    if USE_KRONOS:
+        log('预计算Kronos...')
+        all_ts_for_kronos = set()
+        for sym, kls in klines.items():
+            if len(kls) < min_required:
+                continue
+            timestamps = [k['t'] // 1000 for k in kls]
+            for i in range(25, len(kls) - 1):  # FIX: n-2 → n-1, 包含预测日
+                all_ts_for_kronos.add(timestamps[i])
+        dp._precompute_kronos_features(list(all_ts_for_kronos))
+        log(f'Kronos预计算: {len(all_ts_for_kronos)}个交易日')
+    else:
+        log('Kronos已禁用, 跳过预计算')
 
     # Kronos特征上传COS
-    try:
-        from qcloud_cos import CosConfig, CosS3Client
-        cos_cfg = CosConfig(
-            Region=os.environ.get('COS_REGION', 'ap-seoul'),
-            SecretId=os.environ['COS_SECRET_ID'],
-            SecretKey=os.environ['COS_SECRET_KEY'],
-            Endpoint=os.environ.get('COS_ENDPOINT', 'cos.ap-seoul.myqcloud.com'))
-        cos_cli = CosS3Client(cos_cfg)
-        kronos_path = os.path.join(os.path.dirname(__file__), 'data/kronos_features_cache.json')
-        if os.path.exists(kronos_path):
-            with open(kronos_path, 'rb') as f:
-                cos_cli.put_object(Bucket=os.environ['COS_BUCKET'], Key='klines/cache/kronos_features_cache.json', Body=f.read())
-            log(f'Kronos特征已上传COS ({os.path.getsize(kronos_path)/1024/1024:.1f}MB)')
-    except Exception as e:
-        log(f'Kronos COS上传失败: {e}')
+    if USE_KRONOS:
+        try:
+            from qcloud_cos import CosConfig, CosS3Client
+            cos_cfg = CosConfig(
+                Region=os.environ.get('COS_REGION', 'ap-seoul'),
+                SecretId=os.environ['COS_SECRET_ID'],
+                SecretKey=os.environ['COS_SECRET_KEY'],
+                Endpoint=os.environ.get('COS_ENDPOINT', 'cos.ap-seoul.myqcloud.com'),
+                Timeout=30)
+            cos_cli = CosS3Client(cos_cfg)
+            kronos_path = os.path.join(os.path.dirname(__file__), 'data/kronos_features_cache.json')
+            if os.path.exists(kronos_path):
+                with open(kronos_path, 'rb') as f:
+                    cos_cli.put_object(Bucket=os.environ['COS_BUCKET'], Key='klines/cache/kronos_features_cache.json', Body=f.read())
+                log(f'Kronos特征已上传COS ({os.path.getsize(kronos_path)/1024/1024:.1f}MB)')
+        except Exception as e:
+            log(f'Kronos COS上传失败: {e}')
 
     # 8. 构建特征
     log('构建特征...')
@@ -1048,6 +1286,30 @@ def main():
     
     best_long, best_short, top10_long, top10_short = train_and_predict(by_day, today_ts, klines)
     
+    # 预测存档：保存到 data/pred_YYYY-MM-DD.json (每天只存第一版)
+    try:
+        pred_archive_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+        os.makedirs(pred_archive_dir, exist_ok=True)
+        pred_archive = {
+            'date': today_str,
+            'updated': time.time(),
+            'best_long': {'symbol': best_long[0], 'prob': round(best_long[1]*100, 1)} if best_long else None,
+            'best_short': {'symbol': best_short[0], 'prob': round(best_short[1]*100, 1)} if best_short else None,
+            'top10_long': [{'symbol': s, 'prob': round(p*100, 1)} for s, p, r in top10_long],
+            'top10_short': [{'symbol': s, 'prob': round(p*100, 1)} for s, p, r in top10_short],
+        }
+        archive_file = os.path.join(pred_archive_dir, f'pred_{today_str}.json')
+        if not os.path.exists(archive_file):
+            with open(archive_file, 'w') as f:
+                json.dump(pred_archive, f, indent=2, default=str)
+            log(f'预测存档: {archive_file}')
+        # 同步更新 daily_predictions.json (供Web监控读取)
+        cache_file = os.path.join(pred_archive_dir, 'daily_predictions.json')
+        with open(cache_file, 'w') as f:
+            json.dump(pred_archive, f, default=str)
+    except Exception as e:
+        log(f'预测存档失败: {e}')
+    
     # COS备份：模型+训练数据+重要性日志 (跟随每日训练同步上传)
     try:
         from qcloud_cos import CosConfig, CosS3Client
@@ -1055,7 +1317,8 @@ def main():
             Region=os.environ.get('COS_REGION', 'ap-seoul'),
             SecretId=os.environ['COS_SECRET_ID'],
             SecretKey=os.environ['COS_SECRET_KEY'],
-            Endpoint=os.environ.get('COS_ENDPOINT', 'cos.ap-seoul.myqcloud.com')))
+            Endpoint=os.environ.get('COS_ENDPOINT', 'cos.ap-seoul.myqcloud.com'),
+            Timeout=30))
         _bucket = os.environ['COS_BUCKET']
         backups = [
             (os.path.join(DATA_DIR, 'models', 'xgb_daily_long.pkl'), 'klines/cache/xgb_daily_long.pkl', '多头模型'),
@@ -1127,12 +1390,13 @@ def main():
             if qty_close > 0:
                 cancel_result = cancel_all_orders(symbol)
                 log(f'  取消挂单: {cancel_result.get("code", cancel_result.get("msg", "ok"))}')
-                result = place_market_order(symbol, close_side, qty_close, reduce_only=True)
-                if 'orderId' not in result:
+                ok, result, filled_qty = place_market_order_with_retry(
+                    symbol, close_side, qty_close, reduce_only=True, max_retries=3)
+                if not ok or filled_qty <= 0:
                     log(f'  平仓失败: {result}, 跳过今日')
                     save_state(state)
                     return
-                log(f'  平仓成功: orderId={result.get("orderId")}')
+                log(f'  平仓成功: orderId={result.get("orderId")} filled={filled_qty:.6f}')
                 # 指数退避轮询确认持仓清零，最多10次 ~30秒
                 max_polls = 10
                 cleared = False
@@ -1208,186 +1472,211 @@ def main():
         save_state(state)
         return
 
-    # 市价单 (轮询确认成交 — 币安市价单可能立即返回NEW未成交)
-    order = place_market_order(symbol, side, qty)
-    if 'orderId' in order and order.get('status') == 'NEW':
-        oid = order['orderId']
-        for poll_i in range(5):
-            time.sleep(1)
-            order = signed_request('GET', '/fapi/v1/order', {'symbol': symbol, 'orderId': oid})
-            if order and order.get('status') in ('FILLED', 'PARTIALLY_FILLED', 'EXPIRED', 'CANCELED'):
-                break
-            log(f'  订单状态轮询 {poll_i+1}/5: {order.get("status") if order else "无响应"}')
-    if ('orderId' in order
-            and order.get('status') in ('FILLED', 'PARTIALLY_FILLED')
-            and float(order.get('executedQty', 0)) > 0):
-        log(f'  市价单成功: orderId={order["orderId"]} status={order["status"]}')
+    # 市价单 (轮询确认成交 — 币安市价单可能立即返回NEW未成交，支持部分成交补单)
+    success, order, actual_qty = place_market_order_with_retry(symbol, side, qty, reduce_only=False, max_retries=3)
+    if not success or actual_qty <= 0:
+        log(f'  下单失败或成交量为0: {order}')
+        save_state(state)
+        return
 
-        actual_price = safe_float(order.get('avgPrice'))
-        if actual_price <= 0:
-            cum_quote = safe_float(order.get('cumQuote'))
-            executed_qty = safe_float(order.get('executedQty'))
-            if executed_qty > 0:
-                actual_price = cum_quote / executed_qty
+    log(f'  市价单成功: orderId={order.get("orderId")} status={order.get("status")} filled={actual_qty:.6f}')
+
+    # 用实际成交数量作为持仓数量
+    actual_price = safe_float(order.get('avgPrice'))
+    if actual_price <= 0:
+        cum_quote = safe_float(order.get('cumQuote'))
+        if actual_qty > 0:
+            actual_price = cum_quote / actual_qty
+        else:
+            pos_data = signed_request('GET', '/fapi/v2/positionRisk', {'symbol': symbol})
+            if isinstance(pos_data, list) and pos_data:
+                actual_price = safe_float(pos_data[0].get('entryPrice'), price)
             else:
-                pos_data = signed_request('GET', '/fapi/v2/positionRisk', {'symbol': symbol})
-                if isinstance(pos_data, list) and pos_data:
-                    actual_price = safe_float(pos_data[0].get('entryPrice'), price)
-                else:
-                    actual_price = price
+                actual_price = price
 
-        actual_qty = safe_float(order.get('executedQty', qty), qty)
-        if actual_qty <= 0:
-            actual_qty = qty
+    # 如果 last_order 是补单后的最后一单，avgPrice 可能不代表整体均价，
+    # 这里以 positionRisk 的 entryPrice 为准（更准确）
+    pos_data = signed_request('GET', '/fapi/v2/positionRisk', {'symbol': symbol})
+    if isinstance(pos_data, list) and pos_data:
+        entry_price = safe_float(pos_data[0].get('entryPrice'), 0)
+        if entry_price > 0:
+            actual_price = entry_price
 
-        tick = get_tick_size(symbol)
-        decimals = len(str(tick).split('.')[-1].rstrip('0')) if tick and '.' in str(tick) else 4
+    tick = get_tick_size(symbol)
+    decimals = len(str(tick).split('.')[-1].rstrip('0')) if tick and '.' in str(tick) else 4
 
-        # FIX: 同时下止损单+止盈单
-        if direction == 'LONG':
-            sl_side = 'SELL'
-            tp_side = 'SELL'
-            sl_price = round(actual_price * (1 - STOP_LOSS_PCT / 100), decimals)
-            tp_price = round(actual_price * (1 + TAKE_PROFIT_PCT / 100), decimals)
-        else:
-            sl_side = 'BUY'
-            tp_side = 'BUY'
-            sl_price = round(actual_price * (1 + STOP_LOSS_PCT / 100), decimals)
-            tp_price = round(actual_price * (1 - TAKE_PROFIT_PCT / 100), decimals)
-
-        # 止损单 — Algo Order API 返回 algoId
-        sl_order = None
-        for sl_attempt in range(3):
-            sl_order = place_stop_loss_order(symbol, sl_side, sl_price)
-            if sl_order and ('algoId' in sl_order or 'orderId' in sl_order):
-                log(f'  止损单成功: algoId={sl_order.get("algoId", sl_order.get("orderId"))}')
-                break
-            if sl_attempt < 2:
-                wait = 2 ** sl_attempt
-                log(f'  止损单重试 {sl_attempt+1}/3, 等待{wait}s')
-                time.sleep(wait)
-
-        # 止盈单 — Algo Order API 返回 algoId
-        tp_order = None
-        for tp_attempt in range(3):
-            tp_order = place_take_profit_order(symbol, tp_side, tp_price)
-            if tp_order and ('algoId' in tp_order or 'orderId' in tp_order):
-                log(f'  止盈单成功: algoId={tp_order.get("algoId", tp_order.get("orderId"))}')
-                break
-            if tp_attempt < 2:
-                wait = 2 ** tp_attempt
-                log(f'  止盈单重试 {tp_attempt+1}/3, 等待{wait}s')
-                time.sleep(wait)
-
-        # 兜底: 止损止盈均失败不自动回滚，持仓裸奔 (API挂了也不该自动平仓)
-        sl_ok = sl_order and ('algoId' in sl_order or 'orderId' in sl_order)
-        tp_ok = tp_order and ('algoId' in tp_order or 'orderId' in tp_order)
-
-        if not sl_ok and not tp_ok:
-            state['positions'][f'{symbol}_{direction}'] = {
-                'symbol': symbol, 'direction': direction, 'qty': actual_qty,
-                'margin': margin, 'prob': prob, 'open_ts': int(time.time()),
-                'open_price': actual_price, 'notional': actual_qty * actual_price,
-                'stop_loss_price': 0, 'naked': True,
-            }
-            save_state(state)
-            log('[WARN] 止损+止盈均失败，持仓裸奔，不自动回滚')
-            return
-
-        if sl_ok:
-            log(f'  止损单成功: algoId={sl_order.get("algoId", sl_order.get("orderId"))} 触发价{sl_price}')
-        else:
-            log(f'  [WARN] 止损单失败，但止盈单成功')
-
-        if tp_ok:
-            log(f'  止盈单成功: algoId={tp_order.get("algoId", tp_order.get("orderId"))} 触发价{tp_price}')
-        else:
-            log(f'  [WARN] 止盈单失败，但止损单成功')
-
-        state['positions'][f'{symbol}_{direction}'] = {
-            'symbol': symbol,
-            'direction': direction,
-            'qty': actual_qty,
-            'margin': margin,
-            'prob': prob,
-            'open_ts': int(time.time()),
-            'open_price': actual_price,
-            'notional': actual_qty * actual_price,
-            'sl_order_id': sl_order.get('algoId') or sl_order.get('orderId') if sl_ok else None,
-            'tp_order_id': tp_order.get('algoId') or tp_order.get('orderId') if tp_ok else None,
-            'stop_loss_price': sl_price if sl_ok else 0,
-            'take_profit_price': tp_price if tp_ok else 0,
-        }
+    # FIX: 同时下止损单+止盈单
+    if direction == 'LONG':
+        sl_side = 'SELL'
+        tp_side = 'SELL'
+        sl_price = round(actual_price * (1 - STOP_LOSS_PCT / 100), decimals)
+        tp_price = round(actual_price * (1 + TAKE_PROFIT_PCT / 100), decimals)
     else:
-        log(f'  下单失败: {order}')
-    
+        sl_side = 'BUY'
+        tp_side = 'BUY'
+        sl_price = round(actual_price * (1 + STOP_LOSS_PCT / 100), decimals)
+        tp_price = round(actual_price * (1 - TAKE_PROFIT_PCT / 100), decimals)
+
+    # 止损单 — Algo Order API，下单后验证真的挂在交易所
+    sl_ok, sl_order = place_and_verify_algo_order(
+        place_stop_loss_order, symbol, sl_side, sl_price, max_attempts=3)
+
+    # 止盈单 — Algo Order API，下单后验证真的挂在交易所
+    tp_ok, tp_order = place_and_verify_algo_order(
+        place_take_profit_order, symbol, tp_side, tp_price, max_attempts=3)
+
+    # 兜底: 止损止盈均失败不自动回滚，持仓裸奔 (API挂了也不该自动平仓)
+
+    if not sl_ok and not tp_ok:
+        state['positions'][f'{symbol}_{direction}'] = {
+            'symbol': symbol, 'direction': direction, 'qty': actual_qty,
+            'margin': margin, 'prob': prob, 'open_ts': int(time.time()),
+            'open_price': actual_price, 'notional': actual_qty * actual_price,
+            'stop_loss_price': 0, 'naked': True,
+        }
+        save_state(state)
+        log('[WARN] 止损+止盈均失败，持仓裸奔，不自动回滚')
+        return
+
+    if sl_ok:
+        log(f'  止损单成功: algoId={sl_order.get("algoId", sl_order.get("orderId"))} 触发价{sl_price}')
+    else:
+        log(f'  [WARN] 止损单失败，但止盈单成功')
+
+    if tp_ok:
+        log(f'  止盈单成功: algoId={tp_order.get("algoId", tp_order.get("orderId"))} 触发价{tp_price}')
+    else:
+        log(f'  [WARN] 止盈单失败，但止损单成功')
+
+    state['positions'][f'{symbol}_{direction}'] = {
+        'symbol': symbol,
+        'direction': direction,
+        'qty': actual_qty,
+        'margin': margin,
+        'prob': prob,
+        'open_ts': int(time.time()),
+        'open_price': actual_price,
+        'notional': actual_qty * actual_price,
+        'sl_order_id': sl_order.get('algoId') or sl_order.get('orderId') if sl_ok else None,
+        'tp_order_id': tp_order.get('algoId') or tp_order.get('orderId') if tp_ok else None,
+        'stop_loss_price': sl_price if sl_ok else 0,
+        'take_profit_price': tp_price if tp_ok else 0,
+    }
+
     save_state(state)
     log('交易结束')
 
 # ============ 过拟合测试 ============
-def _run_permutation_test(X_train, y_long, model_long, by_day, today_ts, bounds):
-    """Permutation Test: 打乱标签看概率是否暴跌
-    
+def _filter_valid_samples(pred_samples, klines, today_ts):
+    """过滤预测样本: 剔除K线不足/位置不足/低成交量的币种
+    返回 (valid_samples, valid_indices) — 与train_and_predict过滤逻辑完全一致
+    确保Perm Test与交易决策使用同一份样本集, Best结果一致
+    """
+    valid_samples = []
+    valid_indices = []
+    for idx, (sym, feat, ll, ls, ret) in enumerate(pred_samples):
+        kls = klines.get(sym, [])
+        if len(kls) < 30:
+            continue
+        k_idx = next((i for i, k in enumerate(kls)
+                     if (k['t'] if isinstance(k, dict) else int(k[0])) >= today_ts * 1000), len(kls))
+        if k_idx < 5:
+            continue
+        recent_vol = np.mean([k['q'] for k in kls[k_idx-5:k_idx]])
+        if recent_vol < MIN_VOLUME_24H:
+            continue
+        valid_samples.append((sym, feat, ll, ls, ret))
+        valid_indices.append(idx)
+    return valid_samples, valid_indices
+
+
+def _run_permutation_test(X_train, y_long, y_short, model_long, model_short, by_day, today_ts, bounds, klines):
+    """Permutation Test: 打乱标签看概率是否暴跌 (多空双测, 按边返回)
+
     Returns:
-        bool: True = 信号真实，允许交易; False = 过拟合，阻止交易
+        (long_ok, short_ok): 各边是否通过，任一边失败调用方只禁该侧
+
+    注意: 使用与交易决策相同的过滤后样本(成交量达标)做argmax,
+    确保Perm Test Best = 交易Best, 避免日志与存档不一致
     """
     try:
         pred_samples = by_day.get(today_ts, [])
         if not pred_samples:
             log('[PERM-TEST] 今日无预测样本，跳过')
-            return True  # 无样本不阻止交易
-        
-        X_pred = np.array([s[1] for s in pred_samples])
-        X_pred = dp._apply_winsor(X_pred, bounds)
-        
-        # 正常概率
-        probs_normal = model_long.predict_proba(X_pred)[:, 1]
-        best_idx = int(np.argmax(probs_normal))
-        best_sym = pred_samples[best_idx][0]
-        best_prob = probs_normal[best_idx]
-        
-        log(f'[PERM-TEST] 正常训练 Best: {best_sym} prob={best_prob*100:.1f}%')
-        
-        # 打乱标签
-        y_shuffled = y_long.copy()
-        np.random.seed(999)
-        np.random.shuffle(y_shuffled)
-        pos_shuf = sum(y_shuffled)
-        if pos_shuf == 0 or pos_shuf == len(y_shuffled):
-            log('[PERM-TEST] 打乱后无正/负样本，跳过')
             return True
         
-        spw_shuf = (len(y_shuffled) - pos_shuf) / pos_shuf
-        model_shuf = XGBClassifier(n_estimators=100, max_depth=5, learning_rate=0.05,
-                                   scale_pos_weight=spw_shuf, random_state=42,
-                                   eval_metric='logloss', verbosity=0, n_jobs=4)
-        model_shuf.fit(X_train, y_shuffled)
-        probs_shuf = model_shuf.predict_proba(X_pred)[:, 1]
+        X_pred = np.array([s[1] for s in pred_samples])
+        X_pred = np.nan_to_num(X_pred, nan=0.0, copy=False)
+        X_pred = dp._apply_winsor(X_pred, bounds)
+        # 与回溯端对齐: Kronos 832D + liq 19D 置零
+        if not USE_KRONOS:
+            KRONOS_START_PRED = 100
+            KRONOS_END_PRED = KRONOS_START_PRED + dp.EMBEDDING_DIM  # 932
+            X_pred[:, KRONOS_START_PRED:KRONOS_END_PRED] = 0.0
+            X_pred[:, 72:91] = 0.0   # liq 19维置零
         
-        best_prob_shuf = probs_shuf[best_idx]
-        drop = best_prob - best_prob_shuf
-        log(f'[PERM-TEST] 打乱标签 Best: {best_sym} prob={best_prob_shuf*100:.1f}%  下降={drop*100:.1f}%')
+        # 过滤样本: 与交易决策使用同一份样本集, 确保Best一致
+        valid_samples, valid_indices = _filter_valid_samples(pred_samples, klines, today_ts)
+        if not valid_indices:
+            log('[PERM-TEST] 过滤后无有效样本(成交量均不达标)，跳过')
+            return True
+
+        def _test_side(label, y_true, model_normal, random_state):
+            """测试单边 (LONG/SHORT), 返回 (passed, best_sym, prob_normal, prob_shuf, drop)
+            基于过滤后样本argmax, 与交易Best保持一致
+            """
+            probs_normal = model_normal.predict_proba(X_pred)[:, 1]
+            # 只在过滤后的样本中取argmax
+            probs_valid = probs_normal[valid_indices]
+            best_local = int(np.argmax(probs_valid))
+            best_idx = valid_indices[best_local]
+            best_sym = pred_samples[best_idx][0]
+            best_prob = probs_normal[best_idx]
+
+            y_shuf = y_true.copy()
+            np.random.seed(999)
+            np.random.shuffle(y_shuf)
+            pos_shuf = sum(y_shuf)
+            if pos_shuf == 0 or pos_shuf == len(y_shuf):
+                log(f'[PERM-TEST] {label} 打乱后无正/负样本，跳过')
+                return True, best_sym, best_prob, 0.0, 1.0
+
+            spw = (len(y_shuf) - pos_shuf) / pos_shuf
+            # Top1参数: d6-w1-L10-A10-s0.8-c0.6
+            model_shuf = XGBClassifier(n_estimators=200, max_depth=6, learning_rate=0.05,
+                                       min_child_weight=1, reg_lambda=10, reg_alpha=10,
+                                       subsample=0.8, colsample_bytree=0.6,
+                                       scale_pos_weight=spw, random_state=random_state,
+                                       eval_metric='logloss', verbosity=0, n_jobs=2,
+                                       tree_method='hist')
+            model_shuf.fit(X_train, y_shuf)
+            best_prob_shuf = model_shuf.predict_proba(X_pred)[best_idx, 1]
+            
+            drop = best_prob - best_prob_shuf
+            if drop > 0.15:
+                verdict = 'real'
+                passed = True
+            elif drop < 0.05:
+                verdict = 'overfit'
+                passed = False
+            else:
+                verdict = 'partial'
+                passed = True
+            
+            log(f'[PERM-TEST] [{label}] Best={best_sym} normal={best_prob*100:.1f}% shuf={best_prob_shuf*100:.1f}% drop={drop*100:+.1f}% → {verdict}')
+            return passed, best_sym, best_prob, best_prob_shuf, drop
         
-        # 判断 + 返回是否通过
-        if drop > 0.15:
-            log('[PERM-TEST] ✅ 信号真实，允许交易')
-            passed = True
-        elif drop < 0.05:
-            log('[PERM-TEST] 🔴 严重过拟合，阻止交易')
-            passed = False
-        else:
-            log('[PERM-TEST] ⚠️  部分过拟合，允许交易但需关注')
-            passed = True  # 灰色地带允许交易，但记录警告
+        passed_long, sym_l, prob_l, prob_ls, drop_l = _test_side('LONG', y_long, model_long, 42)
+        passed_short, sym_s, prob_s, prob_ss, drop_s = _test_side('SHORT', y_short, model_short, 43)
+        
+        overall = passed_long and passed_short
         
         # 保存到文件
         result = {
             'date': datetime.now(timezone.utc).strftime('%Y-%m-%d'),
-            'best_sym': best_sym,
-            'prob_normal': float(best_prob),
-            'prob_shuffled': float(best_prob_shuf),
-            'drop': float(drop),
-            'passed': passed,
-            'verdict': 'real' if drop > 0.15 else ('overfit' if drop < 0.05 else 'partial')
+            'long': {'sym': sym_l, 'normal': float(prob_l), 'shuffled': float(prob_ls), 'drop': float(drop_l), 'passed': passed_long},
+            'short': {'sym': sym_s, 'normal': float(prob_s), 'shuffled': float(prob_ss), 'drop': float(drop_s), 'passed': passed_short},
+            'passed': overall
         }
         perm_file = os.path.join(DATA_DIR, 'permutation_test_log.json')
         perm_history = []
@@ -1402,12 +1691,67 @@ def _run_permutation_test(X_train, y_long, model_long, by_day, today_ts, bounds)
             json.dump(perm_history, f, indent=2)
         os.rename(perm_file + '.tmp', perm_file)
         
-        return passed
+        if not overall:
+            failed_sides = []
+            if not passed_long: failed_sides.append('LONG')
+            if not passed_short: failed_sides.append('SHORT')
+            sides = '+'.join(failed_sides)
+            log(f'[PERM-TEST] {sides} 过拟合 (对侧不受影响)')
+        else:
+            log('[PERM-TEST] 多空信号真实，允许交易')
+        
+        return passed_long, passed_short
         
     except Exception as e:
         log(f'[PERM-TEST] 测试失败: {e}')
-        return True  # 测试失败不阻止交易，避免误杀
+        import traceback
+        log(traceback.format_exc())
+        return True, True  # 测试失败不阻止交易，避免误杀
 
+
+CRASH_FILE = '/tmp/auto_dual_trade_crash.json'
+CRASH_LOG = '/tmp/auto_dual_trade_crash.log'
+SUCCESS_FILE = '/tmp/auto_dual_trade_success.json'
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+        # 记录成功运行时间 + 清除旧的crash标记
+        try:
+            with open(SUCCESS_FILE, 'w') as f:
+                json.dump({
+                    'last_success': datetime.now(timezone.utc).isoformat(),
+                    'status': 'ok'
+                }, f, indent=2)
+            # 清除残留crash文件, 避免guardian误报
+            with open(CRASH_FILE, 'w') as f:
+                json.dump({'crashed': False, 'timestamp': datetime.now(timezone.utc).isoformat()}, f)
+        except Exception:
+            pass
+    except Exception as e:
+        ts = datetime.now(timezone.utc).isoformat()
+        tb = traceback.format_exc()
+        # 结构化 crash 文件 (供 guardian / 监控读取)
+        try:
+            with open(CRASH_FILE, 'w') as f:
+                json.dump({
+                    'crashed': True,
+                    'timestamp': ts,
+                    'error_type': type(e).__name__,
+                    'error_msg': str(e),
+                    'traceback': tb,
+                }, f, indent=2, ensure_ascii=False)
+        except Exception:
+            pass
+        # 人类可读 crash 日志
+        try:
+            with open(CRASH_LOG, 'a') as f:
+                f.write(f'[{ts}] CRASH: {type(e).__name__}: {e}\n')
+                f.write(tb)
+                f.write('\n' + '=' * 60 + '\n')
+        except Exception:
+            pass
+        # 也打印到 stderr，让 cron 邮件/日志能捕获
+        print(f'[CRASH] {type(e).__name__}: {e}', file=sys.stderr)
+        print(tb, file=sys.stderr)
+        sys.exit(1)
