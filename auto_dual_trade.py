@@ -1357,11 +1357,19 @@ def main():
     for rank, (sym, prob, ret) in enumerate(top10_short, 1):
         log(f'  #{rank:2d} {sym:12s} prob={prob*100:5.1f}%')
     
-    adaptive_threshold, threshold_reason = get_adaptive_threshold()
-    log(f'置信度阈值: {adaptive_threshold:.0f}% ({threshold_reason})')
+    long_thresh, short_thresh, threshold_reason = get_adaptive_thresholds()
+    log(f'多空阈值: LONG={long_thresh:.0f}% SHORT={short_thresh:.0f} ({threshold_reason})')
 
-    if max_prob < adaptive_threshold:
-        log(f'置信度不足: {max_prob:.1f}% < {adaptive_threshold:.0f}%，空仓')
+    # 根据最高概率方向选对应阈值
+    if long_prob >= short_prob:
+        active_threshold = long_thresh
+        active_label = 'LONG'
+    else:
+        active_threshold = short_thresh
+        active_label = 'SHORT'
+
+    if max_prob < active_threshold:
+        log(f'置信度不足: {max_prob:.1f}% < {active_threshold:.0f}% ({active_label}), 空仓')
         save_state(state)
         return
     
@@ -1723,11 +1731,12 @@ CRASH_LOG = '/tmp/auto_dual_trade_crash.log'
 SUCCESS_FILE = '/tmp/auto_dual_trade_success.json'
 
 
-def get_adaptive_threshold(base_threshold=None):
-    """根据最近验证准确率动态调整置信度阈值
+def get_adaptive_thresholds(base_threshold=None):
+    """根据最近验证准确率分别调整多空置信度阈值
 
-    返回 (threshold, reason):
-      - 连续3天0%命中 → 100% (空仓)
+    返回 (long_threshold, short_threshold, reason)
+    从 prediction_tracker.json 的 details 里分别计算多空命中率, 各自独立调阈:
+      - 连续3天0%命中 → 100% (禁止该方向)
       - 7天平均命中率<15% → 70% (保守)
       - 7天平均命中率>=35% → 55% (激进)
       - 其他 → 默认阈值
@@ -1737,35 +1746,59 @@ def get_adaptive_threshold(base_threshold=None):
 
     track_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'prediction_tracker.json')
     if not os.path.exists(track_file):
-        return base_threshold, '无验证数据, 用默认阈值'
+        return base_threshold, base_threshold, '无验证数据, 用默认阈值'
 
     try:
         with open(track_file) as f:
             tracker = json.load(f)
     except Exception:
-        return base_threshold, '验证数据读取失败, 用默认阈值'
+        return base_threshold, base_threshold, '验证数据读取失败, 用默认阈值'
 
     if not tracker or len(tracker) < 3:
-        return base_threshold, f'验证数据不足({len(tracker)}条), 用默认阈值'
+        return base_threshold, base_threshold, f'验证数据不足({len(tracker)}条), 用默认阈值'
 
     recent = sorted(tracker, key=lambda t: t.get('date', ''))[-7:]
-    avg_7d = sum(t.get('hit_rate', 0) for t in recent) / len(recent)
 
-    consecutive_zero = 0
-    for t in reversed(recent):
-        if t.get('hit_rate', 0) == 0:
-            consecutive_zero += 1
+    def calc_side(direction):
+        """计算某方向的7天命中率和连续0%天数"""
+        rates = []
+        for t in recent:
+            details = t.get('details', [])
+            total = sum(1 for d in details if d.get('direction') == direction)
+            hits = sum(1 for d in details if d.get('direction') == direction and d.get('hit'))
+            if total > 0:
+                rates.append(hits / total * 100)
+        if not rates:
+            return 0, 0  # 无数据
+
+        avg = sum(rates) / len(rates)
+
+        consecutive_zero = 0
+        for r in reversed(rates):
+            if r == 0:
+                consecutive_zero += 1
+            else:
+                break
+        return avg, consecutive_zero
+
+    avg_long, consec_long_zero = calc_side('LONG')
+    avg_short, consec_short_zero = calc_side('SHORT')
+
+    def adjust(avg, consec_zero, label):
+        if consec_zero >= 3:
+            return 100.0, f'{label}连续{consec_zero}天0%命中, 禁止{label}'
+        elif avg < 15:
+            return 70.0, f'{label}命中率{avg:.0f}%<15%, 提高'
+        elif avg >= 35:
+            return 55.0, f'{label}命中率{avg:.0f}%>=35%, 降低'
         else:
-            break
+            return base_threshold, f'{label}命中率{avg:.0f}%, 正常'
 
-    if consecutive_zero >= 3:
-        return 100.0, f'连续{consecutive_zero}天0%命中, 空仓观望'
-    elif avg_7d < 15:
-        return 70.0, f'7天平均命中率{avg_7d:.0f}%<15%, 提高阈值'
-    elif avg_7d >= 35:
-        return 55.0, f'7天平均命中率{avg_7d:.0f}%>=35%, 降低阈值'
-    else:
-        return base_threshold, f'7天平均命中率{avg_7d:.0f}%, 正常范围'
+    long_thresh, long_reason = adjust(avg_long, consec_long_zero, 'LONG')
+    short_thresh, short_reason = adjust(avg_short, consec_short_zero, 'SHORT')
+
+    reason = f'{long_reason}; {short_reason}'
+    return long_thresh, short_thresh, reason
 
 
 def send_daily_report():
@@ -1812,15 +1845,15 @@ def send_daily_report():
                 last = sorted(tracker, key=lambda t: t.get('date', ''))[-1]
                 recent = tracker[-7:]
                 avg_7d = sum(t.get('hit_rate', 0) for t in recent) / len(recent)
-                adj_thresh, adj_reason = get_adaptive_threshold()
+                adj_long, adj_short, adj_reason = get_adaptive_thresholds()
                 verify_summary = (
                     f"\n\n=== 2日验证 ({last['date']}) ===\n"
                     f"TOP10命中: {last.get('top10_hits',0)}/10\n"
                     f"总命中率: {last.get('hit_rate',0)}%\n"
                     f"TOP10收益: {last.get('top10_return',0):+.1f}%\n"
                     f"\n=== 准确率趋势 ===\n"
-                    f"7天平均命中率: {avg_7d:.0f}%\n"
-                    f"自适应阈值: {adj_thresh:.0f}% ({adj_reason})\n"
+                    f"自适应阈值: LONG={adj_long:.0f}% SHORT={adj_short:.0f}%\n"
+                    f"  ({adj_reason})\n"
                 )
     except Exception as e:
         log(f'验证复盘失败: {e}')
