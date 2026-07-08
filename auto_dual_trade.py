@@ -1379,6 +1379,12 @@ def main():
     if existing:
         existing_amt = float(existing.get('positionAmt', 0))
         existing_dir = 'LONG' if existing_amt > 0 else 'SHORT'
+        # orphan仓位: 用户手动管理, 不平仓, 放弃当天交易
+        existing_key = f"{symbol}_{existing_dir}"
+        if state.get('positions', {}).get(existing_key, {}).get('source') == 'orphan':
+            log(f'[ORPHAN] {symbol} 为孤儿仓位(用户手动管理), 跳过平仓, 放弃今日交易')
+            save_state(state)
+            return
         if existing_dir == direction:
             log(f'{symbol} 已有同向{existing_dir}持仓, 跳过今日')
             save_state(state)
@@ -1713,6 +1719,46 @@ CRASH_FILE = '/tmp/auto_dual_trade_crash.json'
 CRASH_LOG = '/tmp/auto_dual_trade_crash.log'
 SUCCESS_FILE = '/tmp/auto_dual_trade_success.json'
 
+
+def send_daily_report():
+    """每日训练预测完成后发送日报邮件"""
+    try:
+        from alert_monitor import send_email
+    except Exception:
+        return
+
+    today_str = datetime.now().strftime('%Y-%m-%d')
+    log_file = os.path.join(DATA_DIR, 'trade.log')
+    try:
+        with open(log_file, 'r') as f:
+            today_lines = [l.strip() for l in f if today_str in l]
+    except Exception:
+        return
+
+    if not today_lines:
+        return
+
+    keywords = ['钱包', 'ORPHAN', '当前', '训练:', 'PERM-TEST', '做多概率', '做空概率',
+                'prob=', '置信度', '空仓', '开仓:', '跳过交易', '本金不足', '多空信号',
+                '预测日期', '样本:', '板块热度', '特征维度', '极端值']
+    key_lines = []
+    for line in today_lines:
+        clean = line.split('] ', 1)[-1] if '] ' in line else line
+        if any(kw in clean for kw in keywords):
+            key_lines.append(clean)
+
+    if not key_lines:
+        key_lines = [l.split('] ', 1)[-1] if '] ' in l else l for l in today_lines[-30:]]
+
+    body = f'=== {today_str} 每日预测日报 ===\n\n' + '\n'.join(key_lines)
+
+    try:
+        send_email(f'每日预测日报 {today_str}', body, priority='info')
+        log('日报邮件已发送')
+    except Exception as e:
+        log(f'日报邮件发送失败: {e}')
+
+
 if __name__ == '__main__':
     try:
         main()
@@ -1728,6 +1774,8 @@ if __name__ == '__main__':
                 json.dump({'crashed': False, 'timestamp': datetime.now(timezone.utc).isoformat()}, f)
         except Exception:
             pass
+        # 发送每日预测日报
+        send_daily_report()
     except Exception as e:
         ts = datetime.now(timezone.utc).isoformat()
         tb = traceback.format_exc()
