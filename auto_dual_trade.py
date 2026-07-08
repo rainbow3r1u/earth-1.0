@@ -1358,32 +1358,28 @@ def main():
         log(f'  #{rank:2d} {sym:12s} prob={prob*100:5.1f}%')
     
     long_thresh, short_thresh, threshold_reason = get_adaptive_thresholds()
-    log(f'多空阈值: LONG={long_thresh:.0f}% SHORT={short_thresh:.0f} ({threshold_reason})')
+    log(f'多空阈值: LONG={long_thresh:.0f}% SHORT={short_thresh:.0f}% ({threshold_reason})')
 
-    # 根据最高概率方向选对应阈值
+    # 概率高的优先, 被阈值挡了则尝试另一个方向, 都不行则空仓
     if long_prob >= short_prob:
-        active_threshold = long_thresh
-        active_label = 'LONG'
+        candidates = [('LONG', long_prob, long_thresh, best_long), ('SHORT', short_prob, short_thresh, best_short)]
     else:
-        active_threshold = short_thresh
-        active_label = 'SHORT'
+        candidates = [('SHORT', short_prob, short_thresh, best_short), ('LONG', long_prob, long_thresh, best_long)]
 
-    if max_prob < active_threshold:
-        log(f'置信度不足: {max_prob:.1f}% < {active_threshold:.0f}% ({active_label}), 空仓')
+    direction = symbol = side = prob = None
+    for d, p, thresh, best in candidates:
+        if best is not None and p >= thresh:
+            direction = d
+            symbol = best[0]
+            side = 'BUY' if d == 'LONG' else 'SELL'
+            prob = p
+            log(f'{d}信号: {symbol} {p:.1f}% >= {thresh:.0f}%')
+            break
+
+    if direction is None:
+        log(f'置信度不足: LONG {long_prob:.1f}%<{long_thresh:.0f}% SHORT {short_prob:.1f}%<{short_thresh:.0f}%, 空仓')
         save_state(state)
         return
-    
-    # 10. 确定方向并开仓
-    if best_long is not None and (best_short is None or long_prob >= short_prob):
-        direction = 'LONG'
-        symbol = best_long[0]
-        side = 'BUY'
-        prob = long_prob
-    else:
-        direction = 'SHORT'
-        symbol = best_short[0]
-        side = 'SELL'
-        prob = short_prob
     
     # 检查同币种已有持仓方向
     existing = next((p for p in active if p['symbol'] == symbol), None)
