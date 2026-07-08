@@ -1750,7 +1750,30 @@ def send_daily_report():
     if not key_lines:
         key_lines = [l.split('] ', 1)[-1] if '] ' in l else l for l in today_lines[-30:]]
 
-    body = f'=== {today_str} 每日预测日报 ===\n\n' + '\n'.join(key_lines)
+    # 验证2天前预测 + 复盘
+    verify_summary = ''
+    try:
+        # 修正 daily_predictor 的 LOG_DIR 指向实际 pred 文件目录
+        dp.LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+        dp.TRACK_FILE = os.path.join(dp.LOG_DIR, 'prediction_tracker.json')
+        dp.verify_yesterday()
+        if os.path.exists(dp.TRACK_FILE):
+            with open(dp.TRACK_FILE) as f:
+                tracker = json.load(f)
+            if tracker:
+                last = tracker[-1]
+                verify_summary = (
+                    f"\n\n=== 2日验证 ({last['date']}) ===\n"
+                    f"TOP10命中: {last.get('top10_hits',0)}/10\n"
+                    f"TOP20命中: {last.get('top20_hits',0)}/20\n"
+                    f"总命中率: {last.get('hit_rate',0)}%\n"
+                    f"TOP10收益: {last.get('top10_return',0):+.1f}%\n"
+                    f"总收益: {last.get('total_return',0):+.1f}%\n"
+                )
+    except Exception as e:
+        log(f'验证复盘失败: {e}')
+
+    body = f'=== {today_str} 每日预测日报 ===\n\n' + '\n'.join(key_lines) + verify_summary
 
     try:
         send_email(f'每日预测日报 {today_str}', body, priority='info')

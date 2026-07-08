@@ -8,10 +8,138 @@ from xgboost import XGBClassifier
 from kronos_features import extract_kronos_features
 from utils.feature_builder import assemble_feature_vec
 
+# Kronos开关: False=禁用(特征置零, 跳过预计算, 与回溯端KRONOS_MODE=off对齐)
+USE_KRONOS = False
+
 KRONOS_CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data/kronos_features_cache.json")
 KRONOS_EMBEDDING_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data/kronos_embeddings.json")
 _kronos_embedding_data = None
 EMBEDDING_DIM = 832
+
+# ===== Kronos Factor Engine 常量 =====
+KRONOS_N_CHUNKS = 16
+KRONOS_CHUNK_SIZE = 52       # 16 * 52 = 832
+KRONOS_TOP_K = 10            # 选 top 10 chunk → 10 * 4 = 40 维因子
+KRONOS_MIN_IC = 0.02
+KRONOS_ROLLING_IC_WINDOW = 60
+KRONOS_FACTOR_DIM = KRONOS_TOP_K * 4  # 40 维
+KRONOS_ENGINE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data/kronos_factor_engine.pkl")
+_kronos_engine = None
+
+
+class KronosFactorEngine:
+    """把 832 维 Kronos embedding 转换为可交易的低维因子向量。
+
+    修正点（相对 v1）：
+      1. 每个 chunk 提取 4 个 micro-features: mean, std, last, momentum
+      2. IC 计算改成 rolling IC（窗口 60 天），不是单点 corr
+      3. stability = mean(|rolling_ic|) / std(rolling_ic)
+      4. 在固定 discovery 训练集上 fit 一次，冻结 selected_indices，回测期只 transform
+    """
+
+    MICRO_FEATURE_NAMES = ['mean', 'std', 'last', 'momentum']
+    N_MICRO = len(MICRO_FEATURE_NAMES)
+
+    def __init__(self, n_chunks=KRONOS_N_CHUNKS, top_k=KRONOS_TOP_K,
+                 min_ic=KRONOS_MIN_IC, rolling_window=KRONOS_ROLLING_IC_WINDOW):
+        self.n_chunks = n_chunks
+        self.top_k = min(top_k, n_chunks)
+        self.min_ic = min_ic
+        self.rolling_window = rolling_window
+        self.selected_indices_ = None
+        self.selected_micro_ = None
+        self.scores_ = None
+
+    @staticmethod
+    def _extract_micro_features(chunk):
+        """从单个 chunk (N, 52) 提取 4 个 micro-features: (N, 4)"""
+        N, C = chunk.shape
+        mean_f = chunk.mean(axis=1)
+        std_f = chunk.std(axis=1)
+        last_f = chunk[:, -1]
+        diff = np.diff(chunk, axis=1)
+        momentum_f = diff.mean(axis=1)
+        return np.stack([mean_f, std_f, last_f, momentum_f], axis=1)
+
+    @staticmethod
+    def _rolling_ic(feature, returns, window):
+        """计算 rolling window 的 IC 序列。"""
+        n = len(feature)
+        if n < window + 2:
+            return np.array([])
+        ics = []
+        for end in range(window, n + 1):
+            start = end - window
+            sub_f = feature[start:end]
+            sub_r = returns[start:end]
+            if np.std(sub_f) > 1e-12 and np.std(sub_r) > 1e-12:
+                ics.append(np.corrcoef(sub_f, sub_r)[0, 1])
+        return np.array(ics)
+
+    def fit(self, kronos_832, returns):
+        """在 discovery 训练集上 fit 一次，冻结选中 chunk。"""
+        N, D = kronos_832.shape
+        if D != self.n_chunks * KRONOS_CHUNK_SIZE:
+            raise ValueError(f"Kronos dim {D} not match {self.n_chunks}*{KRONOS_CHUNK_SIZE}")
+
+        micro_features = np.zeros((N, self.n_chunks, self.N_MICRO))
+        for i in range(self.n_chunks):
+            chunk = kronos_832[:, i * KRONOS_CHUNK_SIZE:(i + 1) * KRONOS_CHUNK_SIZE]
+            micro_features[:, i, :] = self._extract_micro_features(chunk)
+
+        chunk_scores = np.zeros(self.n_chunks)
+        chunk_best_micro = np.zeros(self.n_chunks, dtype=int)
+
+        for i in range(self.n_chunks):
+            best_score = -1.0
+            best_micro = 0
+            for m in range(self.N_MICRO):
+                feat = micro_features[:, i, m]
+                rolling_ics = self._rolling_ic(feat, returns, self.rolling_window)
+                if len(rolling_ics) < 3:
+                    continue
+                ic_mean = np.mean(rolling_ics)
+                ic_abs_mean = np.mean(np.abs(rolling_ics))
+                ic_std = np.std(rolling_ics) + 1e-6
+                stability = ic_abs_mean / ic_std
+                score = abs(ic_mean) * stability
+                if abs(ic_mean) < self.min_ic:
+                    score = 0.0
+                if score > best_score:
+                    best_score = score
+                    best_micro = m
+            chunk_scores[i] = best_score
+            chunk_best_micro[i] = best_micro
+
+        self.scores_ = chunk_scores
+        top_k = min(self.top_k, self.n_chunks)
+        self.selected_indices_ = np.argsort(chunk_scores)[-top_k:]
+        self.selected_micro_ = chunk_best_micro[self.selected_indices_]
+        return self
+
+    def transform(self, kronos_832):
+        """用冻结的 selected_indices_ 把 832 维 Kronos 转成 (N, top_k * 4) 因子矩阵。"""
+        if self.selected_indices_ is None:
+            raise RuntimeError("Engine not fitted yet")
+        N, D = kronos_832.shape
+        if D != self.n_chunks * KRONOS_CHUNK_SIZE:
+            raise ValueError(f"Kronos dim {D} not match expected")
+
+        out = []
+        for idx in self.selected_indices_:
+            chunk = kronos_832[:, idx * KRONOS_CHUNK_SIZE:(idx + 1) * KRONOS_CHUNK_SIZE]
+            micro = self._extract_micro_features(chunk)
+            out.append(micro)
+        return np.concatenate(out, axis=1)
+
+    def summary(self):
+        if self.selected_indices_ is None:
+            return "Engine not fitted"
+        lines = ["KronosFactorEngine summary (frozen on discovery set):"]
+        for i, idx in enumerate(self.selected_indices_):
+            micro_name = self.MICRO_FEATURE_NAMES[self.selected_micro_[i]]
+            lines.append(f"  chunk={idx:2d}  best_micro={micro_name:8s}  score={self.scores_[idx]:+.4f}")
+        return "\n".join(lines)
 
 CACHE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data/daily_predictions.json")
 MODEL_DIR = os.path.join(os.path.expanduser('~/.local/share/auto_trade'), 'models')
@@ -87,7 +215,7 @@ def _get_sector_features(sym, ts, sector_map, sector_heats):
 def _load_etf_features():
     """ETF净流入: {date_str: [btc_flow_m, eth_flow_m]}"""
     try:
-        with open('/home/myuser/openclaw-5001-host/config/.openclaw/workspace/etf_data/etf_flow.json') as f:
+        with open('/home/myuser/websocket_new/data/etf_data/etf_flow.json') as f:
             data = json.load(f)
         result = {}
         for d in data.get('btc', []):
@@ -386,10 +514,9 @@ def _load_btc_dominance_proxy():
         result = {}
         for date_str, v in data.items():
             ts = int(datetime.strptime(date_str, '%Y-%m-%d').replace(tzinfo=timezone.utc).timestamp())
-            btc_dom = v.get('btc_dominance_est', 0)
-            btc_mcap = v.get('btc_mcap', 0)
-            # proxy: dominance scaled down (representing alt activity level)
-            result[ts] = [round(float(btc_dom) / 10000, 6) if btc_dom else 0]
+            dom = v.get('btc_dominance', 0)
+            # btc_dominance 是百分比 (如56.27→56.27%), 转为小数
+            result[ts] = [round(float(dom) / 100, 6) if dom else 0]
         return result
     except Exception:
         pass
@@ -469,6 +596,9 @@ _sector_map_cache = {}
 def _precompute_kronos_features(timestamps):
     """批量计算 Kronos 特征 — 优先用预计算embedding, 回退到推理"""
     global _kr_features, EMBEDDING_DIM
+    if not USE_KRONOS:
+        # Kronos禁用: 跳过预计算, 特征位置将在训练/预测时置零
+        return
     if not timestamps:
         return
     # 去重并排序
@@ -555,7 +685,9 @@ _winsor_bounds_backtest = None  # 回测内复用，避免逐窗口漂移
 
 def _fast_winsor_bounds(X):
     """np.partition (QuickSelect O(n)) 替代 np.percentile (全排序 O(n log n)) — 15-20x 加速
-    原地修改 X 的列顺序，后续 winsor 结果不变 (裁剪与顺序无关)"""
+    原地修改 X 的列顺序，后续 winsor 结果不变 (裁剪与顺序无关)
+    FIX: 稀疏列(>99%为零)的1%/99%分位都在零值区间, 导致[0,0]截尾抹掉真实信号
+    → 回退到列min/max作为截尾边界 (partition不保证极值在端点, 需用min/max)"""
     n, m = X.shape
     k1 = max(0, int(n * 0.01))
     k99 = min(n - 1, int(n * 0.99))
@@ -563,7 +695,15 @@ def _fast_winsor_bounds(X):
     for j in range(m):
         col = X[:, j]
         col.partition([k1, k99])
-        bounds.append((float(col[k1]), float(col[k99])))
+        lo = float(col[k1])
+        hi = float(col[k99])
+        if lo == 0.0 and hi == 0.0:
+            # 稀疏列: 分位边界为零, 检查是否存在非零信号
+            col_min = float(col.min())
+            col_max = float(col.max())
+            if col_min < 0.0 or col_max > 0.0:
+                lo, hi = col_min, col_max
+        bounds.append((lo, hi))
     return bounds
 
 def _compute_winsor_bounds(X):
@@ -769,6 +909,28 @@ def fetch_oi(syms, limit=500):
                 s, d = f.result()
                 if d: oi_data[s] = d
     
+    # FIX: 保存API获取的最新OI到本地缓存, 避免下次仍需API补全
+    try:
+        merged_cache = dict(local_cache)
+        updated_count = 0
+        for sym, d in oi_data.items():
+            if d:
+                if sym not in merged_cache:
+                    merged_cache[sym] = {}
+                for ts, val in d.items():
+                    ts_str = str(ts)
+                    if merged_cache[sym].get(ts_str) != val:
+                        merged_cache[sym][ts_str] = val
+                        updated_count += 1
+        if updated_count > 0:
+            tmp_path = cache_path + '.tmp'
+            with open(tmp_path, 'w') as f:
+                json.dump(merged_cache, f)
+            os.rename(tmp_path, cache_path)
+            print(f"OI缓存已保存: {updated_count}条更新 → {os.path.basename(cache_path)}")
+    except Exception as e:
+        print(f"OI缓存保存失败: {e}")
+    
     print(f"OI: 缓存{len(oi_data)-len(need_api)}币种 + API补{len(need_api)}币种")
     return oi_data
 
@@ -920,9 +1082,9 @@ def _compute_vol_clustering(closes, i):
     regime = round(float(np.std(rets[-5:])) / max(vol_median, 0.0001), 4)
     # momentum: vol变化方向
     momentum = round((float(np.std(rets[-5:])) - vols_5d[0]) / max(vols_5d[0], 0.0001), 4)
-    # persist: 连续高于中位数的比例
-    above = sum(1 for v in vols_5d if v > vol_median)
-    persist = round(above / len(vols_5d), 4)
+    # persist: 最近5期高于历史中位数的比例（修复：用全部窗口算中位数，用最近5期做比较）
+    above = sum(1 for v in vols_5d[-5:] if v > vol_median)
+    persist = round(above / 5, 4)
     return [regime, momentum, persist]
 
 def _regression_features(btc_rets, coin_rets, end_idx, window=20):
@@ -1201,27 +1363,49 @@ def train(klines_all, oi_data):
     print(f"训练样本: {len(y)} 涨>5%: {pos} ({pos/len(y)*100:.1f}%) 特征维度: {X.shape[1]}")
     if pos < 10: return None
 
+    # 与回溯端对齐: Kronos 832D + liq 19D 置零 (KRONOS_MODE=off)
+    if not USE_KRONOS:
+        X[:, 100:932] = 0.0
+        X[:, 72:91] = 0.0
+        print("Kronos 832D + liq 19D 已置零 (non-Kronos: 85D + 19D liq置零)")
+
     # winsor截尾 — 算P1/P99并保存，供预测/回测复用
     global _winsor_bounds
     _winsor_bounds = _compute_winsor_bounds(X)
     X = _apply_winsor(X, _winsor_bounds)
     print(f"winsor截尾: 已保存 {len(_winsor_bounds)} 维bounds到 {WINSOR_BOUNDS_FILE}")
 
-    model = XGBClassifier(n_estimators=200, max_depth=5, learning_rate=0.05,
+    # Top1参数 (90d Sharpe=7.98, 180d Sharpe=6.00): d6-w1-L10-A10-s0.8-c0.6
+    model = XGBClassifier(n_estimators=200, max_depth=6, learning_rate=0.05,
+                          min_child_weight=1, reg_lambda=10, reg_alpha=10,
+                          subsample=0.8, colsample_bytree=0.6,
                           scale_pos_weight=(len(y)-pos)/pos if pos>0 else 1,
-                          random_state=42, eval_metric='logloss')
+                          random_state=42, eval_metric='logloss',
+                          tree_method='hist', verbosity=0)
     model.fit(X, y)
     with open(MODEL_FILE, 'wb') as f: pickle.dump(model, f)
 
     # 打印特征重要性
     feat_names = ['ret_1d_norm','ret_3d_norm','ret_5d_norm','volatility','vol_ratio','price_position','amplitude','streak','div_sign','oi_chg',
                   'vol_regime','vol_momentum','vol_persist',
-                  'beta','alpha','r2','residual','rsi7','rsi14','rsi30','rsi_div_top','rsi_div_bottom','rsi_overbought_persist','rsi_price_corr_20d'] + SECTOR_ORDER + ['etf_btc','etf_eth','chain_vol','chain_tx','chain_fee','chain_cdd','sent_funding','sent_ls_btc','sent_ls_eth','sent_ls_avg10','sent_ls_high','sent_ls_low','fear_greed','stablecoin','coinbase_prem','coinbase_gap','btc_mcap','korea_prem','hashrate_7d_chg','liq_total_long','liq_total_short','liq_ratio','liq_long_peak_dist','liq_short_peak_dist','liq_funding','liq_long_ratio','chain_tvl_btc','chain_tvl_eth','chain_tvl_sol','chain_tvl_bsc','chain_tvl_arb','chain_tvl_base'] + [f'kronos_emb_{i}' for i in range(EMBEDDING_DIM)] + ['sp500_1d','dxy_1d','gold_1d','alt_btc_spread']
+                  'beta','alpha','r2','residual','rsi7','rsi14','rsi30','rsi_div_top','rsi_div_bottom','rsi_overbought_persist','rsi_price_corr_20d'] + SECTOR_ORDER + ['etf_btc','etf_eth','chain_vol','chain_tx','chain_fee','chain_cdd','sent_funding','sent_ls_btc','sent_ls_eth','sent_ls_avg10','sent_ls_high','sent_ls_low','fear_greed','stablecoin','coinbase_prem','coinbase_gap','btc_mcap','korea_prem','hashrate_7d_chg',
+                  # 清算特征 26维
+                  'liq_q0_long_mean','liq_q0_long_std','liq_q0_short_mean','liq_q0_short_std',
+                  'liq_q1_long_mean','liq_q1_long_std','liq_q1_short_mean','liq_q1_short_std',
+                  'liq_q2_long_mean','liq_q2_long_std','liq_q2_short_mean','liq_q2_short_std',
+                  'liq_q3_long_mean','liq_q3_long_std','liq_q3_short_mean','liq_q3_short_std',
+                  'liq_q4_long_mean','liq_q4_long_std','liq_q4_short_mean','liq_q4_short_std',
+                  'liq_ratio_mean','liq_ratio_std','liq_long_peak_dist_mean','liq_long_peak_dist_std',
+                  'liq_short_peak_dist_mean','liq_short_peak_dist_std',
+                  # TVL 9维
+                  'chain_tvl_btc','chain_tvl_eth','chain_tvl_sol','chain_tvl_bsc','chain_tvl_arb',
+                  'chain_tvl_base','chain_tvl_ton','chain_tvl_sui','chain_tvl_polygon'] + [f'kronos_emb_{i}' for i in range(EMBEDDING_DIM)] + ['sp500_1d','dxy_1d','gold_1d','alt_btc_spread']
     importances = model.feature_importances_
     top_idx = np.argsort(importances)[-15:][::-1]
     print("特征重要性 TOP15:")
     for idx in top_idx:
-        print(f"  {feat_names[idx]:20s} {importances[idx]:.4f}")
+        name = feat_names[idx] if idx < len(feat_names) else f'unnamed_feat_{idx}'
+        print(f"  {name:20s} {importances[idx]:.4f}")
 
     return model
 
@@ -1239,6 +1423,10 @@ def predict(klines_all, oi_data, model):
         results.sort(key=lambda x:-x['prob'])
         return results[:30]
 
+    # 与回溯端对齐: Kronos 832D + liq 19D 置零
+    if not USE_KRONOS:
+        X[:, 100:932] = 0.0
+        X[:, 72:91] = 0.0
     probs = model.predict_proba(X)[:, 1]
     results = []
     for i in range(len(syms)):
@@ -1382,14 +1570,27 @@ def verify_yesterday(klines_all=None):
     with open(pred_file) as f:
         pred = json.load(f)
 
-    print(f"[验证] {date_part}预测 → 2日后结算, 共{len(pred['predictions'])}个币种")
+    # 读取预测 (兼容新旧格式)
+    if 'predictions' in pred:
+        predictions = pred['predictions']
+    else:
+        predictions = []
+        for p in pred.get('top10_long', []):
+            prob_val = float(p['prob']) if isinstance(p.get('prob'), str) else p.get('prob', 0)
+            predictions.append({'symbol': p['symbol'], 'prob': prob_val, 'direction': 'LONG'})
+        for p in pred.get('top10_short', []):
+            prob_val = float(p['prob']) if isinstance(p.get('prob'), str) else p.get('prob', 0)
+            predictions.append({'symbol': p['symbol'], 'prob': prob_val, 'direction': 'SHORT'})
+
+    print(f"[验证] {date_part}预测 → 2日后结算, 共{len(predictions)}个币种")
     # 预测日的时间戳
     pred_ts = int(_dt.datetime.strptime(date_part, '%Y-%m-%d')
                   .replace(tzinfo=timezone.utc).timestamp() * 1000)
 
     results = []
-    for p in pred.get('predictions', [])[:50]:
+    for p in predictions[:50]:
         sym = p['symbol']
+        direction = p.get('direction', 'LONG')
         try:
             resp = requests.get('https://fapi.binance.com/fapi/v1/klines',
                 params={'symbol': sym, 'interval': '1d', 'limit': 5}, timeout=10)
@@ -1412,10 +1613,15 @@ def verify_yesterday(klines_all=None):
                 continue
 
             actual_ret = (exit_close - entry_close) / entry_close * 100
-            hit = actual_ret > 5
+            if direction == 'LONG':
+                hit = actual_ret > 5
+                pnl = actual_ret
+            else:
+                hit = actual_ret < -5
+                pnl = -actual_ret
             results.append({
-                'symbol': sym, 'prob': p['prob'],
-                'actual_ret': round(actual_ret, 2), 'hit': hit,
+                'symbol': sym, 'prob': p['prob'], 'direction': direction,
+                'actual_ret': round(actual_ret, 2), 'pnl': round(pnl, 2), 'hit': hit,
             })
         except Exception:
             continue
@@ -1425,10 +1631,10 @@ def verify_yesterday(klines_all=None):
     top20_hits = sum(1 for r in results[:20] if r['hit'])
     top10_hits = sum(1 for r in results[:10] if r['hit'])
 
-    all_rets = [r['actual_ret'] for r in results]
-    top10_ret = round(sum(r['actual_ret'] for r in results[:10]), 2)
-    top20_ret = round(sum(r['actual_ret'] for r in results[:20]), 2)
-    total_ret = round(sum(all_rets), 2)
+    all_pnls = [r['pnl'] for r in results]
+    top10_ret = round(sum(r['pnl'] for r in results[:10]), 2)
+    top20_ret = round(sum(r['pnl'] for r in results[:20]), 2)
+    total_ret = round(sum(all_pnls), 2)
 
     track = {
         'date': date_part, 'total': len(results),
@@ -1461,6 +1667,7 @@ def verify_yesterday(klines_all=None):
             SecretId=os.environ.get('COS_SECRET_ID', ''),
             SecretKey=os.environ.get('COS_SECRET_KEY', ''),
             Endpoint=os.environ.get('COS_ENDPOINT', ''),
+            Timeout=30
         )
         cos = CosS3Client(config)
         bucket = os.environ.get('COS_BUCKET', '')
@@ -1691,16 +1898,22 @@ def backtest(stride=5):
         if pos < 5:
             continue
 
-        # 训练
-        model = XGBClassifier(n_estimators=200, max_depth=5, learning_rate=0.05,
+        # 训练 (Top1参数: d6-w1-L10-A10-s0.8-c0.6)
+        model = XGBClassifier(n_estimators=200, max_depth=6, learning_rate=0.05,
+                              min_child_weight=1, reg_lambda=10, reg_alpha=10,
+                              subsample=0.8, colsample_bytree=0.6,
                               scale_pos_weight=(len(y_train)-pos)/pos,
-                              random_state=42, eval_metric='logloss', verbosity=0)
+                              random_state=42, eval_metric='logloss',
+                              tree_method='hist', verbosity=0)
         model.fit(X_train, y_train)
 
         # 预测
         pred_samples = by_day[pred_ts]
         X_pred = np.array([s[1] for s in pred_samples])
         X_pred = _apply_winsor(X_pred, bounds)
+        # 与回溯端对齐: Kronos 832D + liq 19D 置零
+        X_pred[:, 100:932] = 0.0
+        X_pred[:, 72:91] = 0.0
         probs = model.predict_proba(X_pred)[:, 1]
 
         # 取TOP10/20
@@ -1920,19 +2133,29 @@ def dual_backtest(days=90, stride=1):
         if pos_long < 5 or pos_short < 5:
             continue
 
-        model_long = XGBClassifier(n_estimators=200, max_depth=5, learning_rate=0.05,
+        # Top1参数: d6-w1-L10-A10-s0.8-c0.6
+        model_long = XGBClassifier(n_estimators=200, max_depth=6, learning_rate=0.05,
+                                   min_child_weight=1, reg_lambda=10, reg_alpha=10,
+                                   subsample=0.8, colsample_bytree=0.6,
                                    scale_pos_weight=(len(y_long)-pos_long)/pos_long,
-                                   random_state=42, eval_metric='logloss', verbosity=0)
+                                   random_state=42, eval_metric='logloss',
+                                   tree_method='hist', verbosity=0)
         model_long.fit(X_train, y_long)
 
-        model_short = XGBClassifier(n_estimators=200, max_depth=5, learning_rate=0.05,
+        model_short = XGBClassifier(n_estimators=200, max_depth=6, learning_rate=0.05,
+                                    min_child_weight=1, reg_lambda=10, reg_alpha=10,
+                                    subsample=0.8, colsample_bytree=0.6,
                                     scale_pos_weight=(len(y_short)-pos_short)/pos_short,
-                                    random_state=43, eval_metric='logloss', verbosity=0)
+                                    random_state=43, eval_metric='logloss',
+                                    tree_method='hist', verbosity=0)
         model_short.fit(X_train, y_short)
 
         pred_samples = by_day[pred_ts]
         X_pred = np.array([s[1] for s in pred_samples])
         X_pred = _apply_winsor(X_pred, bounds)
+        # 与回溯端对齐: Kronos 832D + liq 19D 置零
+        X_pred[:, 100:932] = 0.0
+        X_pred[:, 72:91] = 0.0
         probs_long = model_long.predict_proba(X_pred)[:, 1]
         probs_short = model_short.predict_proba(X_pred)[:, 1]
 
