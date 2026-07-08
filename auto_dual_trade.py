@@ -1357,8 +1357,11 @@ def main():
     for rank, (sym, prob, ret) in enumerate(top10_short, 1):
         log(f'  #{rank:2d} {sym:12s} prob={prob*100:5.1f}%')
     
-    if max_prob < PROB_THRESHOLD:
-        log(f'置信度不足: {max_prob:.1f}% < {PROB_THRESHOLD}%，空仓')
+    adaptive_threshold, threshold_reason = get_adaptive_threshold()
+    log(f'置信度阈值: {adaptive_threshold:.0f}% ({threshold_reason})')
+
+    if max_prob < adaptive_threshold:
+        log(f'置信度不足: {max_prob:.1f}% < {adaptive_threshold:.0f}%，空仓')
         save_state(state)
         return
     
@@ -1720,6 +1723,51 @@ CRASH_LOG = '/tmp/auto_dual_trade_crash.log'
 SUCCESS_FILE = '/tmp/auto_dual_trade_success.json'
 
 
+def get_adaptive_threshold(base_threshold=None):
+    """根据最近验证准确率动态调整置信度阈值
+
+    返回 (threshold, reason):
+      - 连续3天0%命中 → 100% (空仓)
+      - 7天平均命中率<15% → 70% (保守)
+      - 7天平均命中率>=35% → 55% (激进)
+      - 其他 → 默认阈值
+    """
+    if base_threshold is None:
+        base_threshold = PROB_THRESHOLD
+
+    track_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'prediction_tracker.json')
+    if not os.path.exists(track_file):
+        return base_threshold, '无验证数据, 用默认阈值'
+
+    try:
+        with open(track_file) as f:
+            tracker = json.load(f)
+    except Exception:
+        return base_threshold, '验证数据读取失败, 用默认阈值'
+
+    if not tracker or len(tracker) < 3:
+        return base_threshold, f'验证数据不足({len(tracker)}条), 用默认阈值'
+
+    recent = sorted(tracker, key=lambda t: t.get('date', ''))[-7:]
+    avg_7d = sum(t.get('hit_rate', 0) for t in recent) / len(recent)
+
+    consecutive_zero = 0
+    for t in reversed(recent):
+        if t.get('hit_rate', 0) == 0:
+            consecutive_zero += 1
+        else:
+            break
+
+    if consecutive_zero >= 3:
+        return 100.0, f'连续{consecutive_zero}天0%命中, 空仓观望'
+    elif avg_7d < 15:
+        return 70.0, f'7天平均命中率{avg_7d:.0f}%<15%, 提高阈值'
+    elif avg_7d >= 35:
+        return 55.0, f'7天平均命中率{avg_7d:.0f}%>=35%, 降低阈值'
+    else:
+        return base_threshold, f'7天平均命中率{avg_7d:.0f}%, 正常范围'
+
+
 def send_daily_report():
     """每日训练预测完成后发送日报邮件"""
     try:
@@ -1761,14 +1809,18 @@ def send_daily_report():
             with open(dp.TRACK_FILE) as f:
                 tracker = json.load(f)
             if tracker:
-                last = tracker[-1]
+                last = sorted(tracker, key=lambda t: t.get('date', ''))[-1]
+                recent = tracker[-7:]
+                avg_7d = sum(t.get('hit_rate', 0) for t in recent) / len(recent)
+                adj_thresh, adj_reason = get_adaptive_threshold()
                 verify_summary = (
                     f"\n\n=== 2日验证 ({last['date']}) ===\n"
                     f"TOP10命中: {last.get('top10_hits',0)}/10\n"
-                    f"TOP20命中: {last.get('top20_hits',0)}/20\n"
                     f"总命中率: {last.get('hit_rate',0)}%\n"
                     f"TOP10收益: {last.get('top10_return',0):+.1f}%\n"
-                    f"总收益: {last.get('total_return',0):+.1f}%\n"
+                    f"\n=== 准确率趋势 ===\n"
+                    f"7天平均命中率: {avg_7d:.0f}%\n"
+                    f"自适应阈值: {adj_thresh:.0f}% ({adj_reason})\n"
                 )
     except Exception as e:
         log(f'验证复盘失败: {e}')
