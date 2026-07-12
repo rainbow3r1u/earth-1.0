@@ -23,9 +23,11 @@ def assemble_feature_vec(
     rsi_div,
     sector_feats,
     macro_feats,
+    rsi90=50.0, vol_90d=0.02, pp_90=0.5, ret_30d=0.0, ret_60d=0.0, ret_90d=0.0,
 ):
     """按规范顺序组装特征向量。所有调用方使用此函数确保维度一致。"""
     base = [ret_1d_norm, ret_3d_norm, ret_5d_norm, volatility, vol_ratio,
             price_position, amplitude, streak, div_sign, oi_chg]
     signals = [beta, alpha, r2, residual, rsi7, rsi14, rsi30]
-    return base + list(vol_col) + signals + list(rsi_div) + list(sector_feats) + list(macro_feats)
+    long_lookback = [rsi90, vol_90d, pp_90, ret_30d, ret_60d, ret_90d]
+    return base + list(vol_col) + signals + list(rsi_div) + list(sector_feats) + list(macro_feats) + long_lookback

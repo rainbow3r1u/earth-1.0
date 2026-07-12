@@ -8,6 +8,7 @@ import os, sys, json, time, hmac, hashlib, math, warnings, fcntl, pickle, traceb
 from datetime import datetime, timezone
 from urllib.parse import urlencode
 from array import array
+from multiprocessing import Pool, cpu_count
 import numpy as np
 import requests
 from xgboost import XGBClassifier
@@ -723,104 +724,154 @@ def fetch_oi_for_symbols(symbols):
     return oi_data
 
 # ============ 78维特征工程（完整版，与回测一致） ============
+# ---- 多进程特征构建支持（模块级函数，供子进程pickle调用） ----
+_mp_shared = None  # (btc_rets, sector_map, sector_heats_all) 只读共享数据
+
+def _mp_init_shared(shared):
+    """子进程初始化：接收只读共享数据"""
+    global _mp_shared
+    _mp_shared = shared
+
+def _build_feat_impl(sym, kls, oi_map, btc_rets, sector_map, sector_heats_all):
+    """单币种特征计算实现（串行和并行共用）
+    返回 [(ts, sym, array('f', feat), label_long, label_short, next_ret_pct), ...]
+    """
+    results = []
+    if len(kls) < 35:
+        return results
+    closes = [k['c'] for k in kls]
+    opens = [k['o'] for k in kls]
+    highs = [k['h'] for k in kls]
+    lows = [k['l'] for k in kls]
+    vols = [k['q'] for k in kls]
+    timestamps = [k['t'] // 1000 for k in kls]
+    coin_rets = dp._compute_returns(closes)
+    n = len(kls)
+
+    # FIX: n-2 → n-1, 包含预测样本 i=n-2 (最新已收盘K线, 无标签)
+    for i in range(25, n - 1):
+        j = i - 1
+        try:
+            ret_1d = (closes[j] - closes[j-1]) / closes[j-1] if closes[j-1] > 0 else 0
+            ret_3d = (closes[j] - closes[max(0, j-3)]) / closes[max(0, j-3)] if closes[max(0, j-3)] > 0 else 0
+            ret_5d = (closes[j] - closes[max(0, j-5)]) / closes[max(0, j-5)] if closes[max(0, j-5)] > 0 else 0
+            if j >= 20:
+                rets_20 = [(closes[k] - closes[k-1]) / closes[k-1] if closes[k-1] > 0 else 0 for k in range(j-18, j+1)]
+                vol_20d = float(np.std(rets_20))
+            else:
+                vol_20d = 0.02
+            vol_floor = max(vol_20d, 0.002)
+            ret_1d_norm = round(ret_1d / vol_floor, 4)
+            ret_3d_norm = round(ret_3d / (vol_floor * 1.732), 4)
+            ret_5d_norm = round(ret_5d / (vol_floor * 2.236), 4)
+            if j >= 5:
+                daily_rets = [(closes[k] - closes[k-1]) / closes[k-1] if closes[k-1] > 0 else 0 for k in range(j-3, j+1)]
+                volatility = np.std(daily_rets)
+            else:
+                volatility = 0.02
+            vol_ratio = vols[j] / np.mean(vols[max(0, j-5):j]) if j >= 5 and np.mean(vols[max(0, j-5):j]) > 0 else 1
+            if j >= 20:
+                c20 = closes[j-19:j+1]
+                price_position = (closes[j] - min(c20)) / (max(c20) - min(c20)) if max(c20) != min(c20) else 0.5
+            else:
+                price_position = 0.5
+            amplitude = (highs[j] - lows[j]) / opens[j] if opens[j] > 0 else 0
+            streak = 0
+            for k in range(j, max(0, j-7) - 1, -1):
+                if closes[k] > opens[k]:
+                    streak += 1
+                else:
+                    break
+            div_sign = 1 if (closes[j] > closes[j-3] and vols[j] < vols[j-3] * 0.7) else 0
+            ts = timestamps[i]
+            oi_now = oi_map.get(timestamps[j], 0)
+            oi_prev = oi_map.get(timestamps[j-1], 0)
+            oi_chg = (oi_now - oi_prev) / oi_prev if oi_prev > 0 else 0
+
+            if sym == 'BTCUSDT':
+                beta, alpha, r2, residual = 1.0, 0.0, 1.0, 0.0
+            else:
+                beta, alpha, r2, residual = dp._regression_features(btc_rets, coin_rets, j)
+
+            # FIX: 板块热度用前一日，避免当日收益泄露
+            ts_prev = ts - 86400
+            sector_feats = dp._get_sector_features(sym, ts_prev, sector_map, sector_heats_all)
+            macro_feats = dp._get_macro_features(ts)
+            macro_feats = dp._apply_chain_tvl(macro_feats, sym, ts)
+
+            rsi7 = dp._compute_rsi(closes, 7, j)
+            rsi14 = dp._compute_rsi(closes, 14, j)
+            rsi30 = dp._compute_rsi(closes, 30, j)
+            # v3新增: 90天回看特征
+            rsi90 = dp._compute_rsi(closes, 90, j) if j >= 90 else 50.0
+            r90 = [(closes[k] - closes[k-1]) / closes[k-1] if closes[k-1] > 0 else 0 for k in range(j-88, j+1)] if j >= 90 else [0]
+            vol_90d = float(np.std(r90)) if j >= 90 else 0.02
+            c90 = closes[j-89:j+1] if j >= 90 else [0, 1]
+            pp_90 = (closes[j] - min(c90)) / (max(c90) - min(c90)) if j >= 90 and max(c90) != min(c90) else 0.5
+            ret_30d = (closes[j] - closes[max(0, j-30)]) / closes[max(0, j-30)] if closes[max(0, j-30)] > 0 else 0
+            ret_60d = (closes[j] - closes[max(0, j-60)]) / closes[max(0, j-60)] if closes[max(0, j-60)] > 0 else 0
+            ret_90d = (closes[j] - closes[max(0, j-90)]) / closes[max(0, j-90)] if closes[max(0, j-90)] > 0 else 0
+            rsi14_series = dp._compute_rsi_series(closes, 14)
+            rsi_div = dp._compute_rsi_divergence(closes, rsi14_series, j, window=20)
+            vol_col = dp._compute_vol_clustering(closes, j)
+
+            feat = assemble_feature_vec(
+                ret_1d_norm, ret_3d_norm, ret_5d_norm,
+                volatility, vol_ratio, price_position, amplitude, streak, div_sign, oi_chg,
+                vol_col, beta, alpha, r2, residual, rsi7, rsi14, rsi30,
+                rsi_div, sector_feats, macro_feats,
+                rsi90, vol_90d, pp_90, ret_30d, ret_60d, ret_90d)
+
+            # FIX: 预测样本(i=n-2)无未来收盘价, 标签设0; 训练样本计算2日收益标签
+            if i >= n - 2:
+                next_ret = 0  # 预测样本, 无标签 (closes[i+1]未收盘)
+            else:
+                next_ret = (closes[i+1] - closes[j]) / closes[j] if closes[j] > 0 and i + 1 < n else 0
+            if abs(next_ret) > 5.0:
+                continue
+            label_long = 1 if next_ret > 0.05 else 0
+            label_short = 1 if next_ret < -0.05 else 0
+            results.append((ts, sym, array('f', feat), label_long, label_short, next_ret * 100))
+        except Exception:
+            continue
+    return results
+
+def _mp_build_features_for_symbol(task):
+    """多进程worker：从_mp_shared获取共享数据，调用_build_feat_impl"""
+    sym, kls, oi_map = task
+    btc_rets, sector_map, sector_heats_all = _mp_shared
+    return _build_feat_impl(sym, kls, oi_map, btc_rets, sector_map, sector_heats_all)
+
 def build_features_78d(klines, oi_data, sector_map, sector_heats_all):
-    """构建936维特征（含832维Kronos），与dual_backtest_365d一致
-    优化: feat用array('f') float32, 去掉all_samples中间list, 省~3GB"""
+    """构建特征，与dual_backtest_365d一致
+    优化: feat用array('f') float32, 去掉all_samples中间list, 省~3GB
+    多进程: CPU>=8时并行处理各币种（观察机16核），<8时串行（生产端4核）"""
     by_day = defaultdict(list)
     btc_kls = klines.get('BTCUSDT', [])
     btc_closes = [k['c'] for k in btc_kls]
     btc_rets = dp._compute_returns(btc_closes) if btc_closes else []
-    
-    for sym, kls in klines.items():
-        if len(kls) < 35:
-            continue
-        oi_map = oi_data.get(sym, {})
-        closes = [k['c'] for k in kls]
-        opens = [k['o'] for k in kls]
-        highs = [k['h'] for k in kls]
-        lows = [k['l'] for k in kls]
-        vols = [k['q'] for k in kls]
-        timestamps = [k['t'] // 1000 for k in kls]
-        coin_rets = dp._compute_returns(closes)
-        n = len(kls)
-        
-        # FIX: n-2 → n-1, 包含预测样本 i=n-2 (最新已收盘K线, 无标签)
-        for i in range(25, n - 1):
-            j = i - 1
-            try:
-                ret_1d = (closes[j] - closes[j-1]) / closes[j-1] if closes[j-1] > 0 else 0
-                ret_3d = (closes[j] - closes[max(0, j-3)]) / closes[max(0, j-3)] if closes[max(0, j-3)] > 0 else 0
-                ret_5d = (closes[j] - closes[max(0, j-5)]) / closes[max(0, j-5)] if closes[max(0, j-5)] > 0 else 0
-                if j >= 20:
-                    rets_20 = [(closes[k] - closes[k-1]) / closes[k-1] if closes[k-1] > 0 else 0 for k in range(j-18, j+1)]
-                    vol_20d = float(np.std(rets_20))
-                else:
-                    vol_20d = 0.02
-                vol_floor = max(vol_20d, 0.002)
-                ret_1d_norm = round(ret_1d / vol_floor, 4)
-                ret_3d_norm = round(ret_3d / (vol_floor * 1.732), 4)
-                ret_5d_norm = round(ret_5d / (vol_floor * 2.236), 4)
-                if j >= 5:
-                    daily_rets = [(closes[k] - closes[k-1]) / closes[k-1] if closes[k-1] > 0 else 0 for k in range(j-3, j+1)]
-                    volatility = np.std(daily_rets)
-                else:
-                    volatility = 0.02
-                vol_ratio = vols[j] / np.mean(vols[max(0, j-5):j]) if j >= 5 and np.mean(vols[max(0, j-5):j]) > 0 else 1
-                if j >= 20:
-                    c20 = closes[j-19:j+1]
-                    price_position = (closes[j] - min(c20)) / (max(c20) - min(c20)) if max(c20) != min(c20) else 0.5
-                else:
-                    price_position = 0.5
-                amplitude = (highs[j] - lows[j]) / opens[j] if opens[j] > 0 else 0
-                streak = 0
-                for k in range(j, max(0, j-7) - 1, -1):
-                    if closes[k] > opens[k]:
-                        streak += 1
-                    else:
-                        break
-                div_sign = 1 if (closes[j] > closes[j-3] and vols[j] < vols[j-3] * 0.7) else 0
-                ts = timestamps[i]
-                oi_now = oi_map.get(timestamps[j], 0)
-                oi_prev = oi_map.get(timestamps[j-1], 0)
-                oi_chg = (oi_now - oi_prev) / oi_prev if oi_prev > 0 else 0
 
-                if sym == 'BTCUSDT':
-                    beta, alpha, r2, residual = 1.0, 0.0, 1.0, 0.0
-                else:
-                    beta, alpha, r2, residual = dp._regression_features(btc_rets, coin_rets, j)
-
-                # FIX: 板块热度用前一日，避免当日收益泄露
-                ts_prev = ts - 86400
-                sector_feats = dp._get_sector_features(sym, ts_prev, sector_map, sector_heats_all)
-                macro_feats = dp._get_macro_features(ts)
-                macro_feats = dp._apply_chain_tvl(macro_feats, sym, ts)
-
-                rsi7 = dp._compute_rsi(closes, 7, j)
-                rsi14 = dp._compute_rsi(closes, 14, j)
-                rsi30 = dp._compute_rsi(closes, 30, j)
-                rsi14_series = dp._compute_rsi_series(closes, 14)
-                rsi_div = dp._compute_rsi_divergence(closes, rsi14_series, j, window=20)
-                vol_col = dp._compute_vol_clustering(closes, j)
-
-                feat = assemble_feature_vec(
-                    ret_1d_norm, ret_3d_norm, ret_5d_norm,
-                    volatility, vol_ratio, price_position, amplitude, streak, div_sign, oi_chg,
-                    vol_col, beta, alpha, r2, residual, rsi7, rsi14, rsi30,
-                    rsi_div, sector_feats, macro_feats)
-
-                # FIX: 预测样本(i=n-2)无未来收盘价, 标签设0; 训练样本计算2日收益标签
-                if i >= n - 2:
-                    next_ret = 0  # 预测样本, 无标签 (closes[i+1]未收盘)
-                else:
-                    next_ret = (closes[i+1] - closes[j]) / closes[j] if closes[j] > 0 and i + 1 < n else 0
-                if abs(next_ret) > 5.0:
-                    continue
-                label_long = 1 if next_ret > 0.05 else 0
-                label_short = 1 if next_ret < -0.05 else 0
-                by_day[ts].append((sym, array('f', feat), label_long, label_short, next_ret * 100))
-            except Exception:
-                continue
-    
+    n_cpu = cpu_count()
+    if n_cpu >= 8:
+        # 多进程并行模式（观察机16核: 15 workers, 留1核给系统）
+        tasks = [(sym, kls, oi_data.get(sym, {})) for sym, kls in klines.items()]
+        shared = (btc_rets, sector_map, sector_heats_all)
+        n_workers = min(n_cpu - 1, 15)
+        log(f'特征构建: 多进程模式 {n_workers} workers (CPU={n_cpu})')
+        with Pool(n_workers, initializer=_mp_init_shared, initargs=(shared,)) as pool:
+            all_results = pool.map(_mp_build_features_for_symbol, tasks, chunksize=4)
+        for sym_results in all_results:
+            for ts, sym, feat, ll, ls, nr in sym_results:
+                by_day[ts].append((sym, feat, ll, ls, nr))
+        log(f'特征构建完成: {len(by_day)} 天, {sum(len(v) for v in by_day.values())} 样本')
+    else:
+        # 串行模式（生产端4核）
+        log(f'特征构建: 串行模式 (CPU={n_cpu})')
+        for sym, kls in klines.items():
+            oi_map = oi_data.get(sym, {})
+            sym_results = _build_feat_impl(sym, kls, oi_map, btc_rets, sector_map, sector_heats_all)
+            for ts, s, feat, ll, ls, nr in sym_results:
+                by_day[ts].append((s, feat, ll, ls, nr))
     return by_day
 
 # ============ 训练预测 ============
@@ -916,55 +967,37 @@ def train_and_predict(by_day, today_ts, klines):
     
     log(f'训练: {len(X_train)}样本, {len(train_days)}天, long={pos_long}, short={pos_short}')
 
-    # FIX: 模型缓存改为1天（市场变化快，7天太长）
+    # 每次运行都重新训练模型（不使用缓存）
     models_dir = os.path.join(DATA_DIR, 'models')
     os.makedirs(models_dir, mode=0o700, exist_ok=True)
     model_long_file = os.path.join(models_dir, 'xgb_daily_long.pkl')
     model_short_file = os.path.join(models_dir, 'xgb_daily_short.pkl')
-    model_long = None; model_short = None
     n_features = X_train.shape[1]
+
+    # Top1参数 (90d Sharpe=7.98, 180d Sharpe=6.00): d6-w1-L10-A10-s0.8-c0.6
+    log('训练多头模型...')
+    model_long = XGBClassifier(n_estimators=200, max_depth=6, learning_rate=0.05,
+                               min_child_weight=1, reg_lambda=10, reg_alpha=10,
+                               subsample=0.8, colsample_bytree=0.6,
+                               scale_pos_weight=(len(y_long) - pos_long) / pos_long,
+                               random_state=42, eval_metric='logloss', verbosity=0,
+                               tree_method='hist')
+    model_long.fit(X_train, y_long)
     try:
-        if os.path.exists(model_long_file) and time.time() - os.path.getmtime(model_long_file) < 1*86400:
-            with open(model_long_file,'rb') as f: model_long = pickle.load(f)
-            if hasattr(model_long, 'n_features_in_') and model_long.n_features_in_ != n_features:
-                log(f'多头模型维度不匹配 (缓存{model_long.n_features_in_}D, 当前{n_features}D), 丢弃缓存')
-                model_long = None
-            else:
-                log(f'加载预训练多头模型: {model_long_file}')
-        if os.path.exists(model_short_file) and time.time() - os.path.getmtime(model_short_file) < 1*86400:
-            with open(model_short_file,'rb') as f: model_short = pickle.load(f)
-            if hasattr(model_short, 'n_features_in_') and model_short.n_features_in_ != n_features:
-                log(f'空头模型维度不匹配 (缓存{model_short.n_features_in_}D, 当前{n_features}D), 丢弃缓存')
-                model_short = None
-            else:
-                log(f'加载预训练空头模型: {model_short_file}')
-    except Exception: pass
+        with open(model_long_file,'wb') as f: pickle.dump(model_long, f)
+    except Exception as e: log(f'多头模型保存失败: {e}')
 
-    if model_long is None:
-        # Top1参数 (90d Sharpe=7.98, 180d Sharpe=6.00): d6-w1-L10-A10-s0.8-c0.6
-        model_long = XGBClassifier(n_estimators=200, max_depth=6, learning_rate=0.05,
-                                   min_child_weight=1, reg_lambda=10, reg_alpha=10,
-                                   subsample=0.8, colsample_bytree=0.6,
-                                   scale_pos_weight=(len(y_long) - pos_long) / pos_long,
-                                   random_state=42, eval_metric='logloss', verbosity=0,
-                                   tree_method='hist')
-        model_long.fit(X_train, y_long)
-        try:
-            with open(model_long_file,'wb') as f: pickle.dump(model_long, f)
-        except Exception as e: log(f'多头模型保存失败: {e}')
-
-    if model_short is None:
-        # Top1参数: d6-w1-L10-A10-s0.8-c0.6
-        model_short = XGBClassifier(n_estimators=200, max_depth=6, learning_rate=0.05,
-                                    min_child_weight=1, reg_lambda=10, reg_alpha=10,
-                                    subsample=0.8, colsample_bytree=0.6,
-                                    scale_pos_weight=(len(y_short) - pos_short) / pos_short,
-                                    random_state=43, eval_metric='logloss', verbosity=0,
-                                    tree_method='hist')
-        model_short.fit(X_train, y_short)
-        try:
-            with open(model_short_file,'wb') as f: pickle.dump(model_short, f)
-        except Exception as e: log(f'空头模型保存失败: {e}')
+    log('训练空头模型...')
+    model_short = XGBClassifier(n_estimators=200, max_depth=6, learning_rate=0.05,
+                                min_child_weight=1, reg_lambda=10, reg_alpha=10,
+                                subsample=0.8, colsample_bytree=0.6,
+                                scale_pos_weight=(len(y_short) - pos_short) / pos_short,
+                                random_state=43, eval_metric='logloss', verbosity=0,
+                                tree_method='hist')
+    model_short.fit(X_train, y_short)
+    try:
+        with open(model_short_file,'wb') as f: pickle.dump(model_short, f)
+    except Exception as e: log(f'空头模型保存失败: {e}')
 
     # FIX: 打印并累积Kronos维度特征重要性（7天筛选实验）
     SECTOR_ORDER = ['AI', 'AI Agent', 'BTC生态', 'Base生态', 'DEX', 'DeFi', 'DePIN', 'DeSci',
@@ -992,7 +1025,9 @@ def train_and_predict(by_day, today_ts, klines):
          'chain_tvl_btc','chain_tvl_eth','chain_tvl_sol','chain_tvl_bsc','chain_tvl_arb',
          'chain_tvl_base','chain_tvl_ton','chain_tvl_sui','chain_tvl_polygon'] +
         [f'kronos_emb_{i}' for i in range(dp.EMBEDDING_DIM)] +
-        ['sp500_1d','dxy_1d','gold_1d','alt_btc_spread']
+        ['sp500_1d','dxy_1d','gold_1d','alt_btc_spread'] +
+        # v3新增: 90天回看特征
+        ['rsi90','vol_90d','pp_90','ret_30d','ret_60d','ret_90d']
     )
 
     def _log_importance(model, label):
@@ -1190,7 +1225,7 @@ def main():
         all_syms.append('BTCUSDT')
     
     klines = fetch_klines_full(all_syms)
-    min_required = 400
+    min_required = 90  # v3: 90天门槛（新币alpha更多，Sharpe 5.80 vs 400天2.30）
     klines_before = len(klines)
     klines = {sym: kls for sym, kls in klines.items() if len(kls) >= min_required}
     log(f'K线加载: {klines_before}币种, 达标(>{min_required}天): {len(klines)}')
