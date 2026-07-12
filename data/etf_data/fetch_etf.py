@@ -122,6 +122,18 @@ def main():
                 existing = json.load(f)
         except Exception:
             pass
+    # FIX 2026-07-12: 合并前先清除旧数据中的假0.0值
+    # 原因: farside只返回最近14天, 14天前的0.0假值无法被新数据覆盖
+    # 0.0值是farside页面渲染不完整时采集到的假值, 必须删除
+    old_btc_count = len(existing.get('btc', []))
+    old_eth_count = len(existing.get('eth', []))
+    existing['btc'] = [d for d in existing.get('btc', []) if d['total_flow'] != 0.0]
+    existing['eth'] = [d for d in existing.get('eth', []) if d['total_flow'] != 0.0]
+    cleaned_btc = old_btc_count - len(existing['btc'])
+    cleaned_eth = old_eth_count - len(existing['eth'])
+    if cleaned_btc > 0 or cleaned_eth > 0:
+        print(f"  [清理] 删除旧假0.0值: BTC {cleaned_btc}条, ETH {cleaned_eth}条")
+
     # 合并BTC: 新数据覆盖旧数据
     btc_map = {d['date']: d for d in existing.get('btc', [])}
     for d in btc:
