@@ -213,18 +213,14 @@ def _get_sector_features(sym, ts, sector_map, sector_heats):
 # ─── 宏观特征加载 ───
 
 def _load_etf_features():
-    """ETF净流入: {date_str: [btc_flow_m, eth_flow_m]}"""
-    try:
-        with open('/home/myuser/websocket_new/data/etf_data/etf_flow.json') as f:
-            data = json.load(f)
-        result = {}
-        for d in data.get('btc', []):
-            result[d['date']] = [d.get('total_flow', 0) or 0, 0]
-        for d in data.get('eth', []):
-            date = d['date']
-            result.setdefault(date, [0, 0])[1] = d.get('total_flow', 0) or 0
-        return result
-    except Exception as exc: logging.getLogger(__name__).warning(f"Failed to load: {exc}"); return {}
+    """ETF净流入: {date_str: [btc_flow_m, eth_flow_m]}
+
+    DISABLED 2026-07-12: farside.co.uk只返回最近14天数据, 且57.6%为假0.0值
+    (farside对未更新日期显示0而非'-', 连续11个工作日0.0不可能为真实净流入).
+    数据质量极差(33天/14天真实), 加入后Sharpe从7.17降至6.03, 净负面影响.
+    修复 fetch_etf.py 采集稳定性后可重新启用.
+    """
+    return {}
 
 def _load_chain_features():
     """链上数据日聚合: {date_str: [volume_btc, tx_count, fee_usd, cdd_ratio]}"""
