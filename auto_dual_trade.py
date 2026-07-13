@@ -241,6 +241,13 @@ def place_and_verify_algo_order(place_fn, symbol, side, trigger_price, max_attem
         last_order = order
         oid = order.get('algoId') or order.get('orderId') if order else None
         if not oid:
+            # 检查是否-4130错误（已有止损/止盈单存在）
+            order_str = str(order) if order else ''
+            if '-4130' in order_str:
+                existing = get_open_algo_orders(symbol)
+                if existing:
+                    log(f'  Algo单已存在(-4130), 不再重试: {len(existing)}个未触发单')
+                    return True, existing[0]
             log(f'  Algo单未返回ID: {order}')
             if attempt < max_attempts - 1:
                 wait = 2 ** attempt
@@ -950,7 +957,7 @@ def train_and_predict(by_day, today_ts, klines):
 
     # 运行时维度断言
     n_features = X_train.shape[1]
-    EXPECTED_N = 10 + 3 + 7 + 4 + 22 + (2+4+6+1+1+1+1+1+1+1+26+9 + dp.EMBEDDING_DIM + 3 + 1)
+    EXPECTED_N = 10 + 3 + 7 + 4 + 22 + (2+4+6+1+1+1+1+1+1+1+26+9 + dp.EMBEDDING_DIM + 3 + 1) + 6  # v3: +6个90天特征(rsi90/vol_90d/pp_90/ret_30d/ret_60d/ret_90d)
     if n_features != EXPECTED_N:
         log(f'[CRITICAL] 特征维度不匹配! 实际={n_features} 期望={EXPECTED_N}')
     else:
