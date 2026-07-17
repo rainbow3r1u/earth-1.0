@@ -1,6 +1,6 @@
-# 新机器部署指南 (DEPLOY)
+# 新机器部署指南 (DEPLOY) — 地球版 1.0
 
-加密货币 ML 自动交易系统（XGBoost 944维 / aligned 标签 / 180天训练窗口）完整部署流程。
+加密货币 ML 自动交易系统（**地球版 1.0**: XGBoost 944维 / aligned 标签 / 180天训练窗口）完整部署流程。
 数据全部托管在腾讯云 COS，新机器无需手动拷贝任何数据目录。
 
 > 系统全景与运维手册见 `SYSTEM_OVERVIEW.md`；COS 数据路径清单见 `deploy/cos_paths.json`。
@@ -22,7 +22,7 @@
 ## 1. 克隆代码
 
 ```bash
-git clone https://github.com/rainbow3r1u/Xgboot.git /home/myuser/websocket_new
+git clone https://github.com/rainbow3r1u/earth-1.0.git /home/myuser/websocket_new
 cd /home/myuser/websocket_new && mkdir -p logs
 ```
 
