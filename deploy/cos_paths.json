@@ -1,0 +1,29 @@
+{
+  "_说明": "交易系统COS数据路径清单 — 新机器部署用。bucket/region/路径非敏感信息, 密钥(COS_SECRET_ID/COS_SECRET_KEY)必须放 .env, 绝不进仓库",
+  "bucket": "lhsj-1h-1314017643",
+  "region": "ap-seoul",
+  "daily_synced_files": [
+    {"cos": "klines/cache/notusdt_1d_full.json", "local": "backtester/data_cache/notusdt_1d_full.json", "desc": "K线缓存 532币全量日线(含n/tbq), 每日更新"},
+    {"cos": "klines/cache/oi_daily.json", "local": "backtester/data_cache/oi_daily.json", "desc": "OI缓存(仅近64天, API上限), 每日更新"},
+    {"cos": "klines/coingecko_data/btc_mcap.json", "local": "coingecko_data/btc_mcap.json", "desc": "BTC市值"},
+    {"cos": "klines/coingecko_data/btc_dominance.json", "local": "coingecko_data/btc_dominance.json", "desc": "BTC市占率(ab特征)"},
+    {"cos": "klines/macro_assets/macro_assets.json", "local": "websocket_new/data/macro_assets.json", "desc": "SP500/DXY/黄金"},
+    {"cos": "klines/fear_greed_history.json", "local": "websocket_new/data/fear_greed_history.json", "desc": "恐慌贪婪指数"},
+    {"cos": "klines/sector_data/crypto_sectors.json", "local": "websocket_new/data/crypto_sectors.json", "desc": "板块标签(含BSC/ARB手工标签, 已带覆盖层)"},
+    {"cos": "klines/stablecoin_data/stablecoin_exchange_netflow.json", "local": "stablecoin_data/stablecoin_exchange_netflow.json", "desc": "稳定币净流入"},
+    {"cos": "klines/stablecoin_data/btc_coinbase_premium_index.json", "local": "stablecoin_data/btc_coinbase_premium_index.json", "desc": "Coinbase溢价"},
+    {"cos": "klines/stablecoin_data/btc_coinbase_premium_gap.json", "local": "stablecoin_data/btc_coinbase_premium_gap.json", "desc": "Coinbase Gap"},
+    {"cos": "klines/stablecoin_data/btc_korea_premium_index.json", "local": "stablecoin_data/btc_korea_premium_index.json", "desc": "韩国溢价"},
+    {"cos": "klines/hashrate_data/hashrate_history.json", "local": "hashrate_data/hashrate_history.json", "desc": "BTC算力"}
+  ],
+  "daily_synced_dirs": [
+    {"cos_prefix": "klines/defillama_data/", "local_dir": "defillama_data/", "match": "_tvl.json", "desc": "16链TVL"},
+    {"cos_prefix": "klines/sentiment_data/", "local_dir": "sentiment_data/", "desc": "情绪数据(费率/多空比)小时文件, 目录结构 YYYYMMDD/HH.json"}
+  ],
+  "bootstrap_seed_files": [
+    {"cos": "klines/bootstrap/current_params.json", "local": "backtester/config/current_params.json", "desc": "策略参数(变动少, 种子快照2026-07-18)"},
+    {"cos": "klines/bootstrap/btc_chain.csv", "local": "blockchair_data/btc_chain.csv", "desc": "BTC链上数据CSV(种子快照2026-07-18)"},
+    {"cos": "klines/bootstrap/liq_daily.json", "local": "websocket_new/data/liq_daily.json", "desc": "清算日聚合(种子快照)"},
+    {"cos": "klines/bootstrap/liq_levels_daily.json", "local": "websocket_new/data/liq_levels_daily.json", "desc": "清算100层快照(种子快照)"}
+  ]
+}
