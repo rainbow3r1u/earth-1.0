@@ -843,7 +843,7 @@ def _build_feat_impl(sym, kls, oi_map, btc_rets, sector_map, sector_heats_all):
                 vol_col, beta, alpha, r2, residual, rsi7, rsi14, rsi30,
                 rsi_div, sector_feats, macro_feats,
                 rsi90, vol_90d, pp_90, ret_30d, ret_60d, ret_90d,
-                tr_ratio, tbr)
+                tr_ratio, tbr, vols[j])  # vol_raw=原始成交额q (地球版1.1, 180d Sharpe 6.33→8.13)
 
             # aligned: 标签对齐入场点 — open[T]→close[T+2] (与48h持仓窗口一致)
             if i == n - 1:
@@ -975,7 +975,7 @@ def train_and_predict(by_day, today_ts, klines):
 
     # 运行时维度断言
     n_features = X_train.shape[1]
-    EXPECTED_N = 10 + 3 + 7 + 4 + 22 + (2+4+6+1+1+1+1+1+1+1+26+9 + dp.EMBEDDING_DIM + 3 + 1) + 6 + 2  # v3: +6个90天特征; volfeat: +2(tr_ratio/tbr)
+    EXPECTED_N = 10 + 3 + 7 + 4 + 22 + (2+4+6+1+1+1+1+1+1+1+26+9 + dp.EMBEDDING_DIM + 3 + 1) + 6 + 3  # v3: +6个90天特征; volfeat: +3(tr_ratio/tbr/vol_raw原始成交额, 地球版1.1)
     if n_features != EXPECTED_N:
         log(f'[CRITICAL] 特征维度不匹配! 实际={n_features} 期望={EXPECTED_N}')
     else:
