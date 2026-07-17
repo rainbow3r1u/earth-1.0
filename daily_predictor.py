@@ -1595,12 +1595,12 @@ def verify_yesterday(klines_all=None):
             kls = resp.json()
             if len(kls) < 3: continue
 
-            # 找预测日那根K线，取2日后的close
+            # 找预测日那根K线，入场取开盘价(aligned: 预测日=入场日)，2日后收盘出场
             entry_close = None
             exit_close = None
             for j, k in enumerate(kls):
                 if int(k[0]) == pred_ts:
-                    entry_close = float(k[4])
+                    entry_close = float(k[1])
                     if j + 2 < len(kls):
                         exit_close = float(kls[j+2][4])
                     break

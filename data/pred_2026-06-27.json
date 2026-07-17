@@ -1,0 +1,96 @@
+{
+  "date": "2026-06-27",
+  "updated": 1782605710.215067,
+  "best_long": {
+    "symbol": "NEARUSDT",
+    "prob": "66.2"
+  },
+  "best_short": {
+    "symbol": "HEIUSDT",
+    "prob": "49.8"
+  },
+  "top10_long": [
+    {
+      "symbol": "NEARUSDT",
+      "prob": "66.2"
+    },
+    {
+      "symbol": "BTCUSDT",
+      "prob": "64.6"
+    },
+    {
+      "symbol": "BNBUSDT",
+      "prob": "64.5"
+    },
+    {
+      "symbol": "XRPUSDT",
+      "prob": "63.0"
+    },
+    {
+      "symbol": "ETHUSDT",
+      "prob": "61.5"
+    },
+    {
+      "symbol": "SOLUSDT",
+      "prob": "61.3"
+    },
+    {
+      "symbol": "ZECUSDT",
+      "prob": "60.8"
+    },
+    {
+      "symbol": "APTUSDT",
+      "prob": "59.0"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "prob": "58.0"
+    },
+    {
+      "symbol": "WLDUSDT",
+      "prob": "57.5"
+    }
+  ],
+  "top10_short": [
+    {
+      "symbol": "HEIUSDT",
+      "prob": "49.8"
+    },
+    {
+      "symbol": "DEXEUSDT",
+      "prob": "47.4"
+    },
+    {
+      "symbol": "SYNUSDT",
+      "prob": "43.7"
+    },
+    {
+      "symbol": "1000PEPEUSDT",
+      "prob": "43.5"
+    },
+    {
+      "symbol": "WLDUSDT",
+      "prob": "41.7"
+    },
+    {
+      "symbol": "DOGEUSDT",
+      "prob": "36.5"
+    },
+    {
+      "symbol": "IDUSDT",
+      "prob": "35.1"
+    },
+    {
+      "symbol": "1000SHIBUSDT",
+      "prob": "33.6"
+    },
+    {
+      "symbol": "BTCUSDT",
+      "prob": "32.7"
+    },
+    {
+      "symbol": "XRPUSDT",
+      "prob": "31.5"
+    }
+  ]
+}

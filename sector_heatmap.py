@@ -96,8 +96,10 @@ def fetch():
 
         result.sort(key=lambda x: -x['mc_change_pct'])
 
-        with open(CACHE, 'w') as f:
+        tmp = CACHE + '.tmp'
+        with open(tmp, 'w') as f:
             json.dump(result, f, default=str)
+        os.rename(tmp, CACHE)
 
         print(f"Heatmap → {CACHE}")
         for s in result:
@@ -112,8 +114,9 @@ def fetch():
                 Region=os.environ.get('COS_REGION', ''),
                 SecretId=os.environ.get('COS_SECRET_ID', ''),
                 SecretKey=os.environ.get('COS_SECRET_KEY', ''),
-                Endpoint=os.environ.get('COS_ENDPOINT', ''),
-            )
+            Endpoint=os.environ.get('COS_ENDPOINT', ''),
+            Timeout=30
+        )
             cos = CosS3Client(config)
             bucket = os.environ.get('COS_BUCKET', '')
             with open(CACHE) as f:

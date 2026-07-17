@@ -50,8 +50,25 @@ def fetch():
             time.sleep(3)
         except Exception as e:
             print(f'  {label}: {e}')
-    with open(CACHE_FILE, 'w') as f:
+    # 应用手工覆盖层 (2026-07-12数据修复: BSC/ARB标签, 手工打标, 异常key排除)
+    # CoinGecko分类不含BSC/ARB等标签, 直接fetch会回退手工修复, 必须merge
+    overrides_path = os.path.join(os.path.dirname(__file__), 'data/sector_overrides.json')
+    try:
+        with open(overrides_path) as f:
+            ov = json.load(f)
+        for k in ov.get('excluded', []):
+            symbol_map.pop(k, None)
+        for k, v in ov.get('coins', {}).items():
+            symbol_map[k] = v
+        print(f'[Sector] 覆盖层已应用: +{len(ov.get("coins", {}))} 覆盖, -{len(ov.get("excluded", []))} 排除')
+    except FileNotFoundError:
+        print('[Sector] 无覆盖层文件, 跳过')
+    except Exception as e:
+        print(f'[Sector] 覆盖层应用失败: {e}')
+    tmp = CACHE_FILE + '.tmp'
+    with open(tmp, 'w') as f:
         json.dump(symbol_map, f)
+    os.rename(tmp, CACHE_FILE)
     print(f'Done: {len(symbol_map)} symbols cached to {CACHE_FILE}')
 
     # 上传COS
@@ -64,6 +81,7 @@ def fetch():
             SecretId=os.environ.get('COS_SECRET_ID', ''),
             SecretKey=os.environ.get('COS_SECRET_KEY', ''),
             Endpoint=os.environ.get('COS_ENDPOINT', ''),
+            Timeout=30
         )
         cos = CosS3Client(config)
         bucket = os.environ.get('COS_BUCKET', '')

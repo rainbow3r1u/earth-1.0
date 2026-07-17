@@ -651,7 +651,8 @@ def fetch_klines_full(symbols):
                 params={'symbol': sym, 'interval': '1d', 'limit': 10}, timeout=10)
             if r.status_code == 200:
                 return sym, [{'t': int(k[0]), 'o': float(k[1]), 'h': float(k[2]),
-                              'l': float(k[3]), 'c': float(k[4]), 'v': float(k[5]), 'q': float(k[7])}
+                              'l': float(k[3]), 'c': float(k[4]), 'v': float(k[5]), 'q': float(k[7]),
+                              'n': int(k[8]), 'tbq': float(k[10])}  # n=成交笔数, tbq=主动买入额 (volfeat)
                              for k in r.json()]
         except Exception:
             pass
@@ -671,6 +672,8 @@ def fetch_klines_full(symbols):
                 if k['t'] > last_old_ts:
                     old_kls.append(k)
                     appended += 1
+                elif k['t'] == last_old_ts:
+                    old_kls[-1] = k  # 刷新未收盘蜡烛, 保证收盘后量/笔数/主动买入额完整
             if appended > 0:
                 updated += 1
 
@@ -751,12 +754,15 @@ def _build_feat_impl(sym, kls, oi_map, btc_rets, sector_map, sector_heats_all):
     highs = [k['h'] for k in kls]
     lows = [k['l'] for k in kls]
     vols = [k['q'] for k in kls]
+    # volfeat: 成交笔数/主动买入额 (与gpu_backtest_volfeat一致; tbq缺失→None→tbr中性0.5)
+    n_ = [k['n'] if isinstance(k, dict) and 'n' in k else 0 for k in kls]
+    tbq_ = [k.get('tbq') if isinstance(k, dict) else None for k in kls]
     timestamps = [k['t'] // 1000 for k in kls]
     coin_rets = dp._compute_returns(closes)
     n = len(kls)
 
-    # FIX: n-2 → n-1, 包含预测样本 i=n-2 (最新已收盘K线, 无标签)
-    for i in range(25, n - 1):
+    # aligned: i=n-1 为预测样本(入场日, 特征用最新收盘蜡烛D-1); i∈{n-3,n-2} 标签未实现, 跳过
+    for i in range(25, n):
         j = i - 1
         try:
             ret_1d = (closes[j] - closes[j-1]) / closes[j-1] if closes[j-1] > 0 else 0
@@ -805,6 +811,9 @@ def _build_feat_impl(sym, kls, oi_map, btc_rets, sector_map, sector_heats_all):
             sector_feats = dp._get_sector_features(sym, ts_prev, sector_map, sector_heats_all)
             macro_feats = dp._get_macro_features(ts)
             macro_feats = dp._apply_chain_tvl(macro_feats, sym, ts)
+            # aligned: ab改prev_date (同日值22:00 UTC才采集, 入场时不可得, 防前视)
+            if macro_feats:
+                macro_feats[-1] = dp._ab_features.get(int(ts - 86400), [0.0])[0]
 
             rsi7 = dp._compute_rsi(closes, 7, j)
             rsi14 = dp._compute_rsi(closes, 14, j)
@@ -822,18 +831,27 @@ def _build_feat_impl(sym, kls, oi_map, btc_rets, sector_map, sector_heats_all):
             rsi_div = dp._compute_rsi_divergence(closes, rsi14_series, j, window=20)
             vol_col = dp._compute_vol_clustering(closes, j)
 
+            # volfeat: 成交笔数量比 + 主动买卖比 (与gpu_backtest_volfeat公式一致)
+            _n_mean = np.mean(n_[max(0, j-5):j]) if j >= 5 else 0
+            tr_ratio = n_[j] / _n_mean if j >= 5 and _n_mean > 0 else 1
+            _tb = tbq_[j]
+            tbr = _tb / vols[j] if (_tb is not None and vols[j] > 0) else 0.5
+
             feat = assemble_feature_vec(
                 ret_1d_norm, ret_3d_norm, ret_5d_norm,
                 volatility, vol_ratio, price_position, amplitude, streak, div_sign, oi_chg,
                 vol_col, beta, alpha, r2, residual, rsi7, rsi14, rsi30,
                 rsi_div, sector_feats, macro_feats,
-                rsi90, vol_90d, pp_90, ret_30d, ret_60d, ret_90d)
+                rsi90, vol_90d, pp_90, ret_30d, ret_60d, ret_90d,
+                tr_ratio, tbr)
 
-            # FIX: 预测样本(i=n-2)无未来收盘价, 标签设0; 训练样本计算2日收益标签
-            if i >= n - 2:
-                next_ret = 0  # 预测样本, 无标签 (closes[i+1]未收盘)
+            # aligned: 标签对齐入场点 — open[T]→close[T+2] (与48h持仓窗口一致)
+            if i == n - 1:
+                next_ret = 0  # 预测样本(入场日, 无标签)
+            elif i > n - 4:
+                continue  # 标签需 closes[i+2] 已收盘, i∈{n-3,n-2} 跳过
             else:
-                next_ret = (closes[i+1] - closes[j]) / closes[j] if closes[j] > 0 and i + 1 < n else 0
+                next_ret = (closes[i+2] - opens[i]) / opens[i] if opens[i] > 0 else 0
             if abs(next_ret) > 5.0:
                 continue
             label_long = 1 if next_ret > 0.05 else 0
@@ -957,7 +975,7 @@ def train_and_predict(by_day, today_ts, klines):
 
     # 运行时维度断言
     n_features = X_train.shape[1]
-    EXPECTED_N = 10 + 3 + 7 + 4 + 22 + (2+4+6+1+1+1+1+1+1+1+26+9 + dp.EMBEDDING_DIM + 3 + 1) + 6  # v3: +6个90天特征(rsi90/vol_90d/pp_90/ret_30d/ret_60d/ret_90d)
+    EXPECTED_N = 10 + 3 + 7 + 4 + 22 + (2+4+6+1+1+1+1+1+1+1+26+9 + dp.EMBEDDING_DIM + 3 + 1) + 6 + 2  # v3: +6个90天特征; volfeat: +2(tr_ratio/tbr)
     if n_features != EXPECTED_N:
         log(f'[CRITICAL] 特征维度不匹配! 实际={n_features} 期望={EXPECTED_N}')
     else:

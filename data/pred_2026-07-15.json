@@ -1,0 +1,96 @@
+{
+  "date": "2026-07-15",
+  "updated": 1784161059.4129057,
+  "best_long": {
+    "symbol": "WLDUSDT",
+    "prob": "53.1"
+  },
+  "best_short": {
+    "symbol": "TUSDT",
+    "prob": "67.6"
+  },
+  "top10_long": [
+    {
+      "symbol": "WLDUSDT",
+      "prob": "53.1"
+    },
+    {
+      "symbol": "AAVEUSDT",
+      "prob": "53.0"
+    },
+    {
+      "symbol": "ZECUSDT",
+      "prob": "52.6"
+    },
+    {
+      "symbol": "DEXEUSDT",
+      "prob": "52.4"
+    },
+    {
+      "symbol": "LABUSDT",
+      "prob": "51.3"
+    },
+    {
+      "symbol": "TRUMPUSDT",
+      "prob": "50.3"
+    },
+    {
+      "symbol": "EVAAUSDT",
+      "prob": "50.0"
+    },
+    {
+      "symbol": "SKLUSDT",
+      "prob": "49.5"
+    },
+    {
+      "symbol": "DODOXUSDT",
+      "prob": "48.4"
+    },
+    {
+      "symbol": "TUSDT",
+      "prob": "48.0"
+    }
+  ],
+  "top10_short": [
+    {
+      "symbol": "TUSDT",
+      "prob": "67.6"
+    },
+    {
+      "symbol": "SKLUSDT",
+      "prob": "65.7"
+    },
+    {
+      "symbol": "DODOXUSDT",
+      "prob": "64.4"
+    },
+    {
+      "symbol": "DEXEUSDT",
+      "prob": "62.0"
+    },
+    {
+      "symbol": "1000PEPEUSDT",
+      "prob": "61.4"
+    },
+    {
+      "symbol": "ZECUSDT",
+      "prob": "57.1"
+    },
+    {
+      "symbol": "WLDUSDT",
+      "prob": "57.1"
+    },
+    {
+      "symbol": "DOGEUSDT",
+      "prob": "56.1"
+    },
+    {
+      "symbol": "AAVEUSDT",
+      "prob": "53.6"
+    },
+    {
+      "symbol": "EVAAUSDT",
+      "prob": "53.4"
+    }
+  ]
+}

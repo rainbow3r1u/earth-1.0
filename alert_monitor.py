@@ -209,29 +209,56 @@ def check_cron_running():
 
 
 def check_perm_test_fail():
-    """检查Permutation Test是否失败 (overfit)"""
+    """检查Permutation Test是否失败 (overfit)
+
+    FIX: 只检查最后一次"交易启动"之后的日志行，避免旧overfit记录导致重复告警。
+    读取 trade.log (auto_dual_trade.py内部写入，cron和手动运行都会更新)。
+    """
+    import re
     alerts = []
-    log_file = LOG_FILES['交易日志']
+    # 使用 auto_dual_trade.py 内部写入的日志文件（无论cron还是手动运行都会更新）
+    log_file = os.path.expanduser('~/.local/share/auto_trade/trade.log')
     if not os.path.exists(log_file):
-        return alerts
+        log_file = LOG_FILES['交易日志']  # 回退
+        if not os.path.exists(log_file):
+            return alerts
 
     try:
         with open(log_file, 'rb') as f:
             f.seek(0, 2)
             size = f.tell()
-            f.seek(max(0, size - 16384))
+            f.seek(max(0, size - 65536))  # 读最后64KB，确保包含至少一次完整运行
             content = f.read().decode('utf-8', errors='ignore')
     except:
         return alerts
 
-    # 检查 overfit 关键词
-    if '→ overfit' in content:
-        lines = [l for l in content.split('\n') if 'overfit' in l]
+    # 找到最后一次"交易启动"的位置，只检查该位置之后的日志
+    marker = '自动多空二选一交易启动'
+    last_start = content.rfind(marker)
+    if last_start < 0:
+        return alerts  # 没找到启动标记，不告警
+
+    recent = content[last_start:]
+
+    # 提取运行时间戳（用于告警key，避免同一运行结果重复告警）
+    # marker 位置可能截断了时间戳行，往前找换行符以包含完整时间戳
+    line_start = content.rfind('\n', 0, last_start)
+    if line_start < 0:
+        line_start = 0
+    else:
+        line_start += 1
+    recent_with_ts = content[line_start:]
+    ts_match = re.search(r'\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\]', recent_with_ts)
+    run_ts = ts_match.group(1) if ts_match else 'unknown'
+
+    # 只在最后一次运行中检查 overfit 关键词
+    if '→ overfit' in recent:
+        lines = [l for l in recent.split('\n') if 'PERM-TEST' in l and 'overfit' in l]
         if lines:
             alerts.append({
-                'key': 'perm_test_overfit',
+                'key': f'perm_test_overfit_{run_ts}',  # 含运行时间戳，同一运行只告警一次
                 'subject': 'Permutation Test失败 - 模型过拟合',
-                'body': f'检测到模型过拟合信号, 已禁止交易!\n\n最新日志:\n{lines[-1]}\n\n可能原因:\n1. 特征无真实alpha\n2. 训练数据质量问题\n3. 市场环境突变',
+                'body': f'检测到模型过拟合信号, 已禁止交易!\n\n运行时间: {run_ts}\n最新日志:\n{lines[-1]}\n\n可能原因:\n1. 特征无真实alpha\n2. 训练数据质量问题\n3. 市场环境突变',
                 'priority': 'high',
             })
     return alerts
@@ -364,16 +391,23 @@ def generate_health_report():
     ok, pred_msg = _is_pred_updated_today()
     pred_info = f'已生成 ({pred_msg})' if ok else f'未生成 ({pred_msg})'
 
-    # 4. Permutation Test
+    # 4. Permutation Test (只看最后一次运行的结果)
     perm_info = '未知'
-    if os.path.exists(log_file):
+    trade_log = os.path.expanduser('~/.local/share/auto_trade/trade.log')
+    if not os.path.exists(trade_log):
+        trade_log = log_file  # 回退到 auto_dual.log
+    if os.path.exists(trade_log):
         try:
-            with open(log_file, 'rb') as f:
-                f.seek(0, 2); size = f.tell(); f.seek(max(0, size - 16384))
+            with open(trade_log, 'rb') as f:
+                f.seek(0, 2); size = f.tell(); f.seek(max(0, size - 65536))
                 content = f.read().decode('utf-8', errors='ignore')
             import re
-            long_match = re.search(r'\[LONG\].*?drop=([+\-]?\d+\.\d+)%.*?(real|partial|overfit)', content)
-            short_match = re.search(r'\[SHORT\].*?drop=([+\-]?\d+\.\d+)%.*?(real|partial|overfit)', content)
+            # 只看最后一次"交易启动"之后的内容
+            marker = '自动多空二选一交易启动'
+            last_start = content.rfind(marker)
+            recent = content[last_start:] if last_start >= 0 else content
+            long_match = re.search(r'\[LONG\].*?drop=([+\-]?\d+\.\d+)%.*?(real|partial|overfit)', recent)
+            short_match = re.search(r'\[SHORT\].*?drop=([+\-]?\d+\.\d+)%.*?(real|partial|overfit)', recent)
             if long_match and short_match:
                 perm_info = f'LONG={long_match.group(2)}({long_match.group(1)}%), SHORT={short_match.group(2)}({short_match.group(1)}%)'
         except:

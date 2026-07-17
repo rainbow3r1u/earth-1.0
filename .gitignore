@@ -97,3 +97,6 @@ data/winsor_bounds_clean.json
 
 # proxy (deprecated)
 data/btc_dominance_proxy.json
+
+# runtime logs
+logs/

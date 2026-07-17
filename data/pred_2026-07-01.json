@@ -1,0 +1,52 @@
+{
+  "date": "2026-07-01",
+  "updated": 1782951301.9812746,
+  "best_long": null,
+  "best_short": {
+    "symbol": "GUSDT",
+    "prob": "55.6"
+  },
+  "top10_long": [],
+  "top10_short": [
+    {
+      "symbol": "GUSDT",
+      "prob": "55.6"
+    },
+    {
+      "symbol": "INJUSDT",
+      "prob": "54.0"
+    },
+    {
+      "symbol": "SYNUSDT",
+      "prob": "53.8"
+    },
+    {
+      "symbol": "AAVEUSDT",
+      "prob": "53.8"
+    },
+    {
+      "symbol": "POWRUSDT",
+      "prob": "51.8"
+    },
+    {
+      "symbol": "AGLDUSDT",
+      "prob": "49.2"
+    },
+    {
+      "symbol": "AVAXUSDT",
+      "prob": "48.7"
+    },
+    {
+      "symbol": "NEARUSDT",
+      "prob": "47.5"
+    },
+    {
+      "symbol": "IDUSDT",
+      "prob": "47.2"
+    },
+    {
+      "symbol": "ZECUSDT",
+      "prob": "46.4"
+    }
+  ]
+}

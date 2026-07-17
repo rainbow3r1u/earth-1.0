@@ -1,0 +1,52 @@
+{
+  "date": "2026-06-29",
+  "updated": 1782778499.8186994,
+  "best_long": null,
+  "best_short": {
+    "symbol": "SYNUSDT",
+    "prob": "69.3"
+  },
+  "top10_long": [],
+  "top10_short": [
+    {
+      "symbol": "SYNUSDT",
+      "prob": "69.3"
+    },
+    {
+      "symbol": "DEXEUSDT",
+      "prob": "68.2"
+    },
+    {
+      "symbol": "IDUSDT",
+      "prob": "65.1"
+    },
+    {
+      "symbol": "AAVEUSDT",
+      "prob": "64.9"
+    },
+    {
+      "symbol": "HEIUSDT",
+      "prob": "63.7"
+    },
+    {
+      "symbol": "AGLDUSDT",
+      "prob": "58.6"
+    },
+    {
+      "symbol": "WLDUSDT",
+      "prob": "58.1"
+    },
+    {
+      "symbol": "SOLUSDT",
+      "prob": "54.5"
+    },
+    {
+      "symbol": "IPUSDT",
+      "prob": "52.3"
+    },
+    {
+      "symbol": "ZECUSDT",
+      "prob": "50.8"
+    }
+  ]
+}

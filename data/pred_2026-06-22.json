@@ -1,0 +1,88 @@
+{
+  "date": "2026-06-22",
+  "updated": 1782181644.054967,
+  "best_long": {
+    "symbol": "ETHUSDT",
+    "prob": "50.9"
+  },
+  "best_short": {
+    "symbol": "AEROUSDT",
+    "prob": "67.1"
+  },
+  "top10_long": [
+    {
+      "symbol": "ETHUSDT",
+      "prob": "50.9"
+    },
+    {
+      "symbol": "ARKMUSDT",
+      "prob": "50.7"
+    },
+    {
+      "symbol": "1000FLOKIUSDT",
+      "prob": "48.6"
+    },
+    {
+      "symbol": "BTCUSDT",
+      "prob": "46.5"
+    },
+    {
+      "symbol": "ALGOUSDT",
+      "prob": "45.5"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "prob": "44.6"
+    },
+    {
+      "symbol": "AEROUSDT",
+      "prob": "40.3"
+    },
+    {
+      "symbol": "1000PEPEUSDT",
+      "prob": "40.2"
+    },
+    {
+      "symbol": "ACTUSDT",
+      "prob": "32.2"
+    }
+  ],
+  "top10_short": [
+    {
+      "symbol": "AEROUSDT",
+      "prob": "67.1"
+    },
+    {
+      "symbol": "ACTUSDT",
+      "prob": "60.3"
+    },
+    {
+      "symbol": "1000FLOKIUSDT",
+      "prob": "56.2"
+    },
+    {
+      "symbol": "ARKMUSDT",
+      "prob": "52.6"
+    },
+    {
+      "symbol": "ALGOUSDT",
+      "prob": "47.5"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "prob": "42.0"
+    },
+    {
+      "symbol": "ETHUSDT",
+      "prob": "40.9"
+    },
+    {
+      "symbol": "BTCUSDT",
+      "prob": "39.9"
+    },
+    {
+      "symbol": "1000PEPEUSDT",
+      "prob": "32.6"
+    }
+  ]
+}

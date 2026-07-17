@@ -1,0 +1,96 @@
+{
+  "date": "2026-07-10",
+  "updated": 1783729023.31341,
+  "best_long": {
+    "symbol": "TLMUSDT",
+    "prob": "44.4"
+  },
+  "best_short": {
+    "symbol": "EPICUSDT",
+    "prob": "76.0"
+  },
+  "top10_long": [
+    {
+      "symbol": "TLMUSDT",
+      "prob": "44.4"
+    },
+    {
+      "symbol": "VANRYUSDT",
+      "prob": "41.8"
+    },
+    {
+      "symbol": "BLURUSDT",
+      "prob": "39.7"
+    },
+    {
+      "symbol": "1000PEPEUSDT",
+      "prob": "33.3"
+    },
+    {
+      "symbol": "EPICUSDT",
+      "prob": "32.0"
+    },
+    {
+      "symbol": "HYPEUSDT",
+      "prob": "30.9"
+    },
+    {
+      "symbol": "AAVEUSDT",
+      "prob": "29.1"
+    },
+    {
+      "symbol": "BTCUSDT",
+      "prob": "27.5"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "prob": "25.6"
+    },
+    {
+      "symbol": "SOLUSDT",
+      "prob": "24.7"
+    }
+  ],
+  "top10_short": [
+    {
+      "symbol": "EPICUSDT",
+      "prob": "76.0"
+    },
+    {
+      "symbol": "BLURUSDT",
+      "prob": "69.3"
+    },
+    {
+      "symbol": "TRUMPUSDT",
+      "prob": "68.3"
+    },
+    {
+      "symbol": "VANRYUSDT",
+      "prob": "68.1"
+    },
+    {
+      "symbol": "NEARUSDT",
+      "prob": "67.7"
+    },
+    {
+      "symbol": "DOGEUSDT",
+      "prob": "65.5"
+    },
+    {
+      "symbol": "HYPEUSDT",
+      "prob": "64.7"
+    },
+    {
+      "symbol": "XRPUSDT",
+      "prob": "64.3"
+    },
+    {
+      "symbol": "BNBUSDT",
+      "prob": "63.8"
+    },
+    {
+      "symbol": "WLDUSDT",
+      "prob": "63.4"
+    }
+  ]
+}

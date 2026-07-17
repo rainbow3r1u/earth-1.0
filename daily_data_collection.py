@@ -9,7 +9,7 @@
   python3 daily_data_collection.py
 """
 import os, sys, json, subprocess, time, shlex
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 
@@ -66,8 +66,9 @@ def update_klines_oi():
         fut_syms = [s['symbol'] for s in resp.json()['symbols']
                     if s.get('status') == 'TRADING' and s.get('quoteAsset') == 'USDT'
                     and s.get('contractType') == 'PERPETUAL']
-    except Exception:
-        fut_syms = []
+    except Exception as e:
+        log(f'[ERROR] Binance exchangeInfo获取失败: {e}, K线/OI更新中止')
+        return  # 不行退，不静默跳过
 
     existing = [s for s in fut_syms if s in klines]
 
@@ -77,7 +78,8 @@ def update_klines_oi():
                 params={'symbol': sym, 'interval': '1d', 'limit': 10}, timeout=10)
             if r.status_code == 200:
                 return sym, [{'t': int(k[0]), 'o': float(k[1]), 'h': float(k[2]),
-                              'l': float(k[3]), 'c': float(k[4]), 'v': float(k[5]), 'q': float(k[7])}
+                              'l': float(k[3]), 'c': float(k[4]), 'v': float(k[5]), 'q': float(k[7]),
+                              'n': int(k[8]), 'tbq': float(k[10])}  # n=成交笔数, tbq=主动买入额 (volfeat)
                              for k in r.json()]
         except Exception:
             pass
@@ -96,6 +98,8 @@ def update_klines_oi():
                 if k['t'] > last_old_ts:
                     old_kls.append(k)
                     updated_k += 1
+                elif k['t'] == last_old_ts:
+                    old_kls[-1] = k  # 刷新未收盘蜡烛, 保证收盘后量/笔数/主动买入额完整
 
     if updated_k > 0:
         try:
@@ -122,8 +126,7 @@ def update_klines_oi():
                 if ts > latest_ts: latest_ts = ts
         if latest_ts:
             age_h = (time.time() - latest_ts / 1000) / 3600
-            from datetime import datetime as _dt, timezone as _tz
-            log(f'    最新K线: {_dt.fromtimestamp(latest_ts/1000, tz=_tz.utc).strftime("%Y-%m-%d")} ({age_h:.0f}h前)')
+            log(f'    最新K线: {datetime.fromtimestamp(latest_ts/1000, tz=timezone.utc).strftime("%Y-%m-%d")} ({age_h:.0f}h前)')
 
     # ---- OI 更新 ----
     oi_cache = '/home/myuser/backtester/data_cache/oi_daily.json'
@@ -136,7 +139,6 @@ def update_klines_oi():
             pass
 
     # FIX: OI更新逻辑 - 检查每个币种的最新日期，如果早于昨天则需要更新
-    from datetime import datetime, timezone, timedelta
     yesterday_ts = int((datetime.now(timezone.utc) - timedelta(days=1)).replace(
         hour=0, minute=0, second=0, microsecond=0).timestamp())
     
@@ -211,7 +213,8 @@ def _upload_to_cos(local_path, cos_key, label):
             Region=cos_vars.get('COS_REGION', 'ap-seoul'),
             SecretId=cos_vars['COS_SECRET_ID'],
             SecretKey=cos_vars['COS_SECRET_KEY'],
-            Endpoint=cos_vars.get('COS_ENDPOINT', 'cos.ap-seoul.myqcloud.com')
+            Endpoint=cos_vars.get('COS_ENDPOINT', 'cos.ap-seoul.myqcloud.com'),
+            Timeout=30
         )
         client = CosS3Client(config)
         with open(local_path, 'rb') as f:
@@ -235,15 +238,16 @@ def main():
     collectors = [
         # (名称, 命令, 工作目录, 超时秒数)
         ('恐慌贪婪', 'python3 fear_greed_collector.py', BASE, 30),
-        ('情绪数据', 'python3 sentiment_collector.py', BASE, 60),
+        # 情绪采集器是常驻守护进程(screen -S sentiment)，不需要在每日脚本中重复调度
         ('BTC市值', 'python3 collect_btc_mcap.py', BASE, 30),
         ('BTC市占率', 'python3 collect_btc_dominance.py', BASE, 30),
         ('宏观资产', 'python3 collect_macro_assets.py', BASE, 30),
-        ('TVL数据', 'python3 collect_tvl.py', BASE, 30),
+        ('TVL数据', 'python3 collect_tvl.py', BASE, 120),
         ('清算热力图', 'python3 liquidation_heatmap.py', BASE, 30),
         ('ETF资金流', 'python3 fetch_etf.py',
-         '/home/myuser/openclaw-5001-host/config/.openclaw/workspace/etf_data', 120),
+         '/home/myuser/websocket_new/data/etf_data', 120),
         ('稳定币+溢价', 'python3 monitor.py', '/home/myuser/stablecoin_data', 30),
+        ('BTC算力', 'python3 collector.py', '/home/myuser/hashrate_data', 30),
     ]
     
     ok_count = 0
@@ -287,7 +291,7 @@ def main():
     log('数据文件新鲜度检查:')
     key_files = [
         ('恐慌贪婪', '/home/myuser/websocket_new/data/fear_greed_history.json'),
-        ('ETF', '/home/myuser/openclaw-5001-host/config/.openclaw/workspace/etf_data/etf_flow.json'),
+        ('ETF', '/home/myuser/websocket_new/data/etf_data/etf_flow.json'),
         ('BTC市值', '/home/myuser/coingecko_data/btc_mcap.json'),
         ('BTC市占率', '/home/myuser/coingecko_data/btc_dominance.json'),
         ('TVL', '/home/myuser/defillama_data/ethereum_tvl.json'),

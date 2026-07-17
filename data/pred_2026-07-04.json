@@ -1,0 +1,96 @@
+{
+  "date": "2026-07-04",
+  "updated": 1783210600.5138788,
+  "best_long": {
+    "symbol": "SOLUSDT",
+    "prob": "66.6"
+  },
+  "best_short": {
+    "symbol": "NFPUSDT",
+    "prob": "61.4"
+  },
+  "top10_long": [
+    {
+      "symbol": "SOLUSDT",
+      "prob": "66.6"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "prob": "62.7"
+    },
+    {
+      "symbol": "1000PEPEUSDT",
+      "prob": "61.7"
+    },
+    {
+      "symbol": "WLDUSDT",
+      "prob": "61.4"
+    },
+    {
+      "symbol": "HYPEUSDT",
+      "prob": "61.2"
+    },
+    {
+      "symbol": "DOGEUSDT",
+      "prob": "60.4"
+    },
+    {
+      "symbol": "BNBUSDT",
+      "prob": "58.8"
+    },
+    {
+      "symbol": "SYNUSDT",
+      "prob": "58.7"
+    },
+    {
+      "symbol": "ETHUSDT",
+      "prob": "55.7"
+    },
+    {
+      "symbol": "NFPUSDT",
+      "prob": "55.3"
+    }
+  ],
+  "top10_short": [
+    {
+      "symbol": "NFPUSDT",
+      "prob": "61.4"
+    },
+    {
+      "symbol": "SOLUSDT",
+      "prob": "61.0"
+    },
+    {
+      "symbol": "SYNUSDT",
+      "prob": "56.1"
+    },
+    {
+      "symbol": "XLMUSDT",
+      "prob": "53.9"
+    },
+    {
+      "symbol": "POWRUSDT",
+      "prob": "53.8"
+    },
+    {
+      "symbol": "ETHUSDT",
+      "prob": "48.1"
+    },
+    {
+      "symbol": "NEARUSDT",
+      "prob": "45.7"
+    },
+    {
+      "symbol": "HYPEUSDT",
+      "prob": "44.5"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "prob": "44.0"
+    },
+    {
+      "symbol": "ZECUSDT",
+      "prob": "43.1"
+    }
+  ]
+}

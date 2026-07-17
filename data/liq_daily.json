@@ -21,12 +21,372 @@
   },
   {
     "date": "2026-06-11",
-    "total_long_liq": 49.8,
-    "total_short_liq": 48.63,
-    "liq_ratio": 1.0239,
-    "long_peak_dist_pct": -0.1,
+    "total_long_liq": 49.79,
+    "total_short_liq": 48.15,
+    "liq_ratio": 1.0339,
+    "long_peak_dist_pct": -9.1,
+    "short_peak_dist_pct": -3.4,
+    "funding_rate": -1.3e-05,
+    "long_ratio": 0.5
+  },
+  {
+    "date": "2026-06-12",
+    "total_long_liq": 45.83,
+    "total_short_liq": 42.88,
+    "liq_ratio": 1.0688,
+    "long_peak_dist_pct": -3.1,
+    "short_peak_dist_pct": 3.8,
+    "funding_rate": 4.1e-05,
+    "long_ratio": 0.5
+  },
+  {
+    "date": "2026-06-13",
+    "total_long_liq": 46.46,
+    "total_short_liq": 45.93,
+    "liq_ratio": 1.0116,
+    "long_peak_dist_pct": -6.7,
+    "short_peak_dist_pct": 6.5,
+    "funding_rate": -4.6e-05,
+    "long_ratio": 0.5
+  },
+  {
+    "date": "2026-06-14",
+    "total_long_liq": 43.72,
+    "total_short_liq": 41.82,
+    "liq_ratio": 1.0455,
+    "long_peak_dist_pct": -3.7,
     "short_peak_dist_pct": 3.2,
-    "funding_rate": 1.6e-05,
+    "funding_rate": 5.5e-05,
+    "long_ratio": 0.5
+  },
+  {
+    "date": "2026-06-15",
+    "total_long_liq": 988.97,
+    "total_short_liq": 994.28,
+    "liq_ratio": 0.9947,
+    "long_peak_dist_pct": -4.6,
+    "short_peak_dist_pct": 4.4,
+    "funding_rate": -2.7e-05,
+    "long_ratio": 0.5
+  },
+  {
+    "date": "2026-06-16",
+    "total_long_liq": 1441.67,
+    "total_short_liq": 1427.92,
+    "liq_ratio": 1.0096,
+    "long_peak_dist_pct": -4.0,
+    "short_peak_dist_pct": 4.4,
+    "funding_rate": 4.8e-05,
+    "long_ratio": 0.5
+  },
+  {
+    "date": "2026-06-17",
+    "total_long_liq": 1327.03,
+    "total_short_liq": 1326.85,
+    "liq_ratio": 1.0001,
+    "long_peak_dist_pct": -1.6,
+    "short_peak_dist_pct": 4.7,
+    "funding_rate": 1e-06,
+    "long_ratio": 0.5
+  },
+  {
+    "date": "2026-06-18",
+    "total_long_liq": 899.48,
+    "total_short_liq": 886.49,
+    "liq_ratio": 1.0147,
+    "long_peak_dist_pct": -4.6,
+    "short_peak_dist_pct": 4.4,
+    "funding_rate": 7.3e-05,
+    "long_ratio": 0.5
+  },
+  {
+    "date": "2026-06-19",
+    "total_long_liq": 911.83,
+    "total_short_liq": 899.86,
+    "liq_ratio": 1.0133,
+    "long_peak_dist_pct": -4.3,
+    "short_peak_dist_pct": 4.7,
+    "funding_rate": 6.6e-05,
+    "long_ratio": 0.5
+  },
+  {
+    "date": "2026-06-20",
+    "total_long_liq": 73.49,
+    "total_short_liq": 72.75,
+    "liq_ratio": 1.0101,
+    "long_peak_dist_pct": -4.9,
+    "short_peak_dist_pct": 3.2,
+    "funding_rate": -4e-06,
+    "long_ratio": 0.5
+  },
+  {
+    "date": "2026-06-21",
+    "total_long_liq": 72.61,
+    "total_short_liq": 71.41,
+    "liq_ratio": 1.0167,
+    "long_peak_dist_pct": -3.4,
+    "short_peak_dist_pct": 5.6,
+    "funding_rate": 6.8e-05,
+    "long_ratio": 0.5
+  },
+  {
+    "date": "2026-06-22",
+    "total_long_liq": 52.58,
+    "total_short_liq": 51.81,
+    "liq_ratio": 1.0148,
+    "long_peak_dist_pct": -3.1,
+    "short_peak_dist_pct": 2.6,
+    "funding_rate": 5.6e-05,
+    "long_ratio": 0.5
+  },
+  {
+    "date": "2026-06-23",
+    "total_long_liq": 54.41,
+    "total_short_liq": 51.27,
+    "liq_ratio": 1.0611,
+    "long_peak_dist_pct": -7.3,
+    "short_peak_dist_pct": 0.8,
+    "funding_rate": 4.3e-05,
+    "long_ratio": 0.5
+  },
+  {
+    "date": "2026-06-24",
+    "total_long_liq": 83.41,
+    "total_short_liq": 83.39,
+    "liq_ratio": 1.0002,
+    "long_peak_dist_pct": -3.4,
+    "short_peak_dist_pct": 3.2,
+    "funding_rate": -5e-05,
+    "long_ratio": 0.5
+  },
+  {
+    "date": "2026-06-25",
+    "total_long_liq": 120.44,
+    "total_short_liq": 117.34,
+    "liq_ratio": 1.0264,
+    "long_peak_dist_pct": -2.8,
+    "short_peak_dist_pct": 2.6,
+    "funding_rate": 8.3e-05,
+    "long_ratio": 0.5
+  },
+  {
+    "date": "2026-06-26",
+    "total_long_liq": 111.11,
+    "total_short_liq": 108.23,
+    "liq_ratio": 1.0265,
+    "long_peak_dist_pct": -2.2,
+    "short_peak_dist_pct": 7.1,
+    "funding_rate": 9.1e-05,
+    "long_ratio": 0.5
+  },
+  {
+    "date": "2026-06-27",
+    "total_long_liq": 128.13,
+    "total_short_liq": 125.61,
+    "liq_ratio": 1.0201,
+    "long_peak_dist_pct": -2.8,
+    "short_peak_dist_pct": 6.5,
+    "funding_rate": 4.9e-05,
+    "long_ratio": 0.5
+  },
+  {
+    "date": "2026-06-28",
+    "total_long_liq": 115.88,
+    "total_short_liq": 113.84,
+    "liq_ratio": 1.018,
+    "long_peak_dist_pct": -4.9,
+    "short_peak_dist_pct": 2.0,
+    "funding_rate": 2.8e-05,
+    "long_ratio": 0.5
+  },
+  {
+    "date": "2026-06-29",
+    "total_long_liq": 129.34,
+    "total_short_liq": 126.41,
+    "liq_ratio": 1.0232,
+    "long_peak_dist_pct": -2.5,
+    "short_peak_dist_pct": 4.1,
+    "funding_rate": 0.0001,
+    "long_ratio": 0.51
+  },
+  {
+    "date": "2026-06-30",
+    "total_long_liq": 131.61,
+    "total_short_liq": 127.15,
+    "liq_ratio": 1.0351,
+    "long_peak_dist_pct": -3.1,
+    "short_peak_dist_pct": 3.8,
+    "funding_rate": 8.4e-05,
+    "long_ratio": 0.5
+  },
+  {
+    "date": "2026-07-01",
+    "total_long_liq": 121.1,
+    "total_short_liq": 118.59,
+    "liq_ratio": 1.0211,
+    "long_peak_dist_pct": -4.0,
+    "short_peak_dist_pct": 2.3,
+    "funding_rate": 9.3e-05,
+    "long_ratio": 0.5
+  },
+  {
+    "date": "2026-07-02",
+    "total_long_liq": 869.51,
+    "total_short_liq": 852.29,
+    "liq_ratio": 1.0202,
+    "long_peak_dist_pct": -4.6,
+    "short_peak_dist_pct": 5.0,
+    "funding_rate": 0.0001,
+    "long_ratio": 0.51
+  },
+  {
+    "date": "2026-07-03",
+    "total_long_liq": 727.16,
+    "total_short_liq": 713.64,
+    "liq_ratio": 1.019,
+    "long_peak_dist_pct": -4.9,
+    "short_peak_dist_pct": 4.4,
+    "funding_rate": 9.4e-05,
+    "long_ratio": 0.5
+  },
+  {
+    "date": "2026-07-04",
+    "total_long_liq": 713.32,
+    "total_short_liq": 699.19,
+    "liq_ratio": 1.0202,
+    "long_peak_dist_pct": -3.7,
+    "short_peak_dist_pct": 5.3,
+    "funding_rate": 0.0001,
+    "long_ratio": 0.51
+  },
+  {
+    "date": "2026-07-05",
+    "total_long_liq": 2029.59,
+    "total_short_liq": 2004.4,
+    "liq_ratio": 1.0126,
+    "long_peak_dist_pct": -4.0,
+    "short_peak_dist_pct": 2.0,
+    "funding_rate": 6.3e-05,
+    "long_ratio": 0.5
+  },
+  {
+    "date": "2026-07-06",
+    "total_long_liq": 1586.33,
+    "total_short_liq": 1554.95,
+    "liq_ratio": 1.0202,
+    "long_peak_dist_pct": -4.3,
+    "short_peak_dist_pct": 4.7,
+    "funding_rate": 0.0001,
+    "long_ratio": 0.51
+  },
+  {
+    "date": "2026-07-07",
+    "total_long_liq": 106.82,
+    "total_short_liq": 103.4,
+    "liq_ratio": 1.0331,
+    "long_peak_dist_pct": -5.5,
+    "short_peak_dist_pct": 3.5,
+    "funding_rate": 8.3e-05,
+    "long_ratio": 0.5
+  },
+  {
+    "date": "2026-07-08",
+    "total_long_liq": 84.46,
+    "total_short_liq": 80.82,
+    "liq_ratio": 1.045,
+    "long_peak_dist_pct": -3.7,
+    "short_peak_dist_pct": 7.4,
+    "funding_rate": 9.2e-05,
+    "long_ratio": 0.5
+  },
+  {
+    "date": "2026-07-09",
+    "total_long_liq": 66.95,
+    "total_short_liq": 63.43,
+    "liq_ratio": 1.0555,
+    "long_peak_dist_pct": 1.7,
+    "short_peak_dist_pct": 4.4,
+    "funding_rate": 0.0001,
+    "long_ratio": 0.51
+  },
+  {
+    "date": "2026-07-10",
+    "total_long_liq": 70.7,
+    "total_short_liq": 67.15,
+    "liq_ratio": 1.0529,
+    "long_peak_dist_pct": -4.9,
+    "short_peak_dist_pct": 0.8,
+    "funding_rate": 0.0001,
+    "long_ratio": 0.51
+  },
+  {
+    "date": "2026-07-11",
+    "total_long_liq": 60.78,
+    "total_short_liq": 58.31,
+    "liq_ratio": 1.0423,
+    "long_peak_dist_pct": -4.9,
+    "short_peak_dist_pct": 1.1,
+    "funding_rate": 4.8e-05,
+    "long_ratio": 0.5
+  },
+  {
+    "date": "2026-07-12",
+    "total_long_liq": 64.61,
+    "total_short_liq": 61.44,
+    "liq_ratio": 1.0516,
+    "long_peak_dist_pct": -1.0,
+    "short_peak_dist_pct": 6.2,
+    "funding_rate": 4.5e-05,
+    "long_ratio": 0.5
+  },
+  {
+    "date": "2026-07-13",
+    "total_long_liq": 1096.01,
+    "total_short_liq": 1074.35,
+    "liq_ratio": 1.0202,
+    "long_peak_dist_pct": -4.9,
+    "short_peak_dist_pct": 4.4,
+    "funding_rate": 0.0001,
+    "long_ratio": 0.51
+  },
+  {
+    "date": "2026-07-14",
+    "total_long_liq": 1234.18,
+    "total_short_liq": 1211.2,
+    "liq_ratio": 1.019,
+    "long_peak_dist_pct": -4.9,
+    "short_peak_dist_pct": 4.7,
+    "funding_rate": 9.4e-05,
+    "long_ratio": 0.5
+  },
+  {
+    "date": "2026-07-15",
+    "total_long_liq": 121.09,
+    "total_short_liq": 118.79,
+    "liq_ratio": 1.0194,
+    "long_peak_dist_pct": -3.7,
+    "short_peak_dist_pct": 2.9,
+    "funding_rate": 2.9e-05,
+    "long_ratio": 0.5
+  },
+  {
+    "date": "2026-07-16",
+    "total_long_liq": 112.32,
+    "total_short_liq": 110.13,
+    "liq_ratio": 1.0198,
+    "long_peak_dist_pct": -1.0,
+    "short_peak_dist_pct": 2.0,
+    "funding_rate": 7.4e-05,
+    "long_ratio": 0.5
+  },
+  {
+    "date": "2026-07-17",
+    "total_long_liq": 91.44,
+    "total_short_liq": 88.88,
+    "liq_ratio": 1.0288,
+    "long_peak_dist_pct": -4.6,
+    "short_peak_dist_pct": 5.3,
+    "funding_rate": 3.1e-05,
     "long_ratio": 0.5
   }
 ]

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """拉取 SP500/DXY/黄金 日线数据, 存到 /tmp/macro_assets.json"""
-import json, os, time
+import json, os, time, sys, subprocess
 from datetime import datetime, timezone
 
 OUT = '/tmp/macro_assets.json'
@@ -9,7 +9,7 @@ def fetch():
     try:
         import yfinance as yf
     except ImportError:
-        os.system('pip install yfinance -q')
+        subprocess.run([sys.executable, '-m', 'pip', 'install', 'yfinance', '-q'], check=False)
         import yfinance as yf
 
     symbols = {
@@ -37,8 +37,10 @@ def fetch():
             print(f"  {name}: {e}")
         time.sleep(0.5)
 
-    with open(OUT, 'w') as f:
+    tmp = OUT + '.tmp'
+    with open(tmp, 'w') as f:
         json.dump({'updated': datetime.now(timezone.utc).isoformat(), 'data': result}, f)
+    os.rename(tmp, OUT)
     print(f"\n保存: {OUT} ({os.path.getsize(OUT)/1024:.0f}KB)")
 
     # 上传COS
@@ -51,6 +53,7 @@ def fetch():
             SecretId=os.environ.get('COS_SECRET_ID', ''),
             SecretKey=os.environ.get('COS_SECRET_KEY', ''),
             Endpoint=os.environ.get('COS_ENDPOINT', ''),
+            Timeout=30
         )
         cos = CosS3Client(config)
         bucket = os.environ.get('COS_BUCKET', '')

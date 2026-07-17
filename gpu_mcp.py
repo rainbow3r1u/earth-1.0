@@ -49,12 +49,8 @@ def handle(method, req_id, params=None):
         days = str(args.get('days', 30))
         stride = str(args.get('stride', 1))
         subprocess.Popen(
-            ['python3', '-u', '-c', f"""
-import sys; sys.path.insert(0,'{WS}')
-import daily_predictor as dp
-dp.dual_backtest(days={days}, stride={stride})
-"""],
-            cwd=WS, stdout=open('/tmp/backtest.log', 'w'), stderr=subprocess.STDOUT
+            ['python3', '-u', f'{WS}/gpu_backtest.py', days, stride, '0'],  # kronos=0 (104D)
+            cwd=WS, stdout=open('/tmp/gpu_bt.log', 'w'), stderr=subprocess.STDOUT
         )
         return {'content': [{'type': 'text', 'text': f'回测已启动 (days={days}, stride={stride}), 查看: tail -f /tmp/backtest.log'}]}
 

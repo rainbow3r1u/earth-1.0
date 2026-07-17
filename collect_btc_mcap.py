@@ -71,8 +71,10 @@ def main():
 
     # 写回
     output = [{"date": d, "btc_mcap_7d_chg": v} for d, v in sorted(existing.items())]
-    with open(DATA_FILE, 'w') as f:
+    tmp = DATA_FILE + '.tmp'
+    with open(tmp, 'w') as f:
         json.dump(output, f, indent=2)
+    os.rename(tmp, DATA_FILE)
 
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     print(f"[BTC MCap] 已更新 {len(output)} 天 | 今日 {today}: {new_data.get(today, 'N/A')}")
@@ -87,6 +89,7 @@ def main():
             SecretId=os.environ.get('COS_SECRET_ID', ''),
             SecretKey=os.environ.get('COS_SECRET_KEY', ''),
             Endpoint=os.environ.get('COS_ENDPOINT', ''),
+            Timeout=30
         )
         cos = CosS3Client(config)
         bucket = os.environ.get('COS_BUCKET', '')

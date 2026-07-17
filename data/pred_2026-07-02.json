@@ -1,0 +1,52 @@
+{
+  "date": "2026-07-02",
+  "updated": 1783037805.3159568,
+  "best_long": null,
+  "best_short": {
+    "symbol": "POWRUSDT",
+    "prob": "52.5"
+  },
+  "top10_long": [],
+  "top10_short": [
+    {
+      "symbol": "POWRUSDT",
+      "prob": "52.5"
+    },
+    {
+      "symbol": "AGLDUSDT",
+      "prob": "52.2"
+    },
+    {
+      "symbol": "WLDUSDT",
+      "prob": "51.7"
+    },
+    {
+      "symbol": "SYNUSDT",
+      "prob": "51.2"
+    },
+    {
+      "symbol": "HYPEUSDT",
+      "prob": "47.9"
+    },
+    {
+      "symbol": "GUSDT",
+      "prob": "44.5"
+    },
+    {
+      "symbol": "XRPUSDT",
+      "prob": "44.4"
+    },
+    {
+      "symbol": "ZECUSDT",
+      "prob": "42.1"
+    },
+    {
+      "symbol": "NEARUSDT",
+      "prob": "39.2"
+    },
+    {
+      "symbol": "DOGEUSDT",
+      "prob": "38.4"
+    }
+  ]
+}

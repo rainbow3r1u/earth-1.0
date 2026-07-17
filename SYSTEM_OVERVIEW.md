@@ -1,6 +1,6 @@
 # 加密货币ML自动交易系统 — 系统全景文档
 
-> 最后更新: 2026-06-06 (GPU回测: 流动性筛选验证失败 + 4项生产Bug修复 + 规则制度化)
+> 最后更新: 2026-07-18 (aligned上线: 消除入场滞后+标签对齐入场点+ab防前视; K线OHLC冻结修复; 情绪25天断供回填; volfeat 944维; 规则: 回测标准180天)
 > 适用目录: `/home/myuser/websocket_new/`
 
 ---
@@ -57,19 +57,24 @@
 │  3. 加载宏观特征 (daily_predictor) → 35维外部数据                        │
 │  4. 预计算板块热度                  → 22维 (ts-86400防泄露)              │
 │  5. 预计算Kronos嵌入                → 832维 (CPU推理, Kronos-base)      │
-│  6. 构建915维特征 (build_features_78d)                                  │
+│  6. 构建944维特征 (build_features_78d)                                  │
 │       • K线特征: 17维 (归一化收益/波动率/位置/振幅/ streak/背离/OI变化)  │
 │       • 波动聚类: 3维 (regime/momentum/persist)                         │
 │       • 回归特征: 4维  (β/α/R²/残差 vs BTC)                             │
 │       • RSI+背离: 7维  (RSI7/14/30 + 背离4维)                           │
-│       • 板块热度: 22维 (ts-86400, 避免当日收益泄露)                      │
-│       • 宏观特征: ~56维 (ETF/链上/情绪/恐慌/稳定币/溢价/算力/清算/TVL)   │
-│       • Kronos:  832维 (Kronos-base hidden state, L2归一化)            │
+│       • 90天回看: 6维  (rsi90/vol_90d/pp_90/ret_30d/60d/90d, v3)        │
+│       • 量能特征: 2维  (tr_ratio笔数量比+tbr主动买卖比, volfeat 7/18)    │
+│       • 板块热度: 22维 (ts-86400, 避免当日收益泄露; 手工覆盖层防回退)    │
+│       • 宏观特征: ~56维 (链上/情绪/恐慌/稳定币/溢价/算力/清算/TVL)      │
+│         (ETF 2维 7/12起禁用置零; 清算26维中19维置零; ab已改prev_date防前视)│
+│       • Kronos:  832维 (已禁用, 训练/预测一致置零)                       │
 │       • 跨资产:   4维  (SP500/DXY/黄金 + 山寨BTC溢价)                   │
-│  7. 标签: 2日收益 > 5% = 1 (j=i-1, next_ret=(close[i+1]-close[j])/close[j])│
+│  7. 标签: 对齐入场点 2日收益 > ±5% = 1 (aligned, 7/18)                   │
+│       next_ret = (close[i+2] - open[i]) / open[i]  (≈48h持仓窗口)       │
+│       i=n-1为预测样本(特征=最新收盘蜡烛D-1); i∈{n-3,n-2}标签未实现跳过   │
 │  8. Walk-forward训练 XGBoost (做多模型 + 做空模型)                       │
-│       • 训练窗口: 最近365天                                            │
-│       • 门槛: ≥400天历史的币种 (当前~341/528)                           │
+│       • 训练窗口: 最近180天 (v3验证最优)                                 │
+│       • 门槛: ≥90天K线历史 (当前~525/532)                               │
 │       • 正样本权重: scale_pos_weight 自动平衡                          │
 │       • Permutation Test 过拟合检测 (每天执行)                          │
 │  9. 预测今日所有币种 → 输出Top10多空概率                                │
@@ -169,7 +174,7 @@ guardian.py (进程守护, cron每分钟)
 | `PROB_THRESHOLD` | 60.0 | 最低置信度阈值 |
 | `LEVERAGE` | 2 | 杠杆倍数 |
 | `MIN_VOLUME_24H` | 500000 | 最小24h成交量 (仅回退时使用) |
-| `TRAIN_DAYS` | 365 | 训练历史窗口天数 (min_required=400天) |
+| `TRAIN_DAYS` | 180 | 训练历史窗口天数 (v3验证最优; min_required=90天K线) |
 | `MARGIN_STEPS` | [5,8,10,15,20,30] | 保证金阶梯 (USDT) |
 | `CAPITAL_BREAKPOINTS` | [25,50,100,200,400] | 钱包余额分档 |
 
@@ -179,15 +184,23 @@ guardian.py (进程守护, cron每分钟)
 
 ```
 * * * * *  cd /home/myuser/websocket_new && /usr/bin/python3 guardian.py >> /tmp/guardian.log 2>&1
-0 6 * * *  cd /home/myuser/websocket_new && /usr/bin/python3 daily_data_collection.py >> /tmp/daily_collection.log 2>&1
-0 8 * * *  cd /home/myuser/websocket_new && /usr/bin/python3 auto_dual_trade.py >> /tmp/auto_dual_cron.log 2>&1
+0 6 * * *  cd /home/myuser/websocket_new && /usr/bin/python3 daily_data_collection.py >> logs/collect.log 2>&1
+30 7 * * * K线+OI缓存补采 (update_klines_oi) >> logs/collect.log 2>&1
+35 7 * * * 推送K线缓存+OI到观察端 (scp)
+5 8 * * *  cd /home/myuser/websocket_new && /usr/bin/python3 auto_dual_trade.py >> logs/auto_dual.log 2>&1
+18 8 * * * 同步daily_predictions.json到观察端 (scp)
+30 8 * * * daily_health_check.py >> logs/health_check.log 2>&1
+0 9 * * *  alert_monitor.py --report (每日健康报告邮件) >> logs/alert.log 2>&1
 ```
 
 | 时间 | 脚本 | 作用 |
 |------|------|------|
-| 每分钟 | guardian.py | 检查进程存活+文件新鲜度 |
-| 每天6:00 | daily_data_collection.py | 统一采集所有外部数据源 |
-| 每天8:00 | auto_dual_trade.py | 检查持仓→训练→预测→交易 |
+| 每分钟 | guardian.py | 进程存活+文件新鲜度+自动重启 (7/18重新启用) |
+| 每天6:00 | daily_data_collection.py | 统一采集所有外部数据源 (含K线/OI缓存刷新) |
+| 每天7:30 | update_klines_oi | 交易前K线/OI补采(冗余) + 推送观察端 |
+| 每天8:05 | auto_dual_trade.py | 检查持仓→训练(944维/180窗/aligned)→预测(入场日)→交易 |
+| 每天8:30 | daily_health_check.py | 健康检查邮件(数据新鲜度/持仓/两端MD5) |
+| 每天9:00 | alert_monitor.py --report | 每日健康报告邮件 |
 
 ---
 
@@ -196,8 +209,8 @@ guardian.py (进程守护, cron每分钟)
 | 日志 | 路径 | 内容 |
 |------|------|------|
 | 交易日志 | `~/.local/share/auto_trade/trade.log` | auto_dual_trade 所有操作记录 |
-| cron交易日志 | `/tmp/auto_dual_cron.log` | cron运行的stdout/stderr |
-| 采集日志 | `/tmp/daily_collection.log` | daily_data_collection 输出 |
+| cron交易日志 | `/home/myuser/websocket_new/logs/auto_dual.log` | cron运行的stdout/stderr |
+| 采集日志 | `/home/myuser/websocket_new/logs/collect.log` | daily_data_collection 输出 |
 | 守护日志 | `/tmp/guardian.log` | guardian 每分钟检查记录 |
 | OI采集 | `/tmp/oi_collector.log` | OI实时采集记录 |
 | 情绪采集 | `/tmp/sentiment.log` | 情绪数据实时采集 |
@@ -217,9 +230,10 @@ guardian.py (进程守护, cron每分钟)
 - 不再需要手动补止损
 
 ### 6.2 模型偏差
-- 标签为2日收益>5%，但实际持仓48小时（约2天），存在时间错配
-- 训练数据历史窗口365天，市场结构变化可能导致模型失效
-- Permutation Test 每天检测过拟合，drop < 0.05 时阻止交易
+- ~~标签时间错配~~: 7/18 aligned 已对齐 — 标签 = open[T]→close[T+2] ≈ 48h持仓窗口
+- ~~入场滞后24h~~: 7/18 修复 — 预测样本 i=n-2→i=n-1 (特征=最新收盘蜡烛), 生产时序=回测时序 (180d回测: lag Sharpe -2.64 vs aligned +6.33)
+- 训练数据历史窗口180天，市场结构变化可能导致模型失效
+- Permutation Test 每天检测过拟合，按边阻断 (LONG/SHORT 独立)
 
 ### 6.3 资金门槛
 - 最低余额 10 USDT 以下跳过交易（但仍更新全部数据缓存）
@@ -367,14 +381,14 @@ ls -lh kronos_finetune/kronos_pretrained/Kronos-Tokenizer-base/model.safetensors
   ├─ monitor.py                    → 稳定币+溢价
   └─ 文件复制 /tmp/* → data/
 
-每天 8:00  auto_dual_trade.py
+每天 8:05  auto_dual_trade.py
   ├─ 检查持仓 (止损-10% / 48h到期)
-  ├─ 全量加载K线缓存 (528币) → 过滤 ≥400天 → ~341币
-  ├─ 加载OI + 宏观 + 板块 + Kronos
+  ├─ 全量加载K线缓存 (532币) → 过滤 ≥90天 → ~525币
+  ├─ 加载OI + 宏观 + 板块 (Kronos已禁用置零)
   ├─ 余额≥10U?
-  │   ├─ YES → 训练XGBoost → Permutation Test → 预测 → 交易
+  │   ├─ YES → 训练XGBoost(944维/180天窗/aligned标签) → Permutation Test → 预测(入场日当天) → 交易
   │   └─ NO  → 跳过交易 (数据已刷新)
-  └─ 下单 + 止损/止盈 (API -4120时裸仓记录)
+  └─ 下单 + Algo止损/止盈 (-4130冲突时裸仓记录, 用户手动挂止损)
 
 每分钟   guardian.py
   ├─ screen会话存活检查 (先kill旧session再建新)
@@ -465,6 +479,12 @@ ls -lh kronos_finetune/kronos_pretrained/Kronos-Tokenizer-base/model.safetensors
 | 2026-06-06 | 新增: GPU 回测环境踩坑记录 — §15 |
 | 2026-06-06 | 新增: `experiments/liquidity_kronos_bt.py` — GPU 专用 Kronos 回测脚本（926维/12核/CUDA） |
 | 2026-06-06 | 新增: `auto_dual_trade.py` 每日持仓同步 — 币安无持仓则清理 state.json 过期记录 |
+| **2026-07-18** | **规则变更: `production-change-gate` 回测窗口 365天 → 180天** (180天训练窗口已验证最优, 用户批准; 回测+用户审核不变) |
+| 2026-07-18 | 重大修复: K线OHLC冻结bug — 5/下旬以来日更"只追加不刷新", 蜡烛冻结在开盘5分钟 (BTC 6/1收盘偏差3.17%), 污染近2月训练标签+价格特征; 已全字段修复+日更改"追加+刷新末根蜡烛" |
+| 2026-07-18 | 修复: 情绪数据6/22起断供25天(SHORT模型top特征) — 币安历史接口回填609小时文件并恢复采集; guardian cron重新启用 |
+| 2026-07-18 | 修复: 7/12板块标签修复被/tmp→data/日更复制回退 — 恢复修复版+`data/sector_overrides.json`覆盖层防再回退; TVL采集并行化(30s超时→6.3s) |
+| 2026-07-18 | volfeat生产接入: 成交笔数n+主动买入额tbq全量回填(96.9%), 特征942→944维 (tr_ratio笔数量比+tbr主动买卖比, 末两位) |
+| 2026-07-18 | **实验(v5三臂180天WF)**: 生产入场时序比回测滞后24h (预测样本i=n-2/特征蜡烛D-2, 回测是特征蜡烛D-1即入场) — lag Sharpe -2.64/Cum -211%/MaxDD 95.8% vs nolag 4.27/+346%/54.3% vs aligned(标签对齐入场open→T+2close + ab改prev_date) 6.33/+469.6%/46.5%; 365d验证前200天lag -45%同样成立(用户决策以180d为准, 提前终止) |
 
 ---
 
@@ -885,3 +905,50 @@ OI 全量 531 币更新安全；K线每天被 daily_collection 和 auto_dual_tra
 | `monitor.py` (stablecoin) | 添加韩国溢价采集+COS |
 | `liquidation_heatmap.py` | 100层快照保存+边界防护 |
 | `current_params.json` | TRAIN_DAYS: 365→9999 |
+
+### 16.12 TVL 链扩展：6→9 链
+
+新增 TON/Sui/Polygon 三条链的 TVL 采集，对应板块映射：
+
+| 链 | DeFiLlama ID | 板块映射 | 说明 |
+|------|------|------|------|
+| TON | `ton` | TON生态 | 精确匹配，130+ 币种 |
+| Sui | `sui` | L1 | SUIUSDT 等 L1 标签币种 |
+| Polygon | `polygon` | L2 | MATIC/POL 等 L2 标签币种 |
+
+修改: `collect_tvl.py` (CHAINS), `daily_predictor.py` (CHAIN_TVL_MAP, TVL_FEATURE_COUNT 6→9), `auto_dual_trade.py` (维度 933→936).
+
+### 16.13 Git 本地版本管理
+
+**仓库位置**: `/home/myuser/websocket_new/` (remote: `rainbow3r1u/Xgboot`)
+
+**纳入追踪**:
+- 所有生产/采集/回测脚本
+- 数据文件: `liq_daily.json`, `liq_levels_daily.json`, `fear_greed_history.json`, `crypto_sectors.json`, `macro_assets.json`, `sector_heatmap.json`, `liquidation_heatmap.json`, `winsor_bounds_clean_full.json`
+- 文档: `SYSTEM_OVERVIEW.md`, `docs/`, `EXTERNAL_FILES.md`
+- 配置: `.gitignore`
+
+**排除** (`.gitignore`):
+- 大缓存: `kronos_features_cache.json` (36MB, 可重算), `hourly_backfill.json` (50MB)
+- 密钥: `.env`
+- 旧模型/回测结果
+- K线缓存 (33MB, `notusdt_1d_full.json`)
+
+**外部文件** (不在仓库根目录下，记录于 `EXTERNAL_FILES.md`):
+| 文件 | 用途 |
+|------|------|
+| `../backtester/config/current_params.json` | 策略参数 |
+| `../stablecoin_data/monitor.py` | 稳定币采集 |
+| `../openclaw-.../etf_data/fetch_etf.py` | ETF采集 |
+| `../gpu_mcp_proxy.py` | GPU代理 |
+| `~/.local/share/auto_trade/` | 模型/状态/日志 |
+
+**常用命令**:
+```bash
+cd /home/myuser/websocket_new
+git diff                    # 看未提交改动
+git status                  # 看文件状态
+git log --oneline -10       # 看提交历史
+git checkout -- <file>      # 放弃单个文件改动
+git stash                   # 暂存改动
+```

@@ -187,8 +187,10 @@ def compute(dist_pct=15, buckets=100):
     top_l = max(result['levels'], key=lambda x: x['long_liq_usd']) if result['levels'] else None
     top_s = max(result['levels'], key=lambda x: x['short_liq_usd']) if result['levels'] else None
 
-    with open(CACHE, 'w') as f:
+    tmp = CACHE + '.tmp'
+    with open(tmp, 'w') as f:
         json.dump(result, f, default=str)
+    os.rename(tmp, CACHE)
 
     # 保存日级历史数据供XGBoost使用
     try:
@@ -219,8 +221,10 @@ def compute(dist_pct=15, buckets=100):
         history = [h for h in history if isinstance(h, dict) and h.get('date') != daily_record['date']]
         history.append(daily_record)
         history.sort(key=lambda x: x['date'])
-        with open(HISTORY_FILE, 'w') as f:
+        tmp = HISTORY_FILE + '.tmp'
+        with open(tmp, 'w') as f:
             json.dump(history, f, indent=2)
+        os.rename(tmp, HISTORY_FILE)
 
         # 新：按日期累积每小时快照 → 训练时聚合24h信息
         # 边界检查：小时必须在0-23，日期必须合法
@@ -306,6 +310,7 @@ def upload_cos():
             SecretId=os.environ.get('COS_SECRET_ID', ''),
             SecretKey=os.environ.get('COS_SECRET_KEY', ''),
             Endpoint=os.environ.get('COS_ENDPOINT', ''),
+            Timeout=30
         )
         cos = CosS3Client(config)
         bucket = os.environ.get('COS_BUCKET', '')

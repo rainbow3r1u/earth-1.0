@@ -151,7 +151,7 @@ def get_cos_client():
         endpoint = os.environ.get('COS_ENDPOINT', COS_ENDPOINT)
         if not sid or not skey:
             return None
-        cos_config = CosConfig(Region=region, SecretId=sid, SecretKey=skey, Endpoint=endpoint)
+        cos_config = CosConfig(Region=region, SecretId=sid, SecretKey=skey, Endpoint=endpoint, Timeout=30)
         _cos_client = CosS3Client(cos_config)
     return _cos_client
 

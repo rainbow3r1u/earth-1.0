@@ -1,0 +1,52 @@
+{
+  "date": "2026-07-09",
+  "updated": 1783642516.7968054,
+  "best_long": null,
+  "best_short": {
+    "symbol": "ADAUSDT",
+    "prob": "55.9"
+  },
+  "top10_long": [],
+  "top10_short": [
+    {
+      "symbol": "ADAUSDT",
+      "prob": "55.9"
+    },
+    {
+      "symbol": "SOLUSDT",
+      "prob": "53.4"
+    },
+    {
+      "symbol": "HYPEUSDT",
+      "prob": "50.4"
+    },
+    {
+      "symbol": "ETHUSDT",
+      "prob": "50.4"
+    },
+    {
+      "symbol": "1000PEPEUSDT",
+      "prob": "50.1"
+    },
+    {
+      "symbol": "BTCUSDT",
+      "prob": "46.6"
+    },
+    {
+      "symbol": "TLMUSDT",
+      "prob": "46.1"
+    },
+    {
+      "symbol": "NEARUSDT",
+      "prob": "45.9"
+    },
+    {
+      "symbol": "ZECUSDT",
+      "prob": "44.8"
+    },
+    {
+      "symbol": "AAVEUSDT",
+      "prob": "42.6"
+    }
+  ]
+}

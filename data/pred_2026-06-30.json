@@ -1,0 +1,96 @@
+{
+  "date": "2026-06-30",
+  "updated": 1782864996.0495076,
+  "best_long": {
+    "symbol": "ZECUSDT",
+    "prob": "53.8"
+  },
+  "best_short": {
+    "symbol": "SYNUSDT",
+    "prob": "60.4"
+  },
+  "top10_long": [
+    {
+      "symbol": "ZECUSDT",
+      "prob": "53.8"
+    },
+    {
+      "symbol": "DOGEUSDT",
+      "prob": "50.1"
+    },
+    {
+      "symbol": "BTCUSDT",
+      "prob": "48.9"
+    },
+    {
+      "symbol": "BNBUSDT",
+      "prob": "47.8"
+    },
+    {
+      "symbol": "IDUSDT",
+      "prob": "47.5"
+    },
+    {
+      "symbol": "AAVEUSDT",
+      "prob": "47.1"
+    },
+    {
+      "symbol": "NEARUSDT",
+      "prob": "47.1"
+    },
+    {
+      "symbol": "XRPUSDT",
+      "prob": "46.5"
+    },
+    {
+      "symbol": "WLDUSDT",
+      "prob": "46.5"
+    },
+    {
+      "symbol": "AGLDUSDT",
+      "prob": "45.9"
+    }
+  ],
+  "top10_short": [
+    {
+      "symbol": "SYNUSDT",
+      "prob": "60.4"
+    },
+    {
+      "symbol": "GUSDT",
+      "prob": "58.1"
+    },
+    {
+      "symbol": "HEIUSDT",
+      "prob": "57.2"
+    },
+    {
+      "symbol": "AAVEUSDT",
+      "prob": "56.2"
+    },
+    {
+      "symbol": "AVAXUSDT",
+      "prob": "52.7"
+    },
+    {
+      "symbol": "AGLDUSDT",
+      "prob": "51.6"
+    },
+    {
+      "symbol": "IDUSDT",
+      "prob": "51.6"
+    },
+    {
+      "symbol": "SOLUSDT",
+      "prob": "50.1"
+    },
+    {
+      "symbol": "ZECUSDT",
+      "prob": "49.2"
+    },
+    {
+      "symbol": "INJUSDT",
+      "prob": "47.5"
+    }
+  ]
+}

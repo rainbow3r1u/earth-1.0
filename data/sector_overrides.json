@@ -1,0 +1,597 @@
+{
+ "coins": {
+  "BUSDT": [
+   "Meme",
+   "DeFi",
+   "DEX",
+   "BSC"
+  ],
+  "BANUSDT": [
+   "Meme",
+   "Solana",
+   "BSC"
+  ],
+  "TSTUSDT": [
+   "Meme",
+   "BSC",
+   "ARB"
+  ],
+  "ACTUSDT": [
+   "Meme",
+   "BSC"
+  ],
+  "JOEUSDT": [
+   "Meme",
+   "DeFi",
+   "DEX",
+   "BSC",
+   "ARB"
+  ],
+  "GRTUSDT": [
+   "AI",
+   "DePIN",
+   "ETH生态",
+   "ARB"
+  ],
+  "VELVETUSDT": [
+   "AI",
+   "DeFi",
+   "Base生态",
+   "BSC",
+   "ARB"
+  ],
+  "ARCUSDT": [
+   "AI",
+   "Solana",
+   "AI Agent",
+   "BSC",
+   "ARB"
+  ],
+  "OPENUSDT": [
+   "AI",
+   "L2",
+   "TON生态",
+   "BSC",
+   "ARB"
+  ],
+  "SQDUSDT": [
+   "AI",
+   "Base生态",
+   "ARB"
+  ],
+  "INUSDT": [
+   "AI",
+   "BSC",
+   "ARB"
+  ],
+  "PRLUSDT": [
+   "AI",
+   "Solana",
+   "BSC"
+  ],
+  "FLUXUSDT": [
+   "AI",
+   "DePIN",
+   "BSC",
+   "ARB"
+  ],
+  "CGPTUSDT": [
+   "AI",
+   "Solana",
+   "AI Agent",
+   "BSC",
+   "ARB"
+  ],
+  "MAGICUSDT": [
+   "AI",
+   "L2",
+   "AI Agent",
+   "Base生态",
+   "ARB"
+  ],
+  "CHRUSDT": [
+   "AI",
+   "L1",
+   "RWA",
+   "ARB"
+  ],
+  "SHELLUSDT": [
+   "AI",
+   "ARB"
+  ],
+  "FHEUSDT": [
+   "AI",
+   "L2",
+   "BSC"
+  ],
+  "BNBUSDT": [
+   "L1",
+   "BSC"
+  ],
+  "SOLUSDT": [
+   "L1",
+   "Solana",
+   "BSC"
+  ],
+  "HYPEUSDT": [
+   "L1",
+   "DeFi",
+   "Solana",
+   "DEX",
+   "ARB"
+  ],
+  "STABLEUSDT": [
+   "L1",
+   "BSC"
+  ],
+  "RUNEUSDT": [
+   "L1",
+   "DeFi",
+   "DEX",
+   "BSC"
+  ],
+  "MERLUSDT": [
+   "L2",
+   "BSC",
+   "ARB"
+  ],
+  "B2USDT": [
+   "L2",
+   "BSC"
+  ],
+  "AEVOUSDT": [
+   "L2",
+   "DeFi",
+   "ARB"
+  ],
+  "ORDERUSDT": [
+   "L2",
+   "DeFi",
+   "Solana",
+   "Base生态",
+   "BSC",
+   "ARB"
+  ],
+  "LABUSDT": [
+   "DeFi",
+   "BSC"
+  ],
+  "UNIUSDT": [
+   "DeFi",
+   "ETH生态",
+   "DEX",
+   "BSC",
+   "ARB"
+  ],
+  "ASTERUSDT": [
+   "DeFi",
+   "DEX",
+   "BSC",
+   "ARB"
+  ],
+  "ONDOUSDT": [
+   "DeFi",
+   "RWA",
+   "ETH生态",
+   "BSC",
+   "ARB"
+  ],
+  "MORPHOUSDT": [
+   "DeFi",
+   "ETH生态",
+   "Base生态",
+   "BSC",
+   "ARB"
+  ],
+  "AAVEUSDT": [
+   "DeFi",
+   "Solana",
+   "ETH生态",
+   "Base生态",
+   "BSC",
+   "ARB"
+  ],
+  "CAKEUSDT": [
+   "DeFi",
+   "Solana",
+   "ETH生态",
+   "DEX",
+   "Base生态",
+   "BSC",
+   "ARB"
+  ],
+  "LITUSDT": [
+   "DeFi",
+   "ETH生态",
+   "DEX",
+   "BSC",
+   "ARB"
+  ],
+  "SUNUSDT": [
+   "DeFi",
+   "BSC",
+   "ARB"
+  ],
+  "CRVUSDT": [
+   "DeFi",
+   "ETH生态",
+   "DEX",
+   "Base生态",
+   "BSC",
+   "ARB"
+  ],
+  "ETHFIUSDT": [
+   "DeFi",
+   "ETH生态",
+   "Base生态",
+   "再质押",
+   "ARB"
+  ],
+  "PENDLEUSDT": [
+   "DeFi",
+   "ETH生态",
+   "DEX",
+   "Base生态",
+   "流动性质押",
+   "再质押",
+   "BSC",
+   "ARB"
+  ],
+  "FRAXUSDT": [
+   "DeFi",
+   "Solana",
+   "ETH生态",
+   "DEX",
+   "流动性质押",
+   "BSC",
+   "ARB"
+  ],
+  "COMPUSDT": [
+   "DeFi",
+   "ETH生态",
+   "Base生态",
+   "ARB"
+  ],
+  "EDGEUSDT": [
+   "DeFi",
+   "DePIN",
+   "ETH生态",
+   "DEX",
+   "Base生态",
+   "BSC",
+   "ARB"
+  ],
+  "CVXUSDT": [
+   "DeFi",
+   "ETH生态",
+   "ARB"
+  ],
+  "1INCHUSDT": [
+   "DeFi",
+   "ETH生态",
+   "DEX",
+   "Base生态",
+   "BSC"
+  ],
+  "COWUSDT": [
+   "DeFi",
+   "ETH生态",
+   "DEX",
+   "Base生态",
+   "BSC"
+  ],
+  "SNXUSDT": [
+   "DeFi",
+   "ETH生态",
+   "DEX",
+   "Base生态",
+   "ARB"
+  ],
+  "RSRUSDT": [
+   "DeFi",
+   "RWA",
+   "ETH生态",
+   "Base生态",
+   "BSC",
+   "ARB"
+  ],
+  "FLUIDUSDT": [
+   "DeFi",
+   "Solana",
+   "ETH生态",
+   "Base生态",
+   "ARB"
+  ],
+  "CHIPUSDT": [
+   "DeFi",
+   "Solana",
+   "ETH生态",
+   "Base生态",
+   "ARB"
+  ],
+  "YFIUSDT": [
+   "DeFi",
+   "ETH生态",
+   "Base生态",
+   "ARB"
+  ],
+  "GMXUSDT": [
+   "DeFi",
+   "ARB"
+  ],
+  "BABYUSDT": [
+   "DeFi",
+   "流动性质押",
+   "BSC"
+  ],
+  "SPKUSDT": [
+   "DeFi",
+   "ARB"
+  ],
+  "BARDUSDT": [
+   "DeFi",
+   "BSC"
+  ],
+  "SUSHIUSDT": [
+   "DeFi",
+   "Solana",
+   "DEX",
+   "Base生态",
+   "BSC",
+   "ARB"
+  ],
+  "XVSUSDT": [
+   "DeFi",
+   "BSC",
+   "ARB"
+  ],
+  "DEEPUSDT": [
+   "DeFi",
+   "BSC"
+  ],
+  "BRUSDT": [
+   "DeFi",
+   "Base生态",
+   "BSC",
+   "ARB"
+  ],
+  "FOLKSUSDT": [
+   "DeFi",
+   "Base生态",
+   "BSC",
+   "ARB"
+  ],
+  "MMTUSDT": [
+   "DeFi",
+   "DEX",
+   "ARB"
+  ],
+  "ZBTUSDT": [
+   "DeFi",
+   "隐私",
+   "Base生态",
+   "BSC",
+   "ARB"
+  ],
+  "REZUSDT": [
+   "DeFi",
+   "Base生态",
+   "再质押",
+   "BSC",
+   "ARB"
+  ],
+  "STGUSDT": [
+   "DeFi",
+   "Base生态",
+   "BSC",
+   "ARB"
+  ],
+  "WOOUSDT": [
+   "DeFi",
+   "Solana",
+   "DEX",
+   "Base生态",
+   "BSC",
+   "ARB"
+  ],
+  "LISTAUSDT": [
+   "DeFi",
+   "流动性质押",
+   "BSC"
+  ],
+  "MYXUSDT": [
+   "DeFi",
+   "BSC",
+   "ARB"
+  ],
+  "SPELLUSDT": [
+   "DeFi",
+   "BSC",
+   "ARB"
+  ],
+  "KNCUSDT": [
+   "DeFi",
+   "DEX",
+   "BSC",
+   "ARB"
+  ],
+  "FUSDT": [
+   "DeFi",
+   "BSC",
+   "ARB"
+  ],
+  "INXUSDT": [
+   "DeFi",
+   "Solana",
+   "DEX",
+   "BSC"
+  ],
+  "DOLOUSDT": [
+   "DeFi",
+   "DEX",
+   "ARB"
+  ],
+  "XAUTUSDT": [
+   "RWA",
+   "ETH生态",
+   "ARB"
+  ],
+  "CFGUSDT": [
+   "RWA",
+   "ETH生态",
+   "BSC",
+   "ARB"
+  ],
+  "MLNUSDT": [
+   "RWA",
+   "ARB"
+  ],
+  "XAIUSDT": [
+   "游戏",
+   "ARB"
+  ],
+  "POWERUSDT": [
+   "游戏",
+   "BSC"
+  ],
+  "PIXELUSDT": [
+   "游戏",
+   "ARB"
+  ],
+  "MBOXUSDT": [
+   "游戏",
+   "BSC"
+  ],
+  "ANKRUSDT": [
+   "DePIN",
+   "流动性质押",
+   "BSC"
+  ],
+  "SPACEUSDT": [
+   "DePIN",
+   "BSC",
+   "ARB"
+  ],
+  "WUSDT": [
+   "Solana",
+   "ETH生态",
+   "Base生态",
+   "BSC",
+   "ARB"
+  ],
+  "MEUSDT": [
+   "Solana",
+   "ARB"
+  ],
+  "ZROUSDT": [
+   "ETH生态",
+   "Base生态",
+   "BSC",
+   "ARB"
+  ],
+  "THEUSDT": [
+   "DEX",
+   "BSC"
+  ],
+  "HFTUSDT": [
+   "DEX",
+   "BSC",
+   "ARB"
+  ],
+  "RIVERUSDT": [
+   "链抽象",
+   "Base生态",
+   "BSC",
+   "ARB"
+  ],
+  "TACUSDT": [
+   "TON生态",
+   "BSC"
+  ],
+  "AXLUSDT": [
+   "Base生态",
+   "BSC",
+   "ARB"
+  ],
+  "GPSUSDT": [
+   "Base生态",
+   "BSC",
+   "ARB"
+  ],
+  "SYNUSDT": [
+   "Base生态",
+   "BSC",
+   "ARB"
+  ],
+  "HYPERUSDT": [
+   "Base生态",
+   "BSC",
+   "ARB"
+  ],
+  "EULUSDT": [
+   "Base生态",
+   "BSC",
+   "ARB"
+  ],
+  "MAVUSDT": [
+   "Base生态",
+   "BSC",
+   "ARB"
+  ],
+  "ATAUSDT": [
+   "再质押",
+   "ARB"
+  ],
+  "SOLVUSDT": [
+   "BSC",
+   "ARB"
+  ],
+  "TWTUSDT": [
+   "BSC"
+  ],
+  "CELRUSDT": [
+   "BSC",
+   "ARB"
+  ],
+  "1000FLOKIUSDT": [
+   "BSC",
+   "ARB"
+  ],
+  "GASUSDT": [
+   "BSC"
+  ],
+  "OPNUSDT": [
+   "BSC"
+  ],
+  "BICOUSDT": [
+   "BSC",
+   "ARB"
+  ],
+  "HEIUSDT": [
+   "ARB"
+  ],
+  "1000CHEEMSUSDT": [
+   "ARB"
+  ]
+ },
+ "excluded": [
+  "ᚠUSDT",
+  "₸USDUSDT",
+  "∅USDT",
+  "███USDT",
+  "吉祥马USDT",
+  "哈基米USDT",
+  "客服小何USDT",
+  "币安人生USDT",
+  "我踏马来了USDT",
+  "深脑链USDT",
+  "自由人生USDT",
+  "道德經USDT",
+  "金狗USDT",
+  "龙虾USDT",
+  "ꘜUSDT",
+  "🔄USDT",
+  "🦝USDT"
+ ],
+ "_note": "2026-07-12手工修复覆盖层: BSC/ARB标签+手工打标+异常key排除, sector_fetcher fetch后应用"
+}

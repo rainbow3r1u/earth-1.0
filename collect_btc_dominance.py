@@ -27,8 +27,8 @@ def fetch():
             }
             print(f"{today}: BTC.D={btc_dom:.1f}% 总市值=${total_mcap/1e12:.2f}T")
     except Exception as e:
-        print(f"CoinGecko失败: {e}")
-        return result
+        print(f"CoinGecko global失败: {e}")
+        return None  # 明确失败，禁止返回旧数据
 
     # 3. 尝试拉历史BTC市值占率 — 用BTC市值/全球市值的近似
     # CoinGecko免费API限制较多, 这里用BTC market_chart + 估算
@@ -56,8 +56,10 @@ def fetch():
 
     # 排序保存
     sorted_result = dict(sorted(result.items()))
-    with open(OUT, 'w') as f:
+    tmp = OUT + '.tmp'
+    with open(tmp, 'w') as f:
         json.dump(sorted_result, f)
+    os.rename(tmp, OUT)
     print(f"保存: {OUT} ({len(result)}天)")
 
     # 上传COS
@@ -70,6 +72,7 @@ def fetch():
             SecretId=os.environ.get('COS_SECRET_ID', ''),
             SecretKey=os.environ.get('COS_SECRET_KEY', ''),
             Endpoint=os.environ.get('COS_ENDPOINT', ''),
+            Timeout=30
         )
         cos = CosS3Client(config)
         bucket = os.environ.get('COS_BUCKET', '')

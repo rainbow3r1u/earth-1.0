@@ -52,8 +52,8 @@ CHECKS = [
     },
     {
         "name": "ETF采集(每天)",
-        "check": "file_age", "path": "/home/myuser/openclaw-5001-host/config/.openclaw/workspace/etf_data/etf_flow.json", "max_age": 72000,
-        "start": "cd /home/myuser/openclaw-5001-host/config/.openclaw/workspace/etf_data && /usr/bin/python3 fetch_etf.py > /tmp/etf_cron.log 2>&1 &",
+        "check": "file_age", "path": "/home/myuser/websocket_new/data/etf_data/etf_flow.json", "max_age": 72000,
+        "start": "cd /home/myuser/websocket_new/data/etf_data && /usr/bin/python3 fetch_etf.py > /tmp/etf_cron.log 2>&1 &",
     },
     {
         "name": "板块标签(每天)",
@@ -70,12 +70,22 @@ CHECKS = [
         "check": "file_age", "path": "/home/myuser/defillama_data/ethereum_tvl.json", "max_age": 90000,
         "start": "/usr/bin/python3 /home/myuser/websocket_new/collect_tvl.py > /tmp/tvl_cron.log 2>&1 &",
     },
-    # FIX: Web服务app.py不存在，移除端口检查避免循环重启
-    # {
-    #     "name": "Web服务(端口)",
-    #     "check": "port", "port": 5003,
-    #     "start": "cd /home/myuser/websocket_new && screen -dmS web python3 -u app.py",
-    # },
+    {
+        "name": "auto_dual_trade(每天)",
+        "check": "crash_file", "path": "/tmp/auto_dual_trade_crash.json", "alert_window": 90000,
+        # start 只做告警记录，不重跑交易脚本（交易脚本由 cron 调度）
+        "start": "/usr/bin/python3 -c \"import datetime; print(datetime.datetime.now().isoformat(), 'auto_dual_trade crashed - check /tmp/auto_dual_trade_crash.json')\" >> /tmp/auto_dual_trade_alert.log",
+    },
+    {
+        "name": "Web服务(5003)",
+        "check": "process", "pattern": "market_monitor_app.py",
+        "start": "cd /home/myuser/websocket_new && screen -dmS web python3 -u market_monitor_app.py",
+    },
+    {
+        "name": "MCP服务",
+        "check": "process", "pattern": "mcp_server.py",
+        "start": "cd /home/myuser/websocket_new && screen -dmS mcp python3 -u mcp_server.py",
+    },
 ]
 
 # check_port() monitors TCP port liveness for CHECKS entries with "check": "port"
@@ -106,6 +116,20 @@ def check_file_age(path, max_age):
         return (time.time() - mtime) < max_age
     except Exception:
         return False
+
+def check_crash_file(path, alert_window=3600):
+    """检查崩溃标记文件：存在且 crashed=true 且在 alert_window 内 → 不健康"""
+    try:
+        if not os.path.exists(path):
+            return True
+        mtime = os.path.getmtime(path)
+        if (time.time() - mtime) > alert_window:
+            return True  # 旧的崩溃已过期，不继续告警
+        with open(path) as f:
+            data = json.load(f)
+        return not data.get('crashed', False)
+    except Exception:
+        return True
 
 def _pid_file(name):
     """生成PID文件路径"""
@@ -166,6 +190,8 @@ def main():
             alive = check_port(svc["port"])
         elif check_type == "file_age":
             alive = check_file_age(svc["path"], svc["max_age"])
+        elif check_type == "crash_file":
+            alive = check_crash_file(svc["path"], svc.get("alert_window", 3600))
         else:
             alive = check_process(svc["pattern"])
 
@@ -190,6 +216,8 @@ def main():
 
             if check_type == "file_age":
                 msg = f"[{time.strftime('%m-%d %H:%M')}] {svc['name']} 文件过期，启动更新..."
+            elif check_type == "crash_file":
+                msg = f"[{time.strftime('%m-%d %H:%M')}] {svc['name']} 发生崩溃，记录告警..."
             else:
                 msg = f"[{time.strftime('%m-%d %H:%M')}] {svc['name']} 挂了，重启..."
             print(msg)
@@ -210,6 +238,20 @@ def main():
                 subprocess.run(cmd, shell=True)
             else:
                 subprocess.run(shlex.split(cmd), shell=False)
+            
+            # 验证是否真的启动了
+            time.sleep(0.5)
+            started = False
+            if screen_match:
+                result = subprocess.run(['screen', '-ls'], capture_output=True, text=True)
+                started = screen_match.group(1) in result.stdout
+            elif svc["check"] == "process":
+                result = subprocess.run(['pgrep', '-f', svc["pattern"]], capture_output=True)
+                started = result.returncode == 0
+            else:
+                started = True  # file_age/crash_file 为一次性任务，无需进程存活验证
+            if not started:
+                print(f"  ⚠️  {svc['name']} 重启命令已执行但未检测到进程!")
     if restarted_any:
         _save_restart_count(restart_count)
     # 写状态文件供网站读取
