@@ -493,6 +493,7 @@ ls -lh kronos_finetune/kronos_pretrained/Kronos-Tokenizer-base/model.safetensors
 | 2026-07-18 | Git: 提交5668355并推送GitHub — 原Xgboot仓库已被删, 新建私有仓库 `rainbow3r1u/Xgboot` (账号下另一仓库3.96SHARPE为无关历史, 由3.96SHARPE_repo/维护) |
 | 2026-07-18 | 部署体系: 新增 `deploy/cos_paths.json` + `deploy/bootstrap_from_cos.py` + `DEPLOY.md`; COS补齐(回填情绪621个/种子4个/修复版K线缓存+板块标签); 新机器部署=clone→.env→COS拉取→依赖→cron |
 | 2026-07-18 | 观察端修复: 情绪数据同步1682文件(同样断供25天) + 生产端新增7:36 rsync每日推送 |
+| 2026-07-18 | 实验(BB特征包, aligned+乖离率/%B/带宽 947维, 180d): Sharpe 5.89 vs 基线6.33, MaxDD 57.6% vs 46.5% — **冗余, 不接入** (与price_position/vol_20d重复, 止损34→40次) |
 
 ---
 
