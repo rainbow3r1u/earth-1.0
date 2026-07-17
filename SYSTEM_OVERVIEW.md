@@ -187,6 +187,7 @@ guardian.py (进程守护, cron每分钟)
 0 6 * * *  cd /home/myuser/websocket_new && /usr/bin/python3 daily_data_collection.py >> logs/collect.log 2>&1
 30 7 * * * K线+OI缓存补采 (update_klines_oi) >> logs/collect.log 2>&1
 35 7 * * * 推送K线缓存+OI到观察端 (scp)
+36 7 * * * 推送情绪数据到观察端 (rsync, 7/18新增)
 5 8 * * *  cd /home/myuser/websocket_new && /usr/bin/python3 auto_dual_trade.py >> logs/auto_dual.log 2>&1
 18 8 * * * 同步daily_predictions.json到观察端 (scp)
 30 8 * * * daily_health_check.py >> logs/health_check.log 2>&1
@@ -198,6 +199,7 @@ guardian.py (进程守护, cron每分钟)
 | 每分钟 | guardian.py | 进程存活+文件新鲜度+自动重启 (7/18重新启用) |
 | 每天6:00 | daily_data_collection.py | 统一采集所有外部数据源 (含K线/OI缓存刷新) |
 | 每天7:30 | update_klines_oi | 交易前K线/OI补采(冗余) + 推送观察端 |
+| 每天7:36 | rsync sentiment_data | 推送情绪数据到观察端 (7/18新增, 防两端漂移) |
 | 每天8:05 | auto_dual_trade.py | 检查持仓→训练(944维/180窗/aligned)→预测(入场日)→交易 |
 | 每天8:30 | daily_health_check.py | 健康检查邮件(数据新鲜度/持仓/两端MD5) |
 | 每天9:00 | alert_monitor.py --report | 每日健康报告邮件 |
@@ -401,9 +403,9 @@ ls -lh kronos_finetune/kronos_pretrained/Kronos-Tokenizer-base/model.safetensors
 
 | COS 路径 | 内容 | 频率 | 采集器 |
 |------|------|------|------|
-| `klines/cache/notusdt_1d_full.json` | K线缓存 (528币日线, 31.6MB) | 每天 6:00 | daily_data_collection |
+| `klines/cache/notusdt_1d_full.json` | K线缓存 (532币日线含n/tbq, 44.7MB, 7/18已修复OHLC) | 每天 6:00 | daily_data_collection |
 | `klines/cache/oi_daily.json` | OI缓存 (531币日级, 0.4MB) | 每天 6:00 | daily_data_collection |
-| `klines/cache/kronos_features_cache.json` | Kronos特征 (832维, ~35MB) | 每天 8:00 | auto_dual_trade |
+| `klines/bootstrap/*` | 部署种子快照 (current_params/btc_chain.csv/liq_daily/liq_levels_daily) | 手动(变动时) | bootstrap (7/18新增) |
 | `klines/blockchair_data/YYYYMMDD/` | BTC链上数据 (CDD/交易量/Mempool) | 每小时 | blockchair_collector |
 | `klines/sentiment_data/YYYYMMDD/` | 情绪数据 (费率/多空比) | 每小时 | sentiment_collector |
 | `klines/oi_data/YYYYMMDD/` | OI持仓数据 (实时) | 每5分钟 | oi_collector |
@@ -420,7 +422,9 @@ ls -lh kronos_finetune/kronos_pretrained/Kronos-Tokenizer-base/model.safetensors
 | `klines/sector_heatmap/sector_heatmap.json` | 板块热力图 | 每天 | sector_heatmap |
 | `klines/fear_greed_history.json` | 恐慌贪婪指数 | 每天 | fear_greed_collector |
 
-> 共 **16 个 COS 路径**，覆盖全部本地数据。验证命令: 读取 COS bucket 按 LastModified 排序取最新。
+> 共 **17 个 COS 路径**，覆盖全部本地数据。验证命令: 读取 COS bucket 按 LastModified 排序取最新。
+> 7/18 新增 `deploy/cos_paths.json` (部署路径清单) 与 `deploy/bootstrap_from_cos.py` (一键拉取), 部署流程见 `DEPLOY.md`。
+> 注意: `klines/cache/kronos_features_cache.json` 自 Kronos 禁用后停更。
 
 ---
 
@@ -485,6 +489,10 @@ ls -lh kronos_finetune/kronos_pretrained/Kronos-Tokenizer-base/model.safetensors
 | 2026-07-18 | 修复: 7/12板块标签修复被/tmp→data/日更复制回退 — 恢复修复版+`data/sector_overrides.json`覆盖层防再回退; TVL采集并行化(30s超时→6.3s) |
 | 2026-07-18 | volfeat生产接入: 成交笔数n+主动买入额tbq全量回填(96.9%), 特征942→944维 (tr_ratio笔数量比+tbr主动买卖比, 末两位) |
 | 2026-07-18 | **实验(v5三臂180天WF)**: 生产入场时序比回测滞后24h (预测样本i=n-2/特征蜡烛D-2, 回测是特征蜡烛D-1即入场) — lag Sharpe -2.64/Cum -211%/MaxDD 95.8% vs nolag 4.27/+346%/54.3% vs aligned(标签对齐入场open→T+2close + ab改prev_date) 6.33/+469.6%/46.5%; 365d验证前200天lag -45%同样成立(用户决策以180d为准, 提前终止) |
+| 2026-07-18 | **aligned全量上线生产** (用户审核通过): 预测样本i=n-1(特征=最新收盘蜡烛), 标签open[T]→close[T+2], ab改prev_date, 2日验证入场基准改开盘价; 观察端同步(MD5一致) |
+| 2026-07-18 | Git: 提交5668355并推送GitHub — 原Xgboot仓库已被删, 新建私有仓库 `rainbow3r1u/Xgboot` (账号下另一仓库3.96SHARPE为无关历史, 由3.96SHARPE_repo/维护) |
+| 2026-07-18 | 部署体系: 新增 `deploy/cos_paths.json` + `deploy/bootstrap_from_cos.py` + `DEPLOY.md`; COS补齐(回填情绪621个/种子4个/修复版K线缓存+板块标签); 新机器部署=clone→.env→COS拉取→依赖→cron |
+| 2026-07-18 | 观察端修复: 情绪数据同步1682文件(同样断供25天) + 生产端新增7:36 rsync每日推送 |
 
 ---
 
@@ -920,19 +928,21 @@ OI 全量 531 币更新安全；K线每天被 daily_collection 和 auto_dual_tra
 
 ### 16.13 Git 本地版本管理
 
-**仓库位置**: `/home/myuser/websocket_new/` (remote: `rainbow3r1u/Xgboot`)
+**仓库位置**: `/home/myuser/websocket_new/` (remote: `xgboot` → `github.com/rainbow3r1u/Xgboot`, 私有, 2026-07-18重建; 原Xgboot仓库已被删, 旧`origin`指向拼写错误的`rainlow3r1u`已弃用)
 
 **纳入追踪**:
 - 所有生产/采集/回测脚本
-- 数据文件: `liq_daily.json`, `liq_levels_daily.json`, `fear_greed_history.json`, `crypto_sectors.json`, `macro_assets.json`, `sector_heatmap.json`, `liquidation_heatmap.json`, `winsor_bounds_clean_full.json`
-- 文档: `SYSTEM_OVERVIEW.md`, `docs/`, `EXTERNAL_FILES.md`
+- 数据文件: `liq_daily.json`, `liq_levels_daily.json`, `fear_greed_history.json`, `crypto_sectors.json`, `sector_overrides.json`, `macro_assets.json`, `sector_heatmap.json`, `liquidation_heatmap.json`, `winsor_bounds_clean_full.json`, `pred_*.json`
+- 文档: `SYSTEM_OVERVIEW.md`, `DEPLOY.md`, `docs/`, `EXTERNAL_FILES.md`
+- 部署: `deploy/cos_paths.json`, `deploy/bootstrap_from_cos.py`
 - 配置: `.gitignore`
 
 **排除** (`.gitignore`):
 - 大缓存: `kronos_features_cache.json` (36MB, 可重算), `hourly_backfill.json` (50MB)
 - 密钥: `.env`
 - 旧模型/回测结果
-- K线缓存 (33MB, `notusdt_1d_full.json`)
+- K线缓存 (44.7MB, `notusdt_1d_full.json` — 从COS拉取, 见DEPLOY.md)
+- 运行日志: `logs/`
 
 **外部文件** (不在仓库根目录下，记录于 `EXTERNAL_FILES.md`):
 | 文件 | 用途 |
