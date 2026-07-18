@@ -72,6 +72,33 @@ def update_klines_oi():
 
     existing = [s for s in fut_syms if s in klines]
 
+    updated_k = 0
+
+    # 新上市币种: 全量补入缓存 (此前只更新已有币, 新币永远进不来 — 7/18修复)
+    new_syms = [s for s in fut_syms if s not in klines]
+    if new_syms:
+        log(f'  发现 {len(new_syms)} 个新上市币: {new_syms}, 全量补采...')
+
+        def _fetch_full(sym):
+            try:
+                r = req.get('https://fapi.binance.com/fapi/v1/klines',
+                    params={'symbol': sym, 'interval': '1d', 'limit': 1500}, timeout=20)
+                if r.status_code == 200:
+                    return sym, [{'t': int(k[0]), 'o': float(k[1]), 'h': float(k[2]),
+                                  'l': float(k[3]), 'c': float(k[4]), 'v': float(k[5]), 'q': float(k[7]),
+                                  'n': int(k[8]), 'tbq': float(k[10])}
+                                 for k in r.json()]
+            except Exception:
+                pass
+            return sym, []
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as pool:
+            for f in concurrent.futures.as_completed([pool.submit(_fetch_full, s) for s in new_syms]):
+                s, full = f.result()
+                if full:
+                    klines[s] = full
+                    updated_k += len(full)
+
     def _fetch_latest(sym):
         try:
             r = req.get('https://fapi.binance.com/fapi/v1/klines',
@@ -85,7 +112,6 @@ def update_klines_oi():
             pass
         return sym, []
 
-    updated_k = 0
     with concurrent.futures.ThreadPoolExecutor(max_workers=5) as pool:
         futures = {pool.submit(_fetch_latest, s): s for s in existing}
         for f in concurrent.futures.as_completed(futures):
