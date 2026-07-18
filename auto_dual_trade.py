@@ -70,6 +70,43 @@ _FEATURE_NAMES = (
     + ['tr_ratio','tbr','vol_raw']
 )
 
+# 特征中文名映射 (决策依据邮件/日志显示用)
+_FEATURE_NAMES_CN = {
+    'ret_1d_norm': '1日涨幅(归一)', 'ret_3d_norm': '3日涨幅(归一)', 'ret_5d_norm': '5日涨幅(归一)',
+    'volatility': '波动率', 'vol_ratio': '量比(5日均量)', 'price_position': '价格位置(20日)',
+    'amplitude': '振幅', 'streak': '连涨天数', 'div_sign': '量价背离', 'oi_chg': '持仓量日变化',
+    'vol_regime': '波动区间regime', 'vol_momentum': '波动动量', 'vol_persist': '波动持续性',
+    'beta': '对BTC贝塔β', 'alpha': '对BTC阿尔法α', 'r2': '对BTC相关性R²', 'residual': '对BTC残差',
+    'rsi7': 'RSI(7日)', 'rsi14': 'RSI(14日)', 'rsi30': 'RSI(30日)',
+    'rsi_div_top': 'RSI顶背离', 'rsi_div_bottom': 'RSI底背离',
+    'rsi_overbought_persist': 'RSI超买持续', 'rsi_price_corr_20d': 'RSI价格相关(20日)',
+    'etf_btc_flow': 'BTC ETF净流入', 'etf_eth_flow': 'ETH ETF净流入',
+    'chain_vol': '链上交易量', 'chain_tx': '链上交易数', 'chain_fee': '链上手续费', 'cdd_ratio': '链上CDD比率',
+    'sent_funding': '资金费率(Top5均值)', 'sent_ls_btc': 'BTC多空比', 'sent_ls_eth': 'ETH多空比',
+    'sent_ls_avg10': '主流币多空比均值', 'sent_ls_high': '极端多头占比', 'sent_ls_low': '极端空头占比',
+    'fear_greed': '恐慌贪婪指数', 'stablecoin_netflow': '稳定币净流入',
+    'coinbase_prem': 'Coinbase溢价', 'coinbase_gap': 'Coinbase溢价Gap',
+    'btc_mcap': 'BTC市值', 'korea_prem': '韩国溢价', 'hashrate_7d_chg': '算力7日变化',
+    'liq_ratio_ls_mean': '多空清算比(均值)', 'liq_ratio_ls_std': '多空清算比(波动)',
+    'liq_peak_l_mean': '多头清算峰位(均值)', 'liq_peak_l_std': '多头清算峰位(波动)',
+    'liq_peak_s_mean': '空头清算峰位(均值)', 'liq_peak_s_std': '空头清算峰位(波动)',
+    'chain_tvl_btc': 'BTC生态TVL', 'chain_tvl_eth': 'ETH生态TVL', 'chain_tvl_sol': 'Solana TVL',
+    'chain_tvl_bsc': 'BSC链TVL', 'chain_tvl_arb': 'ARB链TVL', 'chain_tvl_base': 'Base生态TVL',
+    'chain_tvl_ton': 'TON生态TVL', 'chain_tvl_l1': 'L1公链TVL', 'chain_tvl_l2': 'L2 TVL',
+    'sp500': '标普500', 'dxy': '美元指数', 'gold': '黄金', 'btc_dominance': 'BTC市占率',
+    'rsi90': 'RSI(90日)', 'vol_90d': '90日波动率', 'pp_90': '90日价格位置',
+    'ret_30d': '30日收益率', 'ret_60d': '60日收益率', 'ret_90d': '90日收益率',
+    'tr_ratio': '成交笔数量比', 'tbr': '主动买卖比', 'vol_raw': '成交额(原始)',
+}
+# 清算分位特征 (liq_q0~q4 × 多空 × 均值/波动)
+for _i in range(5):
+    for _d, _dc in (('long', '多头'), ('short', '空头')):
+        for _m, _mc in (('mean', '均值'), ('std', '波动')):
+            _FEATURE_NAMES_CN[f'liq_q{_i}_{_d}_{_m}'] = f'清算Q{_i}{_dc}({ _mc})'
+# 板块特征
+for _s in _SECTOR_ORDER:
+    _FEATURE_NAMES_CN[f'sector_{_s}'] = f'板块热度·{_s}'
+
 def log(msg):
     ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     import re as _re
@@ -1679,7 +1716,9 @@ def _log_pick_explain(model, best, valid_list, valid_indices, X_pred, direction)
         order = np.argsort(-np.abs(contribs))[:5]
         log(f'[决策依据] {direction} {best[0]} prob={best[1]*100:.1f}% (bias {bias:+.3f})')
         for i in order:
-            log(f'    {_FEATURE_NAMES[i]:<24} {contribs[i]:+.3f} (值 {row[0, i]:.4g})')
+            _en = _FEATURE_NAMES[i]
+            _cn = _FEATURE_NAMES_CN.get(_en, _en)
+            log(f'    {_cn}({_en}) {contribs[i]:+.3f} (值 {row[0, i]:.4g})')
     except Exception as e:
         log(f'决策依据计算失败: {e}')
 
