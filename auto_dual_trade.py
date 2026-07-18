@@ -1857,6 +1857,54 @@ def get_adaptive_thresholds(base_threshold=None):
     return long_thresh, short_thresh, reason
 
 
+def _build_verify_summary(tracker):
+    """构建深化版命中率板块: 当日(分方向+明细) + 近7天逐日 + 7天分方向汇总 + 自适应阈值"""
+    last = sorted(tracker, key=lambda t: t.get('date', ''))[-1]
+    recent = tracker[-7:]
+    adj_long, adj_short, adj_reason = get_adaptive_thresholds()
+
+    def _dir_stats(details):
+        out = {}
+        for d in details:
+            dd = out.setdefault(d.get('direction', '?'), [0, 0, 0.0])
+            dd[1] += 1
+            dd[0] += 1 if d.get('hit') else 0
+            dd[2] += d.get('pnl', 0)
+        return out
+
+    def _fmt_dir(ds, name):
+        if name not in ds or ds[name][1] == 0:
+            return f'{name}: 无样本'
+        h, n, pnl = ds[name]
+        return f'{name}: 命中 {h}/{n} ({h/n*100:.0f}%)  收益 {pnl:+.1f}%'
+
+    ds = _dir_stats(last.get('details', []))
+    lines = [
+        f"\n\n=== 2日验证 ({last['date']}) ===",
+        f"TOP10命中: {last.get('top10_hits',0)}/10  TOP20: {last.get('top20_hits',0)}/20  总命中率: {last.get('hit_rate',0)}%",
+        f"TOP10收益: {last.get('top10_return',0):+.1f}%  TOP20: {last.get('top20_return',0):+.1f}%  总: {last.get('total_return',0):+.1f}%",
+        f"\n--- 分方向 ---",
+        _fmt_dir(ds, 'LONG'),
+        _fmt_dir(ds, 'SHORT'),
+        f"\n--- 明细 ---",
+    ]
+    for d in last.get('details', [])[:12]:
+        mark = '✓' if d.get('hit') else '✗'
+        lines.append(f"  {d.get('direction','?'):<5} {d['symbol']:<14} {d['prob']:.1f}% → {d['pnl']:+.1f}% {mark}")
+    if len(last.get('details', [])) > 12:
+        lines.append(f"  ... 共{len(last['details'])}个, 其余略")
+
+    lines.append(f"\n=== 近{len(recent)}天趋势 ===")
+    for t in recent:
+        lines.append(f"  {t['date']}: TOP10 {t.get('top10_hits',0)}/10  命中 {t.get('hit_rate',0)}%  收益 {t.get('total_return',0):+.1f}%")
+    ds7 = _dir_stats([d for t in recent for d in t.get('details', [])])
+    l7 = f"LONG {ds7['LONG'][0]/ds7['LONG'][1]*100:.0f}%" if ds7.get('LONG', [0,0])[1] else 'LONG -'
+    s7 = f"SHORT {ds7['SHORT'][0]/ds7['SHORT'][1]*100:.0f}%" if ds7.get('SHORT', [0,0])[1] else 'SHORT -'
+    lines.append(f"  {len(recent)}天汇总: {l7} / {s7}")
+    lines.append(f"\n=== 自适应阈值 ===")
+    lines.append(f"LONG={adj_long:.0f}% SHORT={adj_short:.0f}%  ({adj_reason})")
+    return '\n'.join(lines)
+
 def send_daily_report():
     """每日训练预测完成后发送日报邮件"""
     try:
@@ -1898,19 +1946,7 @@ def send_daily_report():
             with open(dp.TRACK_FILE) as f:
                 tracker = json.load(f)
             if tracker:
-                last = sorted(tracker, key=lambda t: t.get('date', ''))[-1]
-                recent = tracker[-7:]
-                avg_7d = sum(t.get('hit_rate', 0) for t in recent) / len(recent)
-                adj_long, adj_short, adj_reason = get_adaptive_thresholds()
-                verify_summary = (
-                    f"\n\n=== 2日验证 ({last['date']}) ===\n"
-                    f"TOP10命中: {last.get('top10_hits',0)}/10\n"
-                    f"总命中率: {last.get('hit_rate',0)}%\n"
-                    f"TOP10收益: {last.get('top10_return',0):+.1f}%\n"
-                    f"\n=== 准确率趋势 ===\n"
-                    f"自适应阈值: LONG={adj_long:.0f}% SHORT={adj_short:.0f}%\n"
-                    f"  ({adj_reason})\n"
-                )
+                verify_summary = _build_verify_summary(tracker)
     except Exception as e:
         log(f'验证复盘失败: {e}')
 
