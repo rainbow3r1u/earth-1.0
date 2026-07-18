@@ -50,6 +50,26 @@ FUTURES_INFO_CACHE = os.path.join(DATA_DIR, 'binance_futures_info.json')
 # Kronos toggle: False = BASELINE 104D (Permutation Test验证通过), True = 936D
 USE_KRONOS = False
 
+# 特征名表 (与 assemble_feature_vec 顺序一致, 用于TOP1决策依据输出)
+_SECTOR_ORDER = getattr(dp, 'SECTOR_ORDER', [])
+_FEATURE_NAMES = (
+    ['ret_1d_norm','ret_3d_norm','ret_5d_norm','volatility','vol_ratio','price_position','amplitude','streak','div_sign','oi_chg']
+    + ['vol_regime','vol_momentum','vol_persist']
+    + ['beta','alpha','r2','residual','rsi7','rsi14','rsi30']
+    + ['rsi_div_top','rsi_div_bottom','rsi_overbought_persist','rsi_price_corr_20d']
+    + [f'sector_{s}' for s in _SECTOR_ORDER]
+    + ['etf_btc_flow','etf_eth_flow','chain_vol','chain_tx','chain_fee','cdd_ratio']
+    + ['sent_funding','sent_ls_btc','sent_ls_eth','sent_ls_avg10','sent_ls_high','sent_ls_low']
+    + ['fear_greed','stablecoin_netflow','coinbase_prem','coinbase_gap','btc_mcap','korea_prem','hashrate_7d_chg']
+    + [f'liq_q{i}_{d}_{m}' for m in ['mean','std'] for d in ['long','short'] for i in range(5)]
+    + ['liq_ratio_ls_mean','liq_ratio_ls_std','liq_peak_l_mean','liq_peak_l_std','liq_peak_s_mean','liq_peak_s_std']
+    + [f'chain_tvl_{c}' for c in ['btc','eth','sol','bsc','arb','base','ton','l1','l2']]
+    + [f'kr_{i}' for i in range(dp.EMBEDDING_DIM)]
+    + ['sp500','dxy','gold','btc_dominance']
+    + ['rsi90','vol_90d','pp_90','ret_30d','ret_60d','ret_90d']
+    + ['tr_ratio','tbr','vol_raw']
+)
+
 def log(msg):
     ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     import re as _re
@@ -1140,6 +1160,12 @@ def train_and_predict(by_day, today_ts, klines):
         log('[PERM-TEST] SHORT 过拟合，禁止空头交易')
         best_short = None
         top10_short = []
+
+    # TOP1 决策依据 (pred_contribs 特征贡献)
+    if best_long:
+        _log_pick_explain(model_long, best_long, valid_long, valid_indices, X_pred, 'LONG')
+    if best_short:
+        _log_pick_explain(model_short, best_short, valid_short, valid_indices, X_pred, 'SHORT')
     
     return best_long, best_short, top10_long, top10_short
 
@@ -1640,6 +1666,23 @@ def main():
     log('交易结束')
 
 # ============ 过拟合测试 ============
+def _log_pick_explain(model, best, valid_list, valid_indices, X_pred, direction):
+    """输出TOP1候选的决策依据: XGBoost pred_contribs 特征贡献 TOP5"""
+    try:
+        import xgboost as xgb
+        pos = next((j for j, v in enumerate(valid_list) if v[0] == best[0]), None)
+        if pos is None:
+            return
+        row = X_pred[valid_indices[pos]:valid_indices[pos]+1]
+        contribs = model.get_booster().predict(xgb.DMatrix(row), pred_contribs=True)[0]
+        bias, contribs = contribs[-1], contribs[:-1]
+        order = np.argsort(-np.abs(contribs))[:5]
+        log(f'[决策依据] {direction} {best[0]} prob={best[1]*100:.1f}% (bias {bias:+.3f})')
+        for i in order:
+            log(f'    {_FEATURE_NAMES[i]:<24} {contribs[i]:+.3f} (值 {row[0, i]:.4g})')
+    except Exception as e:
+        log(f'决策依据计算失败: {e}')
+
 def _filter_valid_samples(pred_samples, klines, today_ts):
     """过滤预测样本: 剔除K线不足/位置不足/低成交量的币种
     返回 (valid_samples, valid_indices) — 与train_and_predict过滤逻辑完全一致
@@ -1925,7 +1968,7 @@ def send_daily_report():
 
     keywords = ['钱包', 'ORPHAN', '当前', '训练:', 'PERM-TEST', '做多概率', '做空概率',
                 'prob=', '置信度', '空仓', '开仓:', '跳过交易', '本金不足', '多空信号',
-                '预测日期', '样本:', '板块热度', '特征维度', '极端值']
+                '预测日期', '样本:', '板块热度', '特征维度', '极端值', '决策依据']
     key_lines = []
     for line in today_lines:
         clean = line.split('] ', 1)[-1] if '] ' in line else line
