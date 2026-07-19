@@ -1954,27 +1954,29 @@ def _build_verify_summary(tracker):
             dd[2] += d.get('pnl', 0)
         return out
 
-    def _fmt_dir(ds, name):
-        if name not in ds or ds[name][1] == 0:
-            return f'{name}: 无样本'
-        h, n, pnl = ds[name]
-        return f'{name}: 命中 {h}/{n} ({h/n*100:.0f}%)  收益 {pnl:+.1f}%'
-
     ds = _dir_stats(last.get('details', []))
+
+    def _agg(name):
+        if name not in ds or ds[name][1] == 0:
+            return f'{name} 总体: 无样本'
+        h, n, pnl = ds[name]
+        return f'{name} 总体: 命中 {h}/{n} ({h/n*100:.0f}%)  收益 {pnl:+.1f}%'
+
     lines = [
         f"\n\n=== 2日验证 ({last['date']}) ===",
-        f"TOP10命中: {last.get('top10_hits',0)}/10  TOP20: {last.get('top20_hits',0)}/20  总命中率: {last.get('hit_rate',0)}%",
-        f"TOP10收益: {last.get('top10_return',0):+.1f}%  TOP20: {last.get('top20_return',0):+.1f}%  总: {last.get('total_return',0):+.1f}%",
-        f"\n--- 分方向 ---",
-        _fmt_dir(ds, 'LONG'),
-        _fmt_dir(ds, 'SHORT'),
-        f"\n--- 明细 ---",
+        _agg('LONG'),
+        _agg('SHORT'),
     ]
-    for d in last.get('details', [])[:12]:
-        mark = '✓' if d.get('hit') else '✗'
-        lines.append(f"  {d.get('direction','?'):<5} {d['symbol']:<14} {d['prob']:.1f}% → {d['pnl']:+.1f}% {mark}")
-    if len(last.get('details', [])) > 12:
-        lines.append(f"  ... 共{len(last['details'])}个, 其余略")
+    # SHORT 明细: TOP10 每个的命中与收益 (LONG 只看总体, 不展开)
+    short_det = [d for d in last.get('details', []) if d.get('direction') == 'SHORT'][:10]
+    if short_det:
+        lines.append(f"\n--- SHORT 明细 TOP{len(short_det)} ---")
+        for d in short_det:
+            mark = '✓' if d.get('hit') else '✗'
+            lines.append(f"  {d['symbol']:<14} {d['prob']:.1f}% → {d['pnl']:+.1f}% {mark}")
+        sh = sum(1 for d in short_det if d.get('hit'))
+        sp = sum(d.get('pnl', 0) for d in short_det)
+        lines.append(f"SHORT命中: {sh}/{len(short_det)}  收益合计: {sp:+.1f}%")
 
     lines.append(f"\n=== 近{len(recent)}天趋势 ===")
     for t in recent:
