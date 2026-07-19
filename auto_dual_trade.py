@@ -1483,6 +1483,15 @@ def main():
     long_thresh, short_thresh, threshold_reason = get_adaptive_thresholds()
     log(f'多空阈值: LONG={long_thresh:.0f}% SHORT={short_thresh:.0f}% ({threshold_reason})')
 
+    # SHORT 多仓模式 (7/19用户决策): LONG 维持TOP1; LONG不占优时, 过阈值的SHORT候选全开, 每笔10U
+    long_wins = best_long is not None and long_prob >= long_thresh and long_prob >= short_prob
+    if not long_wins:
+        short_picks = [(s, p * 100) for s, p, r in top10_short if p * 100 >= short_thresh]
+        if short_picks:
+            opened = _open_short_multi(short_picks, state, wallet, available, active)
+            save_state(state)
+            return
+
     # 概率高的优先, 被阈值挡了则尝试另一个方向, 都不行则空仓
     if long_prob >= short_prob:
         candidates = [('LONG', long_prob, long_thresh, best_long), ('SHORT', short_prob, short_thresh, best_short)]
@@ -1701,6 +1710,69 @@ def main():
 
     save_state(state)
     log('交易结束')
+
+# ============ SHORT 多仓 ============
+SHORT_MAX_PER_DAY = 5   # SHORT多仓每日上限 (防过度集中, 可调)
+SHORT_MARGIN = 10.0     # SHORT多仓单笔保证金U (用户指定)
+
+def _open_short_multi(short_picks, state, wallet, available, active):
+    """SHORT多仓: 对过阈值候选逐个开空, 每笔固定10U保证金
+    跳过: 已有持仓(任意方向, 不翻转); 余额不足即停; 上限 SHORT_MAX_PER_DAY"""
+    opened = 0
+    remaining = available
+    for sym, prob in short_picks:
+        if opened >= SHORT_MAX_PER_DAY:
+            log(f'  SHORT多仓: 达每日上限{SHORT_MAX_PER_DAY}笔, 停止')
+            break
+        held = next((p for p in active if p.get('symbol') == sym
+                     and abs(float(p.get('positionAmt', 0))) > 0), None)
+        if held:
+            log(f'  {sym} 已有持仓, 跳过')
+            continue
+        buffer = wallet * 0.005
+        if remaining < SHORT_MARGIN + buffer:
+            log(f'  可用{remaining:.1f}u不足{SHORT_MARGIN}u+缓冲, SHORT多仓停止 (已开{opened}笔)')
+            break
+        price = get_symbol_price(sym)
+        if not price:
+            log(f'  {sym} 价格获取失败, 跳过'); continue
+        qty = round_qty(sym, SHORT_MARGIN * LEVERAGE / price)
+        if qty <= 0 or qty * price < 5:
+            log(f'  {sym} 数量/名义不足, 跳过'); continue
+        log(f'开仓: {sym} SHORT 保证金{SHORT_MARGIN:.1f}u 杠杆{LEVERAGE}x 数量{qty} 名义{qty*price:.1f}u 置信度{prob:.1f}%')
+        lev = set_leverage(sym, LEVERAGE)
+        if lev.get('code') and lev.get('code') != 0:
+            log(f'  {sym} 杠杆设置失败, 跳过'); continue
+        ok, order, actual_qty = place_market_order_with_retry(sym, 'SELL', qty, reduce_only=False, max_retries=3)
+        if not ok or actual_qty <= 0:
+            log(f'  {sym} 下单失败: {order}, 跳过'); continue
+        actual_price = safe_float(order.get('avgPrice'))
+        pos_data = signed_request('GET', '/fapi/v2/positionRisk', {'symbol': sym})
+        if isinstance(pos_data, list) and pos_data:
+            ep = safe_float(pos_data[0].get('entryPrice'), 0)
+            if ep > 0: actual_price = ep
+        if actual_price <= 0: actual_price = price
+        tick = get_tick_size(sym)
+        decimals = len(str(tick).split('.')[-1].rstrip('0')) if tick and '.' in str(tick) else 4
+        sl_price = round(actual_price * (1 + STOP_LOSS_PCT / 100), decimals)
+        tp_price = round(actual_price * (1 - TAKE_PROFIT_PCT / 100), decimals)
+        sl_ok, sl_order = place_and_verify_algo_order(place_stop_loss_order, sym, 'BUY', sl_price, max_attempts=2)
+        tp_ok, tp_order = place_and_verify_algo_order(place_take_profit_order, sym, 'BUY', tp_price, max_attempts=2)
+        state['positions'][f'{sym}_SHORT'] = {
+            'symbol': sym, 'direction': 'SHORT', 'qty': actual_qty,
+            'margin': SHORT_MARGIN, 'prob': prob, 'open_ts': int(time.time()),
+            'open_price': actual_price, 'notional': actual_qty * actual_price,
+            'sl_order_id': sl_order.get('algoId') or sl_order.get('orderId') if sl_ok else None,
+            'tp_order_id': tp_order.get('algoId') or tp_order.get('orderId') if tp_ok else None,
+            'stop_loss_price': sl_price if sl_ok else 0,
+            'take_profit_price': tp_price if tp_ok else 0,
+            'naked': not (sl_ok or tp_ok),
+        }
+        opened += 1
+        remaining -= SHORT_MARGIN
+        time.sleep(0.3)
+    log(f'SHORT多仓完成: 开{opened}笔 (候选{len(short_picks)}个)')
+    return opened
 
 # ============ 过拟合测试 ============
 def _log_pick_explain(model, best, valid_list, valid_indices, X_pred, direction):
