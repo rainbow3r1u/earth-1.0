@@ -4,7 +4,7 @@
 每天运行：检查持仓(止损/2天平仓) → 训练+预测 → 开仓+止损单+止盈单
 特征维度: 104维 (纯手工特征, Kronos已禁用 — Permutation Test验证通过)
 """
-import os, sys, json, time, hmac, hashlib, math, warnings, fcntl, pickle, traceback, gc
+import os, sys, json, time, hmac, hashlib, math, warnings, fcntl, pickle, traceback, gc, bisect
 from datetime import datetime, timezone
 from urllib.parse import urlencode
 from array import array
@@ -794,10 +794,27 @@ def fetch_oi_for_symbols(symbols):
 # ---- 多进程特征构建支持（模块级函数，供子进程pickle调用） ----
 _mp_shared = None  # (btc_rets, sector_map, sector_heats_all) 只读共享数据
 
+# fund_raw 费率数据 (地球版1.2): {sym: (times_ms[], rates[])} 升序, 各进程各自加载
+_FUND_DATA = {}
+_FUND_FILE = '/home/myuser/backtester/data_cache/funding_hist.json'
+
+def _load_fund_data():
+    """加载单币费率历史 (8h结算原值), 幂等"""
+    global _FUND_DATA
+    if _FUND_DATA:
+        return
+    try:
+        with open(_FUND_FILE) as f:
+            raw = json.load(f)
+        _FUND_DATA = {s: ([r[0] for r in rows], [r[1] for r in rows]) for s, rows in raw.items()}
+    except Exception:
+        _FUND_DATA = {}
+
 def _mp_init_shared(shared):
     """子进程初始化：接收只读共享数据"""
     global _mp_shared
     _mp_shared = shared
+    _load_fund_data()  # 各worker各自加载费率数据
 
 def _build_feat_impl(sym, kls, oi_map, btc_rets, sector_map, sector_heats_all):
     """单币种特征计算实现（串行和并行共用）
@@ -815,6 +832,9 @@ def _build_feat_impl(sym, kls, oi_map, btc_rets, sector_map, sector_heats_all):
     n_ = [k['n'] if isinstance(k, dict) and 'n' in k else 0 for k in kls]
     tbq_ = [k.get('tbq') if isinstance(k, dict) else None for k in kls]
     timestamps = [k['t'] // 1000 for k in kls]
+    # fund_raw: 单币费率原值 (地球版1.2, 取样本日前最近一次8h结算, 无前视)
+    _load_fund_data()
+    _ft, _fr = _FUND_DATA.get(sym, ([], []))
     coin_rets = dp._compute_returns(closes)
     n = len(kls)
 
@@ -893,6 +913,9 @@ def _build_feat_impl(sym, kls, oi_map, btc_rets, sector_map, sector_heats_all):
             tr_ratio = n_[j] / _n_mean if j >= 5 and _n_mean > 0 else 1
             _tb = tbq_[j]
             tbr = _tb / vols[j] if (_tb is not None and vols[j] > 0) else 0.5
+            # fund_raw: 单币费率原值 (样本日前最近一次8h结算, 无前视, 无数据=0)
+            _fi = bisect.bisect_right(_ft, ts * 1000) - 1
+            fund_raw = _fr[_fi] if _fi >= 0 else 0.0
 
             feat = assemble_feature_vec(
                 ret_1d_norm, ret_3d_norm, ret_5d_norm,
@@ -900,7 +923,7 @@ def _build_feat_impl(sym, kls, oi_map, btc_rets, sector_map, sector_heats_all):
                 vol_col, beta, alpha, r2, residual, rsi7, rsi14, rsi30,
                 rsi_div, sector_feats, macro_feats,
                 rsi90, vol_90d, pp_90, ret_30d, ret_60d, ret_90d,
-                tr_ratio, tbr, vols[j])  # vol_raw=原始成交额q (地球版1.1, 180d Sharpe 6.33→8.13)
+                tr_ratio, tbr, vols[j], fund_raw)  # vol_raw(1.1) + fund_raw费率原值(1.2)
 
             # aligned: 标签对齐入场点 — open[T]→close[T+2] (与48h持仓窗口一致)
             if i == n - 1:
@@ -1032,7 +1055,7 @@ def train_and_predict(by_day, today_ts, klines):
 
     # 运行时维度断言
     n_features = X_train.shape[1]
-    EXPECTED_N = 10 + 3 + 7 + 4 + 22 + (2+4+6+1+1+1+1+1+1+1+26+9 + dp.EMBEDDING_DIM + 3 + 1) + 6 + 3  # v3: +6个90天特征; volfeat: +3(tr_ratio/tbr/vol_raw原始成交额, 地球版1.1)
+    EXPECTED_N = 10 + 3 + 7 + 4 + 22 + (2+4+6+1+1+1+1+1+1+1+26+9 + dp.EMBEDDING_DIM + 3 + 1) + 6 + 4  # v3: +6个90天特征; volfeat: +4(tr_ratio/tbr/vol_raw成交额/fund_raw费率, 地球版1.2)
     if n_features != EXPECTED_N:
         log(f'[CRITICAL] 特征维度不匹配! 实际={n_features} 期望={EXPECTED_N}')
     else:

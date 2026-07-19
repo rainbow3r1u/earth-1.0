@@ -154,6 +154,50 @@ def update_klines_oi():
             age_h = (time.time() - latest_ts / 1000) / 3600
             log(f'    最新K线: {datetime.fromtimestamp(latest_ts/1000, tz=timezone.utc).strftime("%Y-%m-%d")} ({age_h:.0f}h前)')
 
+    # ---- 费率更新 (地球版1.2 fund_raw: 8h结算原值, 新币全历史补采) ----
+    fund_file = '/home/myuser/backtester/data_cache/funding_hist.json'
+    fund_data = {}
+    if os.path.exists(fund_file):
+        try:
+            with open(fund_file) as f:
+                fund_data = json.load(f)
+        except Exception:
+            pass
+
+    def _fetch_funding(sym):
+        try:
+            limit = 1000 if sym not in fund_data else 10  # 新币全历史, 老币增量
+            r = req.get('https://fapi.binance.com/fapi/v1/fundingRate',
+                params={'symbol': sym, 'limit': limit}, timeout=15)
+            if r.status_code == 200:
+                return sym, [(int(x['fundingTime']), float(x['fundingRate'])) for x in r.json()]
+        except Exception:
+            pass
+        return sym, []
+
+    new_f = 0
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as pool:
+        futures = {pool.submit(_fetch_funding, s): s for s in fut_syms}
+        for f in concurrent.futures.as_completed(futures):
+            s, rows = f.result()
+            if not rows:
+                continue
+            old = fund_data.setdefault(s, [])
+            last_t = old[-1][0] if old else 0
+            for t_, r_ in rows:
+                if t_ > last_t:
+                    old.append([t_, r_])
+                    new_f += 1
+    if new_f > 0:
+        try:
+            with open(fund_file, 'w') as f:
+                json.dump(fund_data, f)
+            log(f'  ✅ 费率缓存更新: {new_f} 条新结算 ({len(fund_data)}币)')
+        except Exception as e:
+            log(f'  ⚠️ 费率缓存写入失败: {e}')
+    else:
+        log(f'  ℹ️ 费率缓存无需更新')
+
     # ---- OI 更新 ----
     oi_cache = '/home/myuser/backtester/data_cache/oi_daily.json'
     oi_data = {}
