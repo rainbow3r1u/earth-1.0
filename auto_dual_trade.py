@@ -1713,7 +1713,7 @@ def main():
 
 # ============ SHORT 多仓 ============
 SHORT_MAX_PER_DAY = 5   # SHORT多仓每日上限 (防过度集中, 可调)
-SHORT_MARGIN = 10.0     # SHORT多仓单笔保证金U (用户指定)
+SHORT_MARGIN = 5.0      # SHORT多仓单笔保证金U (用户指定, 7/19从10U调整为5U)
 
 def _open_short_multi(short_picks, state, wallet, available, active):
     """SHORT多仓: 对过阈值候选逐个开空, 每笔固定10U保证金
