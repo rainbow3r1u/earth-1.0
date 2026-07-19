@@ -2108,5 +2108,15 @@
     "date": "2026-07-16",
     "value": 25,
     "classification": "Extreme Fear"
+  },
+  {
+    "date": "2026-07-17",
+    "value": 27,
+    "classification": "Fear"
+  },
+  {
+    "date": "2026-07-18",
+    "value": 25,
+    "classification": "Extreme Fear"
   }
 ]

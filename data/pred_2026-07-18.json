@@ -1,0 +1,96 @@
+{
+  "date": "2026-07-18",
+  "updated": 1784333831.3869653,
+  "best_long": {
+    "symbol": "BASUSDT",
+    "prob": "63.3"
+  },
+  "best_short": {
+    "symbol": "DODOXUSDT",
+    "prob": "52.7"
+  },
+  "top10_long": [
+    {
+      "symbol": "BASUSDT",
+      "prob": "63.3"
+    },
+    {
+      "symbol": "\u5e01\u5b89\u4eba\u751fUSDT",
+      "prob": "59.6"
+    },
+    {
+      "symbol": "JCTUSDT",
+      "prob": "59.3"
+    },
+    {
+      "symbol": "JSTUSDT",
+      "prob": "59.1"
+    },
+    {
+      "symbol": "DODOXUSDT",
+      "prob": "58.2"
+    },
+    {
+      "symbol": "BEATUSDT",
+      "prob": "57.9"
+    },
+    {
+      "symbol": "EPICUSDT",
+      "prob": "57.6"
+    },
+    {
+      "symbol": "STABLEUSDT",
+      "prob": "57.5"
+    },
+    {
+      "symbol": "PEOPLEUSDT",
+      "prob": "57.0"
+    },
+    {
+      "symbol": "XNYUSDT",
+      "prob": "57.0"
+    }
+  ],
+  "top10_short": [
+    {
+      "symbol": "DODOXUSDT",
+      "prob": "52.7"
+    },
+    {
+      "symbol": "1000XECUSDT",
+      "prob": "52.5"
+    },
+    {
+      "symbol": "TAGUSDT",
+      "prob": "52.4"
+    },
+    {
+      "symbol": "IDOLUSDT",
+      "prob": "52.3"
+    },
+    {
+      "symbol": "BANKUSDT",
+      "prob": "52.3"
+    },
+    {
+      "symbol": "ZECUSDT",
+      "prob": "51.2"
+    },
+    {
+      "symbol": "TRADOORUSDT",
+      "prob": "51.0"
+    },
+    {
+      "symbol": "AKEUSDT",
+      "prob": "50.8"
+    },
+    {
+      "symbol": "AVAAIUSDT",
+      "prob": "50.5"
+    },
+    {
+      "symbol": "BULLAUSDT",
+      "prob": "50.0"
+    }
+  ]
+}
