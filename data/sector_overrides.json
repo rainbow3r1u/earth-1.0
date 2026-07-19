@@ -572,6 +572,15 @@
   ],
   "1000CHEEMSUSDT": [
    "ARB"
+  ],
+  "币安人生USDT": [
+   "Meme"
+  ],
+  "我踏马来了USDT": [
+   "Meme"
+  ],
+  "龙虾USDT": [
+   "Meme"
   ]
  },
  "excluded": [
@@ -582,16 +591,14 @@
   "吉祥马USDT",
   "哈基米USDT",
   "客服小何USDT",
-  "币安人生USDT",
-  "我踏马来了USDT",
+  "屎壳郎USDT",
   "深脑链USDT",
   "自由人生USDT",
   "道德經USDT",
   "金狗USDT",
-  "龙虾USDT",
   "ꘜUSDT",
   "🔄USDT",
   "🦝USDT"
  ],
- "_note": "2026-07-12手工修复覆盖层: BSC/ARB标签+手工打标+异常key排除, sector_fetcher fetch后应用"
+ "_note": "2026-07-12手工修复覆盖层: BSC/ARB标签+手工打标+异常key排除, sector_fetcher fetch后应用 | 7/19修正: 3个中文Meme为真实币安合约,移回并标Meme; 屎壳郎(无合约)排除"
 }
