@@ -1508,6 +1508,10 @@ def main():
 
     # SHORT 多仓模式 (7/19用户决策): LONG 维持TOP1; LONG不占优时, 过阈值的SHORT候选全开, 每笔10U
     long_wins = best_long is not None and long_prob >= long_thresh and long_prob >= short_prob
+    # LONG动量过滤 (地球版1.3): LONG候选必须满足 特征蜡烛连涨≥2天+20日价格位置>0.7; SHORT不受影响
+    if long_wins and not _mom_ok_long(best_long[0], klines.get(best_long[0], [])):
+        log(f'LONG动量过滤拦截: {best_long[0]} 未达(连涨≥2天+20日位置>0.7), 转SHORT流程')
+        long_wins = False
     if not long_wins:
         short_picks = [(s, p * 100) for s, p, r in top10_short if p * 100 >= short_thresh]
         if short_picks:
@@ -1737,6 +1741,26 @@ def main():
 # ============ SHORT 多仓 ============
 SHORT_MAX_PER_DAY = 5   # SHORT多仓每日上限 (防过度集中, 可调)
 SHORT_MARGIN = 5.0      # SHORT多仓单笔保证金U (用户指定, 7/19从10U调整为5U)
+
+def _mom_ok_long(sym, kls):
+    """LONG动量过滤 (地球版1.3): 特征蜡烛(最新收盘)连涨≥2天 且 20日价格位置>0.7
+    只过滤LONG候选, 不影响SHORT"""
+    if len(kls) < 25:
+        return False
+    j = len(kls) - 2  # 最新收盘蜡烛(=预测样本的特征蜡烛)
+    if j < 20:
+        return False
+    streak = 0
+    for k_ in range(j, max(0, j - 7) - 1, -1):
+        if kls[k_]['c'] > kls[k_]['o']:
+            streak += 1
+        else:
+            break
+    c20 = [x['c'] for x in kls[j - 19:j + 1]]
+    if max(c20) == min(c20):
+        return False
+    pp = (kls[j]['c'] - min(c20)) / (max(c20) - min(c20))
+    return streak >= 2 and pp > 0.7
 
 def _open_short_multi(short_picks, state, wallet, available, active):
     """SHORT多仓: 对过阈值候选逐个开空, 每笔固定10U保证金
