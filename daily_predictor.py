@@ -1530,6 +1530,15 @@ def run():
     for i, r in enumerate(results[:20]):
         print(f"  {i+1:2d}. {r['symbol']:<14s} {r['prob']:5.1f}%")
 
+def _get_live_stop_loss_pct():
+    """读生产止损配置 (与auto_dual_trade同源, 保证邮件/回测/生产三口径一致)"""
+    try:
+        cfg = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'backtester', 'config', 'current_params.json')
+        with open(cfg) as f:
+            return float(json.load(f).get('_live_trading', {}).get('STOP_LOSS_PCT', 10.0))
+    except Exception:
+        return 10.0
+
 def verify_yesterday(klines_all=None):
     """验证2天前未验的预测 — 2日模型需等2天才能结算"""
     import datetime as _dt
@@ -1605,15 +1614,16 @@ def verify_yesterday(klines_all=None):
                     entry_close = float(k[1])
                     if j + 2 < len(kls):
                         exit_close = float(kls[j+2][4])
+                        _sl = _get_live_stop_loss_pct() / 100  # 与生产配置同步 (current_params.json _live_trading)
                         for off in (1, 2):
                             h2, l2 = float(kls[j+off][2]), float(kls[j+off][3])
                             if direction == 'LONG':
-                                if l2 <= entry_close * 0.90:
+                                if l2 <= entry_close * (1 - _sl):
                                     reason = 'stop'; break
                                 if h2 >= entry_close * 1.10:
                                     reason = 'take'; break
                             else:
-                                if h2 >= entry_close * 1.10:
+                                if h2 >= entry_close * (1 + _sl):
                                     reason = 'stop'; break
                                 if l2 <= entry_close * 0.90:
                                     reason = 'take'; break
@@ -1623,7 +1633,7 @@ def verify_yesterday(klines_all=None):
                 continue
 
             if reason == 'stop':
-                actual_ret = -10.0 if direction == 'LONG' else 10.0
+                actual_ret = -_sl * 100 if direction == 'LONG' else _sl * 100
             elif reason == 'take':
                 actual_ret = 10.0 if direction == 'LONG' else -10.0
             else:
