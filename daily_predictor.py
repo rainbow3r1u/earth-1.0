@@ -1595,20 +1595,39 @@ def verify_yesterday(klines_all=None):
             kls = resp.json()
             if len(kls) < 3: continue
 
-            # 找预测日那根K线，入场取开盘价(aligned: 预测日=入场日)，2日后收盘出场
+            # 找预测日那根K线，入场取开盘价(aligned: 预测日=入场日)
+            # 结算含过程判定 (与回测一致): 后2根日线先触-10%记为止损, 先触+10%记为止盈
             entry_close = None
             exit_close = None
+            reason = 'close'
             for j, k in enumerate(kls):
                 if int(k[0]) == pred_ts:
                     entry_close = float(k[1])
                     if j + 2 < len(kls):
                         exit_close = float(kls[j+2][4])
+                        for off in (1, 2):
+                            h2, l2 = float(kls[j+off][2]), float(kls[j+off][3])
+                            if direction == 'LONG':
+                                if l2 <= entry_close * 0.90:
+                                    reason = 'stop'; break
+                                if h2 >= entry_close * 1.10:
+                                    reason = 'take'; break
+                            else:
+                                if h2 >= entry_close * 1.10:
+                                    reason = 'stop'; break
+                                if l2 <= entry_close * 0.90:
+                                    reason = 'take'; break
                     break
 
             if entry_close is None or exit_close is None or entry_close <= 0:
                 continue
 
-            actual_ret = (exit_close - entry_close) / entry_close * 100
+            if reason == 'stop':
+                actual_ret = -10.0 if direction == 'LONG' else 10.0
+            elif reason == 'take':
+                actual_ret = 10.0 if direction == 'LONG' else -10.0
+            else:
+                actual_ret = (exit_close - entry_close) / entry_close * 100
             if direction == 'LONG':
                 hit = actual_ret > 5
                 pnl = actual_ret
@@ -1618,6 +1637,7 @@ def verify_yesterday(klines_all=None):
             results.append({
                 'symbol': sym, 'prob': p['prob'], 'direction': direction,
                 'actual_ret': round(actual_ret, 2), 'pnl': round(pnl, 2), 'hit': hit,
+                'reason': reason,
             })
         except Exception:
             continue

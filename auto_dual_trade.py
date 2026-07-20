@@ -2091,7 +2091,8 @@ def _build_verify_summary(tracker):
     if short_det:
         lines.append(f"\n--- SHORT 明细 TOP{len(short_det)} ---")
         for d in short_det:
-            mark = '✓' if d.get('hit') else '✗'
+            r_ = d.get('reason')
+            mark = '✓' if d.get('hit') else ('⛔损' if r_ == 'stop' else ('⭕盈' if r_ == 'take' else '✗'))
             lines.append(f"  {d['symbol']:<14} {d['prob']:.1f}% → {d['pnl']:+.1f}% {mark}")
         sh = sum(1 for d in short_det if d.get('hit'))
         sp = sum(d.get('pnl', 0) for d in short_det)
