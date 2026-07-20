@@ -2097,17 +2097,20 @@ def _build_verify_summary(tracker):
         sp = sum(d.get('pnl', 0) for d in short_det)
         lines.append(f"SHORT命中: {sh}/{len(short_det)}  收益合计: {sp:+.1f}%")
 
-    lines.append(f"\n=== 近{len(recent)}天趋势 (TOP10命中 | 全部命中[分向] | 收益) ===")
-    for t in recent:
-        det = t.get('details', [])
-        lh = sum(1 for d in det if d.get('direction') == 'LONG' and d.get('hit'))
-        ln = sum(1 for d in det if d.get('direction') == 'LONG')
-        sh = sum(1 for d in det if d.get('direction') == 'SHORT' and d.get('hit'))
-        sn = sum(1 for d in det if d.get('direction') == 'SHORT')
-        lines.append(
-            f"  {t['date']}: TOP10 {t.get('top10_hits',0)}/10 | "
-            f"全部 {t.get('hits',0)}/{t.get('total',0)} ({t.get('hit_rate',0)}%) "
-            f"[多 {lh}/{ln} 空 {sh}/{sn}] | 收益 {t.get('total_return',0):+.1f}%")
+    def _trend_block(name):
+        out = [f"\n=== 近{len(recent)}天趋势 · {name} ==="]
+        for t in recent:
+            dd = [d for d in t.get('details', []) if d.get('direction') == name]
+            if not dd:
+                out.append(f"  {t['date']}: 无样本")
+                continue
+            h = sum(1 for d in dd if d.get('hit'))
+            p = sum(d.get('pnl', 0) for d in dd)
+            out.append(f"  {t['date']}: {h}/{len(dd)} ({h/len(dd)*100:.0f}%)  收益 {p:+.1f}%")
+        return out
+
+    lines.extend(_trend_block('LONG'))
+    lines.extend(_trend_block('SHORT'))
     ds7 = _dir_stats([d for t in recent for d in t.get('details', [])])
     l7 = f"LONG {ds7['LONG'][0]/ds7['LONG'][1]*100:.0f}%" if ds7.get('LONG', [0,0])[1] else 'LONG -'
     s7 = f"SHORT {ds7['SHORT'][0]/ds7['SHORT'][1]*100:.0f}%" if ds7.get('SHORT', [0,0])[1] else 'SHORT -'
