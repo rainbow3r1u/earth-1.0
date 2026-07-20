@@ -1511,6 +1511,7 @@ def main():
     # LONG动量过滤 (地球版1.3): LONG候选必须满足 特征蜡烛连涨≥2天+20日价格位置>0.7; SHORT不受影响
     if long_wins and not _mom_ok_long(best_long[0], klines.get(best_long[0], [])):
         log(f'LONG动量过滤拦截: {best_long[0]} 未达(连涨≥2天+20日位置>0.7), 转SHORT流程')
+        best_long = None  # 置空防止TOP1候选循环旁路闸门
         long_wins = False
     if not long_wins:
         short_picks = [(s, p * 100) for s, p, r in top10_short if p * 100 >= short_thresh]
