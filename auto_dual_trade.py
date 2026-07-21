@@ -1221,6 +1221,17 @@ def train_and_predict(by_day, today_ts, klines):
         best_short = None
         top10_short = []
 
+    # 多仓候选逐个过拟合检验 (SHORT Top5, 每个3次shuffle, 供多仓开仓逐个放行)
+    global _PERM_DROPS_SHORT
+    _PERM_DROPS_SHORT = {}
+    if top10_short:
+        cands = []
+        for sym, prob, ret in top10_short[:5]:
+            pos = next((i for i, v in enumerate(valid_short) if v[0] == sym), None)
+            if pos is not None:
+                cands.append((sym, prob, valid_indices[pos]))
+        _PERM_DROPS_SHORT = _perm_test_candidates(y_short, pos_short, X_train, X_pred, cands)
+
     # TOP1 决策依据 (pred_contribs 特征贡献)
     if best_long:
         _log_pick_explain(model_long, best_long, valid_long, valid_indices, X_pred, 'LONG')
@@ -1777,6 +1788,13 @@ def _open_short_multi(short_picks, state, wallet, available, active):
         if held:
             log(f'  {sym} 已有持仓, 跳过')
             continue
+        # 逐个过拟合检验: drop<5% 拦截 (无检验数据则放行并标注)
+        _drop = _PERM_DROPS_SHORT.get(sym)
+        if _drop is not None and _drop < 0.05:
+            log(f'  {sym} 过拟合拦截 (drop {_drop*100:+.1f}%)')
+            continue
+        if _drop is None:
+            log(f'  {sym} 无过拟合检验数据, 按默认放行')
         buffer = wallet * 0.005
         if remaining < SHORT_MARGIN + buffer:
             log(f'  可用{remaining:.1f}u不足{SHORT_MARGIN}u+缓冲, SHORT多仓停止 (已开{opened}笔)')
@@ -1823,6 +1841,34 @@ def _open_short_multi(short_picks, state, wallet, available, active):
     return opened
 
 # ============ 过拟合测试 ============
+_PERM_DROPS_SHORT = {}  # 多仓候选逐个过拟合检验结果 {sym: drop}
+
+def _perm_test_candidates(y_side, pos_side, X_train, X_pred, cands):
+    """多仓候选逐个过拟合检验: 每候选3次shuffle重训, 返回 {sym: drop(normal-shuf均值)}"""
+    drops = {}
+    if not cands or pos_side <= 0:
+        return drops
+    spw = (len(y_side) - pos_side) / pos_side
+    for sym, real_p, row_idx in cands:
+        try:
+            shuf_ps = []
+            for rs in range(3):
+                y_shuf = np.random.RandomState(200 + rs).permutation(y_side)
+                m = XGBClassifier(n_estimators=200, max_depth=6, learning_rate=0.05,
+                                  min_child_weight=1, reg_lambda=10, reg_alpha=10,
+                                  subsample=0.8, colsample_bytree=0.6,
+                                  scale_pos_weight=spw, random_state=rs,
+                                  eval_metric='logloss', verbosity=0, n_jobs=2,
+                                  tree_method='hist')
+                m.fit(X_train, y_shuf)
+                shuf_ps.append(m.predict_proba(X_pred[row_idx:row_idx + 1])[0, 1])
+                del m
+            drops[sym] = float(real_p - np.mean(shuf_ps))
+            log(f'  [PERM-CAND] {sym} normal={real_p*100:.1f}% shuf={np.mean(shuf_ps)*100:.1f}% drop={drops[sym]*100:+.1f}%')
+        except Exception as e:
+            log(f'  [PERM-CAND] {sym} 检验失败: {e}')
+    return drops
+
 def _log_pick_explain(model, best, valid_list, valid_indices, X_pred, direction):
     """输出TOP1候选的决策依据: XGBoost pred_contribs 特征贡献 TOP5"""
     try:
