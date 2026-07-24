@@ -123,6 +123,7 @@ _DEFAULTS = {
     'STOP_LOSS_PCT': 10.0, 'TAKE_PROFIT_PCT': 10.0,  # FIX: 对称止盈
     'PROB_THRESHOLD': 60.0, 'LEVERAGE': 2,
      'TOP_N_SYMBOLS': 150, 'MIN_VOLUME_24H': 500000, 'TRAIN_DAYS': 180,
+     'TRADING_ENABLED': True,
 }
 try:
     with open(SHARED_CONFIG) as _cf:
@@ -1279,6 +1280,10 @@ def main():
     
     # 4. 持仓检查 + 数据更新（余额不足时仍更新缓存）
     no_trade = wallet < 10
+    # 交易功能开关: TRADING_ENABLED=false 时只训练预测不发单 (用户可配置)
+    if not globals().get('TRADING_ENABLED', True):
+        no_trade = True
+        log('[开关] TRADING_ENABLED=false, 仅训练预测, 暂停下单')
 
     # 4.5 数据新鲜度检查: 若OI/K线陈旧(>20h), 自动补采 (冗余机制)
     try:
