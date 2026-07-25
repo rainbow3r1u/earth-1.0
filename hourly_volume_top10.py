@@ -8,7 +8,7 @@ PREV_FILE = '/tmp/vol_top10_prev.json'
 EXCLUDE = {'BTCUSDT', 'ETHUSDT', 'USDCUSDT', 'USDPUSDT', 'USDSUSDT', 'FDUSDUSDT',
            'TUSDUSDT', 'AEURUSDT', 'EURUSDT', 'USDYUSDT', 'BTCDOMUSDT',
            'SOLUSDT', 'SNDKUSDT', 'CLUSDT', 'SPCXUSDT', 'DOGEUSDT',
-           'ZECUSDT', 'HYPEUSDT', 'XRPUSDT'}
+           'ZECUSDT', 'HYPEUSDT', 'XRPUSDT', '1000SHIBUSDT'}
 
 def fmt(v):
     return f'{v/1e8:.1f}亿' if v >= 1e8 else f'{v/1e4:.0f}万'
