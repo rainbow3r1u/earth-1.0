@@ -96,7 +96,7 @@ def retry_task(task):
             shell=True,
             capture_output=True,
             text=True,
-            timeout=600,  # 10分钟超时
+            timeout=1800,  # 30分钟超时 (交易预测正常运行约12-17分钟)
         )
         # 追加重试输出到日志
         with open(task['log_file'], 'a') as f:
@@ -119,10 +119,19 @@ def main():
     now = datetime.now(CST)
     print(f"[{now.strftime('%Y-%m-%d %H:%M:%S')}] Cron监控启动")
 
+    # --task <名称> 只检查指定任务 (如: --task 交易预测), 默认检查全部
+    tasks = TASKS
+    if '--task' in sys.argv:
+        want = sys.argv[sys.argv.index('--task') + 1]
+        tasks = [t for t in TASKS if t['name'] == want]
+        if not tasks:
+            print(f"  未知任务: {want}")
+            sys.exit(1)
+
     state = load_alert_state()
     any_failure = False
 
-    for task in TASKS:
+    for task in tasks:
         # 只在任务预期完成时间后检查
         expected_time = now.replace(hour=task['expected_hour'], minute=task['timeout_minutes'], second=0, microsecond=0)
         if now < expected_time:
