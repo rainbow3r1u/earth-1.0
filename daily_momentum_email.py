@@ -42,7 +42,7 @@ def build_momentum_body():
     probs = {s: p for s, p in pred.get('all_long', [])}
     klines = json.load(open('/home/myuser/backtester/data_cache/notusdt_1d_full.json'))['klines']
 
-    # 昨日涨幅≥5%的全部币种
+    # 昨日涨幅≥5%的全部币种 (按昨日成交额降序)
     rows = []
     for sym, kls in klines.items():
         if len(kls) < 3:
@@ -51,14 +51,14 @@ def build_momentum_body():
         if prev['c'] > 0:
             g = (last['c'] - prev['c']) / prev['c'] * 100
             if g >= GAIN_MIN:
-                rows.append((sym, g, probs.get(sym)))
-    rows.sort(key=lambda x: -(x[2] if x[2] is not None else -999))
+                rows.append((sym, g, probs.get(sym), last.get('q', 0.0)))
+    rows.sort(key=lambda x: -x[3])
 
     top10set = {t['symbol'] for t in pred.get('top10_long', [])}
     now = datetime.now().strftime('%m-%d %H:%M')
-    lines = [f'=== 昨日强势股 · 模型续涨判定 (预测日 {pred.get("date")}) ===\n',
-             f'{"币种":<15}{"昨日涨幅":<9}{"续涨概率":<10}{"判定":<8}']
-    for sym, g, p in rows:
+    lines = [f'=== 昨日强势股 · 模型续涨判定 (预测日 {pred.get("date")}, 按成交额降序) ===\n',
+             f'{"币种":<15}{"昨日涨幅":<9}{"成交额":<11}{"续涨概率":<10}{"判定":<8}']
+    for sym, g, p, q in rows:
         if p is None:
             verdict, ptxt = '无评分', '—'
         elif p >= 60:
@@ -68,8 +68,8 @@ def build_momentum_body():
         else:
             verdict, ptxt = '✗不看好', f'{p:.1f}%'
         star = '★' if sym in top10set else ' '
-        lines.append(f'{star}{sym:<14}{g:+.1f}%{"":<3}{ptxt:<10}{verdict}')
-    n_up = sum(1 for _, _, p in rows if p is not None and p >= 60)
+        lines.append(f'{star}{sym:<14}{g:+.1f}%{"":<3}{_fmt(q):<11}{ptxt:<10}{verdict}')
+    n_up = sum(1 for _, _, p, _ in rows if p is not None and p >= 60)
     lines.append(f'\n昨日涨幅≥{GAIN_MIN}%共 {len(rows)} 个, 模型看涨(≥60%) {n_up} 个')
     lines.append('(★ = 入选模型 LONG Top10)')
 
