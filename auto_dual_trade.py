@@ -1207,6 +1207,10 @@ def train_and_predict(by_day, today_ts, klines):
     # 排序取Top10
     top10_long = sorted(valid_long, key=lambda x: x[1], reverse=True)[:10]
     top10_short = sorted(valid_short, key=lambda x: x[1], reverse=True)[:10]
+
+    # 全量概率列表存档用 (强势股邮件: 昨日涨5%币种的逐个判定)
+    global _VALID_LONG_SHORT
+    _VALID_LONG_SHORT = {'long': valid_long, 'short': valid_short}
     
     # Best用于交易决策
     best_long = top10_long[0] if top10_long else None
@@ -1459,6 +1463,8 @@ def main():
             'best_short': {'symbol': best_short[0], 'prob': round(best_short[1]*100, 1)} if best_short else None,
             'top10_long': [{'symbol': s, 'prob': round(p*100, 1)} for s, p, r in top10_long],
             'top10_short': [{'symbol': s, 'prob': round(p*100, 1)} for s, p, r in top10_short],
+            'all_long': [[s, round(p*100, 1)] for s, p, r in _VALID_LONG_SHORT.get('long', [])],
+            'all_short': [[s, round(p*100, 1)] for s, p, r in _VALID_LONG_SHORT.get('short', [])],
         }
         archive_file = os.path.join(pred_archive_dir, f'pred_{today_str}.json')
         if not os.path.exists(archive_file):
@@ -1846,6 +1852,8 @@ def _open_short_multi(short_picks, state, wallet, available, active):
     return opened
 
 # ============ 过拟合测试 ============
+_VALID_LONG_SHORT = {'long': [], 'short': []}  # train_and_predict写入, 全量概率存档用
+
 _PERM_DROPS_SHORT = {}  # 多仓候选逐个过拟合检验结果 {sym: drop}
 
 def _perm_test_candidates(y_side, pos_side, X_train, X_pred, cands):
