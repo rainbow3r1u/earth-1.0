@@ -1,10 +1,37 @@
 #!/usr/bin/env python3
 """每日强势股判定邮件 — 昨日涨幅≥5%的全部币种 × 模型续涨概率逐个判定
 数据源: data/daily_predictions.json (含all_long全量概率, 8:05生产) + K线缓存昨日涨幅"""
-import os, sys, json
+import os, sys, json, requests
 from datetime import datetime
 
 GAIN_MIN = 5.0
+VOL_EXCLUDE = {'BTCUSDT', 'ETHUSDT', 'USDCUSDT', 'USDPUSDT', 'USDSUSDT', 'FDUSDUSDT',
+               'TUSDUSDT', 'AEURUSDT', 'EURUSDT', 'USDYUSDT', 'BTCDOMUSDT',
+               'SOLUSDT', 'SNDKUSDT', 'CLUSDT', 'SPCXUSDT', 'DOGEUSDT',
+               'ZECUSDT', 'HYPEUSDT', 'XRPUSDT', '1000SHIBUSDT',
+               'XAUUSDT', 'XAGUSDT', 'TSLAUSDT', 'NVDAUSDT', 'AAPLUSDT', 'AMZNUSDT',
+               'GOOGLUSDT', 'METAUSDT', 'MSFTUSDT', 'MUUSDT', 'COINUSDT', 'MSTRUSDT',
+               'AMDUSDT', 'INTCUSDT', 'QCOMUSDT', 'AVGOUSDT', 'ORCLUSDT', 'NFLXUSDT',
+               'DISUSDT', 'JPMUSDT', 'PLTRUSDT', 'HOODUSDT', 'COPPERUSDT', 'PAXGUSDT',
+               'SKHYNIXUSDT'}
+
+def _vol_top10():
+    """每日资金榜: 合约24h成交额Top10 (排除名单内)"""
+    try:
+        r = requests.get('https://fapi.binance.com/fapi/v1/ticker/24hr', timeout=20)
+        if r.status_code != 200:
+            return []
+        rows = [{'symbol': t['symbol'], 'qv': float(t['quoteVolume']),
+                 'chg': float(t['priceChangePercent'])}
+                for t in r.json()
+                if t['symbol'].endswith('USDT') and t['symbol'] not in VOL_EXCLUDE]
+        rows.sort(key=lambda x: -x['qv'])
+        return rows[:10]
+    except Exception:
+        return []
+
+def _fmt(v):
+    return f'{v/1e8:.1f}亿' if v >= 1e8 else f'{v/1e4:.0f}万'
 
 def main():
     pred_file = '/home/myuser/websocket_new/data/daily_predictions.json'
@@ -45,6 +72,11 @@ def main():
     n_up = sum(1 for _, _, p in rows if p is not None and p >= 60)
     lines.append(f'\n昨日涨幅≥{GAIN_MIN}%共 {len(rows)} 个, 模型看涨(≥60%) {n_up} 个')
     lines.append('(★ = 入选模型 LONG Top10)')
+
+    # 每日资金榜 (合约24h成交额Top10)
+    lines.append('\n=== 每日资金榜 (合约24h成交额 Top10) ===')
+    for i, t in enumerate(_vol_top10(), 1):
+        lines.append(f"{i:<3}{t['symbol']:<14}{_fmt(t['qv']):<12}{t['chg']:+.1f}%")
 
     body = '\n'.join(lines)
     try:
