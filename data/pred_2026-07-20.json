@@ -1,0 +1,96 @@
+{
+  "date": "2026-07-20",
+  "updated": 1784506658.4193325,
+  "best_long": {
+    "symbol": "CHIPUSDT",
+    "prob": "67.5"
+  },
+  "best_short": {
+    "symbol": "ROBOUSDT",
+    "prob": "56.1"
+  },
+  "top10_long": [
+    {
+      "symbol": "CHIPUSDT",
+      "prob": "67.5"
+    },
+    {
+      "symbol": "LABUSDT",
+      "prob": "66.2"
+    },
+    {
+      "symbol": "TRIAUSDT",
+      "prob": "65.9"
+    },
+    {
+      "symbol": "COMPUSDT",
+      "prob": "64.2"
+    },
+    {
+      "symbol": "BSBUSDT",
+      "prob": "63.5"
+    },
+    {
+      "symbol": "ONDOUSDT",
+      "prob": "62.3"
+    },
+    {
+      "symbol": "CLOUSDT",
+      "prob": "62.1"
+    },
+    {
+      "symbol": "ZBTUSDT",
+      "prob": "62.0"
+    },
+    {
+      "symbol": "TRBUSDT",
+      "prob": "62.0"
+    },
+    {
+      "symbol": "TUSDT",
+      "prob": "61.7"
+    }
+  ],
+  "top10_short": [
+    {
+      "symbol": "ROBOUSDT",
+      "prob": "56.1"
+    },
+    {
+      "symbol": "TAGUSDT",
+      "prob": "55.2"
+    },
+    {
+      "symbol": "BULLAUSDT",
+      "prob": "54.3"
+    },
+    {
+      "symbol": "BANKUSDT",
+      "prob": "53.9"
+    },
+    {
+      "symbol": "ARIAUSDT",
+      "prob": "52.6"
+    },
+    {
+      "symbol": "AKEUSDT",
+      "prob": "51.0"
+    },
+    {
+      "symbol": "SIRENUSDT",
+      "prob": "49.7"
+    },
+    {
+      "symbol": "BLUAIUSDT",
+      "prob": "49.5"
+    },
+    {
+      "symbol": "YBUSDT",
+      "prob": "48.9"
+    },
+    {
+      "symbol": "PHAUSDT",
+      "prob": "48.6"
+    }
+  ]
+}

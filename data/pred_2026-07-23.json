@@ -1,0 +1,96 @@
+{
+  "date": "2026-07-23",
+  "updated": 1784766123.198835,
+  "best_long": {
+    "symbol": "HEIUSDT",
+    "prob": "57.3"
+  },
+  "best_short": {
+    "symbol": "ONUSDT",
+    "prob": "71.5"
+  },
+  "top10_long": [
+    {
+      "symbol": "HEIUSDT",
+      "prob": "57.3"
+    },
+    {
+      "symbol": "NAORISUSDT",
+      "prob": "54.9"
+    },
+    {
+      "symbol": "IDOLUSDT",
+      "prob": "54.8"
+    },
+    {
+      "symbol": "CLOUSDT",
+      "prob": "53.4"
+    },
+    {
+      "symbol": "RIFUSDT",
+      "prob": "53.1"
+    },
+    {
+      "symbol": "SKYAIUSDT",
+      "prob": "53.0"
+    },
+    {
+      "symbol": "HUSDT",
+      "prob": "52.9"
+    },
+    {
+      "symbol": "AEROUSDT",
+      "prob": "52.6"
+    },
+    {
+      "symbol": "GWEIUSDT",
+      "prob": "51.9"
+    },
+    {
+      "symbol": "TAGUSDT",
+      "prob": "51.9"
+    }
+  ],
+  "top10_short": [
+    {
+      "symbol": "ONUSDT",
+      "prob": "71.5"
+    },
+    {
+      "symbol": "BULLAUSDT",
+      "prob": "71.3"
+    },
+    {
+      "symbol": "BANKUSDT",
+      "prob": "71.0"
+    },
+    {
+      "symbol": "BROCCOLIF3BUSDT",
+      "prob": "70.6"
+    },
+    {
+      "symbol": "TUTUSDT",
+      "prob": "70.2"
+    },
+    {
+      "symbol": "EPICUSDT",
+      "prob": "70.1"
+    },
+    {
+      "symbol": "KAITOUSDT",
+      "prob": "70.0"
+    },
+    {
+      "symbol": "TLMUSDT",
+      "prob": "69.8"
+    },
+    {
+      "symbol": "ONDOUSDT",
+      "prob": "69.2"
+    },
+    {
+      "symbol": "ZAMAUSDT",
+      "prob": "68.4"
+    }
+  ]
+}

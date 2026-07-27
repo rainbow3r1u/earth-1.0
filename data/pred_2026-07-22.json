@@ -1,0 +1,96 @@
+{
+  "date": "2026-07-22",
+  "updated": 1784679708.1674678,
+  "best_long": {
+    "symbol": "SKYAIUSDT",
+    "prob": "61.4"
+  },
+  "best_short": {
+    "symbol": "TRBUSDT",
+    "prob": "68.4"
+  },
+  "top10_long": [
+    {
+      "symbol": "SKYAIUSDT",
+      "prob": "61.4"
+    },
+    {
+      "symbol": "TRIAUSDT",
+      "prob": "60.4"
+    },
+    {
+      "symbol": "ARIAUSDT",
+      "prob": "56.8"
+    },
+    {
+      "symbol": "ONUSDT",
+      "prob": "56.3"
+    },
+    {
+      "symbol": "BTRUSDT",
+      "prob": "55.9"
+    },
+    {
+      "symbol": "1000BONKUSDT",
+      "prob": "54.7"
+    },
+    {
+      "symbol": "PROMUSDT",
+      "prob": "54.4"
+    },
+    {
+      "symbol": "YBUSDT",
+      "prob": "53.8"
+    },
+    {
+      "symbol": "GWEIUSDT",
+      "prob": "53.1"
+    },
+    {
+      "symbol": "SIRENUSDT",
+      "prob": "53.0"
+    }
+  ],
+  "top10_short": [
+    {
+      "symbol": "TRBUSDT",
+      "prob": "68.4"
+    },
+    {
+      "symbol": "\u9f99\u867eUSDT",
+      "prob": "67.4"
+    },
+    {
+      "symbol": "ONDOUSDT",
+      "prob": "67.4"
+    },
+    {
+      "symbol": "TAGUSDT",
+      "prob": "67.2"
+    },
+    {
+      "symbol": "PTBUSDT",
+      "prob": "66.3"
+    },
+    {
+      "symbol": "WETUSDT",
+      "prob": "66.2"
+    },
+    {
+      "symbol": "AVAAIUSDT",
+      "prob": "65.8"
+    },
+    {
+      "symbol": "TRADOORUSDT",
+      "prob": "65.5"
+    },
+    {
+      "symbol": "KAITOUSDT",
+      "prob": "65.5"
+    },
+    {
+      "symbol": "EPICUSDT",
+      "prob": "65.4"
+    }
+  ]
+}

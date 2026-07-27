@@ -1,0 +1,96 @@
+{
+  "date": "2026-07-25",
+  "updated": 1784938933.878642,
+  "best_long": {
+    "symbol": "RIFUSDT",
+    "prob": "63.7"
+  },
+  "best_short": {
+    "symbol": "AKEUSDT",
+    "prob": "71.7"
+  },
+  "top10_long": [
+    {
+      "symbol": "RIFUSDT",
+      "prob": "63.7"
+    },
+    {
+      "symbol": "AVAAIUSDT",
+      "prob": "63.2"
+    },
+    {
+      "symbol": "AKEUSDT",
+      "prob": "60.4"
+    },
+    {
+      "symbol": "BULLAUSDT",
+      "prob": "60.2"
+    },
+    {
+      "symbol": "ALLOUSDT",
+      "prob": "60.2"
+    },
+    {
+      "symbol": "EVAAUSDT",
+      "prob": "60.1"
+    },
+    {
+      "symbol": "UBUSDT",
+      "prob": "60.1"
+    },
+    {
+      "symbol": "AIOUSDT",
+      "prob": "60.0"
+    },
+    {
+      "symbol": "BANKUSDT",
+      "prob": "59.9"
+    },
+    {
+      "symbol": "ONUSDT",
+      "prob": "59.6"
+    }
+  ],
+  "top10_short": [
+    {
+      "symbol": "AKEUSDT",
+      "prob": "71.7"
+    },
+    {
+      "symbol": "VELVETUSDT",
+      "prob": "69.5"
+    },
+    {
+      "symbol": "SYNUSDT",
+      "prob": "69.0"
+    },
+    {
+      "symbol": "HEMIUSDT",
+      "prob": "68.5"
+    },
+    {
+      "symbol": "TLMUSDT",
+      "prob": "68.4"
+    },
+    {
+      "symbol": "GWEIUSDT",
+      "prob": "68.3"
+    },
+    {
+      "symbol": "BANKUSDT",
+      "prob": "68.2"
+    },
+    {
+      "symbol": "RIFUSDT",
+      "prob": "68.1"
+    },
+    {
+      "symbol": "ZAMAUSDT",
+      "prob": "67.2"
+    },
+    {
+      "symbol": "BEATUSDT",
+      "prob": "66.5"
+    }
+  ]
+}

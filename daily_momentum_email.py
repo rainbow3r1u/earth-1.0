@@ -33,11 +33,11 @@ def _vol_top10():
 def _fmt(v):
     return f'{v/1e8:.1f}亿' if v >= 1e8 else f'{v/1e4:.0f}万'
 
-def main():
+def build_momentum_body():
+    """强势股判定 + 每日资金榜 板块内容 (供本脚本和晨报总览复用)"""
     pred_file = '/home/myuser/websocket_new/data/daily_predictions.json'
     if not os.path.exists(pred_file):
-        print('预测文件不存在')
-        return
+        return '(预测文件不存在)'
     pred = json.load(open(pred_file))
     probs = {s: p for s, p in pred.get('all_long', [])}
     klines = json.load(open('/home/myuser/backtester/data_cache/notusdt_1d_full.json'))['klines']
@@ -56,7 +56,7 @@ def main():
 
     top10set = {t['symbol'] for t in pred.get('top10_long', [])}
     now = datetime.now().strftime('%m-%d %H:%M')
-    lines = [f'=== 昨日强势股 · 模型续涨判定 ({now}, 预测日 {pred.get("date")}) ===\n',
+    lines = [f'=== 昨日强势股 · 模型续涨判定 (预测日 {pred.get("date")}) ===\n',
              f'{"币种":<15}{"昨日涨幅":<9}{"续涨概率":<10}{"判定":<8}']
     for sym, g, p in rows:
         if p is None:
@@ -77,8 +77,11 @@ def main():
     lines.append('\n=== 每日资金榜 (合约24h成交额 Top10) ===')
     for i, t in enumerate(_vol_top10(), 1):
         lines.append(f"{i:<3}{t['symbol']:<14}{_fmt(t['qv']):<12}{t['chg']:+.1f}%")
+    return '\n'.join(lines)
 
-    body = '\n'.join(lines)
+def main():
+    body = build_momentum_body()
+    now = datetime.now().strftime('%m-%d %H:%M')
     try:
         sys.path.insert(0, '/home/myuser/websocket_new')
         os.chdir('/home/myuser/websocket_new')

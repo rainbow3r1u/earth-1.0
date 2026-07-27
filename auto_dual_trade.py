@@ -123,7 +123,7 @@ _DEFAULTS = {
     'STOP_LOSS_PCT': 10.0, 'TAKE_PROFIT_PCT': 10.0,  # FIX: 对称止盈
     'PROB_THRESHOLD': 60.0, 'LEVERAGE': 2,
      'TOP_N_SYMBOLS': 150, 'MIN_VOLUME_24H': 500000, 'TRAIN_DAYS': 180,
-     'TRADING_ENABLED': True,
+     'TRADING_ENABLED': True, 'DAILY_REPORT_EMAIL': True,
 }
 try:
     with open(SHARED_CONFIG) as _cf:
@@ -2180,23 +2180,19 @@ def _build_verify_summary(tracker):
     lines.append(f"LONG={adj_long:.0f}% SHORT={adj_short:.0f}%  ({adj_reason})")
     return '\n'.join(lines)
 
-def send_daily_report():
-    """每日训练预测完成后发送日报邮件"""
-    try:
-        from alert_monitor import send_email
-    except Exception:
-        return
-
+def build_daily_report_body(include_verify=True):
+    """构造日报正文(供日报邮件与晨报总览 daily_digest_email 复用)。
+    include_verify=False 时仍执行 verify_yesterday 保持 tracker 新鲜, 只是不附加验证文本。"""
     today_str = datetime.now().strftime('%Y-%m-%d')
     log_file = os.path.join(DATA_DIR, 'trade.log')
     try:
         with open(log_file, 'r') as f:
             today_lines = [l.strip() for l in f if today_str in l]
     except Exception:
-        return
+        return ''
 
     if not today_lines:
-        return
+        return ''
 
     keywords = ['钱包', 'ORPHAN', '当前', '训练:', 'PERM-TEST', '做多概率', '做空概率',
                 'prob=', '置信度', '空仓', '开仓:', '跳过交易', '本金不足', '多空信号',
@@ -2217,7 +2213,7 @@ def send_daily_report():
         dp.LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
         dp.TRACK_FILE = os.path.join(dp.LOG_DIR, 'prediction_tracker.json')
         dp.verify_yesterday()
-        if os.path.exists(dp.TRACK_FILE):
+        if include_verify and os.path.exists(dp.TRACK_FILE):
             with open(dp.TRACK_FILE) as f:
                 tracker = json.load(f)
             if tracker:
@@ -2225,8 +2221,24 @@ def send_daily_report():
     except Exception as e:
         log(f'验证复盘失败: {e}')
 
-    body = f'=== {today_str} 每日预测日报 ===\n\n' + '\n'.join(key_lines) + verify_summary
+    return f'=== {today_str} 每日预测日报 ===\n\n' + '\n'.join(key_lines) + verify_summary
 
+
+def send_daily_report():
+    """每日训练预测完成后发送日报邮件(DAILY_REPORT_EMAIL=false 时合并至晨报, 跳过单独发送)"""
+    if not DAILY_REPORT_EMAIL:
+        log('日报已合并至晨报, 跳过单独发送')
+        return
+    try:
+        from alert_monitor import send_email
+    except Exception:
+        return
+
+    body = build_daily_report_body()
+    if not body:
+        return
+
+    today_str = datetime.now().strftime('%Y-%m-%d')
     try:
         send_email(f'每日预测日报 {today_str}', body, priority='info')
         log('日报邮件已发送')

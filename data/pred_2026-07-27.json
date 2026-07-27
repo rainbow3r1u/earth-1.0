@@ -1,0 +1,96 @@
+{
+  "date": "2026-07-27",
+  "updated": 1785111701.5178573,
+  "best_long": {
+    "symbol": "HANAUSDT",
+    "prob": "68.1"
+  },
+  "best_short": {
+    "symbol": "EULUSDT",
+    "prob": "59.7"
+  },
+  "top10_long": [
+    {
+      "symbol": "HANAUSDT",
+      "prob": "68.1"
+    },
+    {
+      "symbol": "TACUSDT",
+      "prob": "67.9"
+    },
+    {
+      "symbol": "RONINUSDT",
+      "prob": "67.8"
+    },
+    {
+      "symbol": "GWEIUSDT",
+      "prob": "67.3"
+    },
+    {
+      "symbol": "HOMEUSDT",
+      "prob": "67.1"
+    },
+    {
+      "symbol": "DEXEUSDT",
+      "prob": "67.0"
+    },
+    {
+      "symbol": "YGGUSDT",
+      "prob": "66.5"
+    },
+    {
+      "symbol": "NIGHTUSDT",
+      "prob": "66.2"
+    },
+    {
+      "symbol": "LABUSDT",
+      "prob": "65.9"
+    },
+    {
+      "symbol": "MYXUSDT",
+      "prob": "65.1"
+    }
+  ],
+  "top10_short": [
+    {
+      "symbol": "EULUSDT",
+      "prob": "59.7"
+    },
+    {
+      "symbol": "ESPUSDT",
+      "prob": "57.7"
+    },
+    {
+      "symbol": "AKEUSDT",
+      "prob": "55.6"
+    },
+    {
+      "symbol": "BANKUSDT",
+      "prob": "54.7"
+    },
+    {
+      "symbol": "ONUSDT",
+      "prob": "53.7"
+    },
+    {
+      "symbol": "RIFUSDT",
+      "prob": "53.4"
+    },
+    {
+      "symbol": "DIAUSDT",
+      "prob": "52.3"
+    },
+    {
+      "symbol": "QUSDT",
+      "prob": "51.4"
+    },
+    {
+      "symbol": "SAFEUSDT",
+      "prob": "51.1"
+    },
+    {
+      "symbol": "AIAUSDT",
+      "prob": "50.4"
+    }
+  ]
+}

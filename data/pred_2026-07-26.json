@@ -1,0 +1,96 @@
+{
+  "date": "2026-07-26",
+  "updated": 1785025340.8509998,
+  "best_long": {
+    "symbol": "USUSDT",
+    "prob": "65.3"
+  },
+  "best_short": {
+    "symbol": "ACEUSDT",
+    "prob": "77.0"
+  },
+  "top10_long": [
+    {
+      "symbol": "USUSDT",
+      "prob": "65.3"
+    },
+    {
+      "symbol": "XNYUSDT",
+      "prob": "64.4"
+    },
+    {
+      "symbol": "ONUSDT",
+      "prob": "63.8"
+    },
+    {
+      "symbol": "\u9f99\u867eUSDT",
+      "prob": "63.7"
+    },
+    {
+      "symbol": "AKEUSDT",
+      "prob": "63.5"
+    },
+    {
+      "symbol": "PROMUSDT",
+      "prob": "63.1"
+    },
+    {
+      "symbol": "JCTUSDT",
+      "prob": "63.0"
+    },
+    {
+      "symbol": "DEXEUSDT",
+      "prob": "62.9"
+    },
+    {
+      "symbol": "BROCCOLIF3BUSDT",
+      "prob": "62.8"
+    },
+    {
+      "symbol": "QUSDT",
+      "prob": "62.4"
+    }
+  ],
+  "top10_short": [
+    {
+      "symbol": "ACEUSDT",
+      "prob": "77.0"
+    },
+    {
+      "symbol": "GWEIUSDT",
+      "prob": "76.8"
+    },
+    {
+      "symbol": "B2USDT",
+      "prob": "76.7"
+    },
+    {
+      "symbol": "DEXEUSDT",
+      "prob": "74.9"
+    },
+    {
+      "symbol": "HANAUSDT",
+      "prob": "74.9"
+    },
+    {
+      "symbol": "ERAUSDT",
+      "prob": "74.4"
+    },
+    {
+      "symbol": "1000SHIBUSDT",
+      "prob": "73.7"
+    },
+    {
+      "symbol": "VVVUSDT",
+      "prob": "73.3"
+    },
+    {
+      "symbol": "AVAXUSDT",
+      "prob": "73.1"
+    },
+    {
+      "symbol": "ZAMAUSDT",
+      "prob": "73.1"
+    }
+  ]
+}
