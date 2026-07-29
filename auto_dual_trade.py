@@ -123,7 +123,7 @@ _DEFAULTS = {
     'STOP_LOSS_PCT': 10.0, 'TAKE_PROFIT_PCT': 10.0,  # FIX: 对称止盈
     'PROB_THRESHOLD': 60.0, 'LEVERAGE': 2,
      'TOP_N_SYMBOLS': 150, 'MIN_VOLUME_24H': 500000, 'TRAIN_DAYS': 180,
-     'TRADING_ENABLED': True, 'DAILY_REPORT_EMAIL': True,
+     'TRADING_ENABLED': True, 'DAILY_REPORT_EMAIL': True, 'LONG_MOM_FILTER': True,
 }
 try:
     with open(SHARED_CONFIG) as _cf:
@@ -1531,7 +1531,9 @@ def main():
     # SHORT 多仓模式 (7/19用户决策): LONG 维持TOP1; LONG不占优时, 过阈值的SHORT候选全开, 每笔10U
     long_wins = best_long is not None and long_prob >= long_thresh and long_prob >= short_prob
     # LONG动量过滤 (地球版1.3): LONG候选必须满足 特征蜡烛连涨≥2天+20日价格位置>0.7; SHORT不受影响
-    if long_wins and not _mom_ok_long(best_long[0], klines.get(best_long[0], [])):
+    # 2026-07-30 摘除(配置控制): GPU证据链 — 闸门选出的是"已涨数日"币(止损画像+18%前涨),
+    # 模型本体内核是"沉睡爆发探测"(71%止盈单前5日累计<5%); 无闸门回测42.45 vs 有闸门32.30
+    if LONG_MOM_FILTER and long_wins and not _mom_ok_long(best_long[0], klines.get(best_long[0], [])):
         log(f'LONG动量过滤拦截: {best_long[0]} 未达(连涨≥2天+20日位置>0.7), 转SHORT流程')
         best_long = None  # 置空防止TOP1候选循环旁路闸门
         long_wins = False
