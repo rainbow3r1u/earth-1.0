@@ -683,10 +683,15 @@ def _fast_winsor_bounds(X):
     """np.partition (QuickSelect O(n)) 替代 np.percentile (全排序 O(n log n)) — 15-20x 加速
     原地修改 X 的列顺序，后续 winsor 结果不变 (裁剪与顺序无关)
     FIX: 稀疏列(>99%为零)的1%/99%分位都在零值区间, 导致[0,0]截尾抹掉真实信号
-    → 回退到列min/max作为截尾边界 (partition不保证极值在端点, 需用min/max)"""
+    → 回退到列min/max作为截尾边界 (partition不保证极值在端点, 需用min/max)
+    CHANGE 2026-07-30 (地球版1.4候选): 截尾分位 1%/99% → 0.1%/99.9%
+    原因: GPU实验证实 1%/99% 截尾拍平动量特征右尾(追涨/衰竭信号本体),
+    LONG-only Sharpe 41.55→5.38 全部来自该压制; 全系统180d 9.82→35.57,
+    换时段(off180 32.82/off360 26.06)与0.1%档(32.30)均复核成立。
+    0.1%档保留对1e6级脏数据的防护(7/18冻结bug教训), 不全关。"""
     n, m = X.shape
-    k1 = max(0, int(n * 0.01))
-    k99 = min(n - 1, int(n * 0.99))
+    k1 = max(0, int(n * 0.001))
+    k99 = min(n - 1, int(n * 0.999))
     bounds = []
     for j in range(m):
         col = X[:, j]
