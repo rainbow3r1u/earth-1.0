@@ -35,6 +35,7 @@ assert MODE in ('lag', 'nolag', 'aligned')
 BB_FEATS = os.environ.get('BB_FEATS', '0') == '1'  # 布林特征包: 乖离率+%B+带宽 (946维)
 VOLRAW_FEATS = os.environ.get('VOLRAW_FEATS', '0') == '1'  # 原始成交额q(不归一化) (945维)
 FUND_FEATS = os.environ.get('FUND_FEATS', '0') == '1'  # 单币资金费率原值 (配合VOLRAW=946维)
+RAW_RET_FEATS = os.environ.get('RAW_RET_FEATS', '0') == '1'  # 原始涨幅r1d/r3d/r5d(不归一化, 保留绝对幅度; 946→949维)
 LONG_MOM_FILTER = os.environ.get('LONG_MOM_FILTER', '0') == '1'  # LONG候选强制高动量: 连涨≥2天+20日位置>0.7
 LABEL_1D = os.environ.get('LABEL_1D', '0') == '1'  # 1日标签/24h持仓 (替代48h)
 KRONOS_ON = os.environ.get('KRONOS_ON', '0') == '1'  # Kronos 832D复测 (解除置零)
@@ -47,11 +48,12 @@ SOUP_ON = os.environ.get('SOUP', '0') == '1'  # 时间集成: 最近3个每日�
 LGBM_ON = os.environ.get('LGBM', '0') == '1'  # LightGBM对照引擎
 PRUNE_COLS = os.environ.get('PRUNE_COLS', '')  # 死特征列清零清单(json数组路径)
 XGB_DEVICE = os.environ.get('XGB_DEVICE', 'cuda')  # 主训练设备, cuda/cpu
+NAN_RAW = os.environ.get('NAN_RAW', '0') == '1'  # 保留NaN让XGB原生处理(缺失本身即信息), 默认nan_to_num填零
 WINSOR_OFF = os.environ.get('WINSOR_OFF', '0') == '1'  # 全关截尾 (验证winsor压制追涨假设)
 WINSOR_Q = float(os.environ.get('WINSOR_Q', '0'))  # >0时改用自定义分位 (如0.001=0.1%/99.9%)
 WF_OFFSET = int(os.environ.get('WF_OFFSET', '0'))  # 评估窗口整体前移N天 (稳健性复核: 换时段防单窗口运气)
 # lag/nolag 共用同一份样本缓存; aligned 标签不同, 独立缓存
-CACHE_DIR = f'{HOME}/backtester/data_cache/by_day_cache_v5' + ('_aligned' if MODE == 'aligned' else '') + ('_bb' if BB_FEATS else '') + ('_volraw' if VOLRAW_FEATS else '') + ('_fund' if FUND_FEATS else '') + ('_1d' if LABEL_1D else '') + ('_kr' if KRONOS_ON else '')
+CACHE_DIR = f'{HOME}/backtester/data_cache/by_day_cache_v5' + ('_aligned' if MODE == 'aligned' else '') + ('_bb' if BB_FEATS else '') + ('_volraw' if VOLRAW_FEATS else '') + ('_fund' if FUND_FEATS else '') + ('_1d' if LABEL_1D else '') + ('_kr' if KRONOS_ON else '') + ('_rawr' if RAW_RET_FEATS else '') + os.environ.get('CACHE_SUFFIX', '')  # CACHE_SUFFIX: 特殊宇宙(如MIN_KLINES=35)隔离缓存防污染
 
 DAYS   = int(sys.argv[1]) if len(sys.argv) > 1 else 180
 STRIDE = int(sys.argv[2]) if len(sys.argv) > 2 else 1
@@ -77,7 +79,8 @@ if PRUNE_COLS and os.path.exists(PRUNE_COLS):
 _exp_tags = [t for t, on in [('RANK', RANK_MODE), ('DECAY' + str(int(TIME_DECAY)), TIME_DECAY > 0),
              ('DART', DART_ON), ('SOUP', SOUP_ON), ('LGBM', LGBM_ON),
              ('PRUNE', bool(_prune_idx)), ('NOWIN', WINSOR_OFF),
-             ('WINQ' + str(WINSOR_Q), WINSOR_Q > 0), ('OFF' + str(WF_OFFSET), WF_OFFSET > 0)] if on]
+             ('WINQ' + str(WINSOR_Q), WINSOR_Q > 0), ('OFF' + str(WF_OFFSET), WF_OFFSET > 0),
+             ('RAWR', RAW_RET_FEATS), ('NAN', NAN_RAW)] if on]
 exp_label = '+'.join(_exp_tags) if _exp_tags else 'BASELINE'
 
 
@@ -94,7 +97,7 @@ def _quantile_bounds(X, q):
         bounds.append((float(col[k1]), float(col[k99])))
     return bounds
 TRAIN_WINDOW = 180; PROB_THRESHOLD = 60.0
-STOP_LOSS = float(os.environ.get('SL_PCT', 10.0)); TAKE_PROFIT = 10.0  # SL_PCT环境变量可改止损
+STOP_LOSS = float(os.environ.get('SL_PCT', 10.0)); TAKE_PROFIT = float(os.environ.get('TP_PCT', 10.0))  # SL_PCT/TP_PCT环境变量可改止损止盈
 MIN_VOLUME = 500000; TRADE_COST = float(os.environ.get('COST_PCT', 0.5))  # COST_PCT环境变量: 成本敏感性测试
 SLIP_SL = float(os.environ.get('SLIP_SL', 0))  # 止损额外滑点期望% (实盘: 25%概率滑67% → 期望+1.2%)
 
@@ -237,6 +240,8 @@ def _build_coin_samples(args):
                 # 单币资金费率原值: 样本日前最近一次8h结算 (无前视, 无数据=0)
                 _fi = _bisect.bisect_right(fund_times, ts * 1000) - 1
                 feat = feat + [fund_rates[_fi] if _fi >= 0 else 0.0]
+            if RAW_RET_FEATS:
+                feat = feat + [r1d, r3d, r5d]  # 原始涨幅原值(不归一化): 绝对幅度信息, 与归一化版并存让模型自选
             ll_=1 if nr>0.05 else 0; ls_=1 if nr<-0.05 else 0
             samples.append((ts,sym,feat,ll_,ls_,nr*100))
         except: continue
@@ -297,7 +302,8 @@ def train_and_predict_batch(train_ts_list, pred_ts, entry_ts, klines, soup_hist=
     sw = np.concatenate(_wts) if _wts else None
     if sw is not None:
         sw = sw / sw.mean()  # 归一到均值1, 不改变有效样本量
-    X_train = np.nan_to_num(X_train, nan=0.0, copy=False)
+    if not NAN_RAW:
+        X_train = np.nan_to_num(X_train, nan=0.0, copy=False)
     if not KRONOS_ON:
         X_train[:, 100:932] = 0.0   # Kronos置零 (与生产一致)
     X_train[:, 72:91] = 0.0     # liq 19维置零 (与生产一致)
@@ -381,7 +387,8 @@ def train_and_predict_batch(train_ts_list, pred_ts, entry_ts, klines, soup_hist=
         pred_syms = data['syms']
     except: return None
 
-    X_pred = np.nan_to_num(X_pred, nan=0.0, copy=False)
+    if not NAN_RAW:
+        X_pred = np.nan_to_num(X_pred, nan=0.0, copy=False)
     if not KRONOS_ON:
         X_pred[:, 100:932] = 0.0
     X_pred[:, 72:91] = 0.0
