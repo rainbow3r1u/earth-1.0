@@ -32,6 +32,17 @@
 | 回测(180d vs 1.2基线) | Sharpe 8.62→**9.00**, Cum +636.5%→+633.8%, MaxDD 40.3%→**28.3%**, 胜率 69%→72%, T/ST 103/32→100/33 |
 | 生效 | 2026-07-20 08:05 首次运行 (用户观察驱动: "LONG找不到上涨途中的币" → 动量过滤验证有效) |
 
+### 配置改进 (2026-07-23)
+
+| 变更 | 内容 |
+|------|------|
+| **TRADING_ENABLED 开关** | 新增 `TRADING_ENABLED` 配置项 (`current_params.json` → `_live_trading`) — `false` 时训练+预测照常运行但跳过开仓，日志显示"交易已禁用"；`true` 恢复正常。用于暂停实盘期间继续更新模型和发日报 |
+| **early_stopping 早停** | 训练数据按时间切分 train/val (最后10%天数作验证集)，`XGBClassifier.fit()` 加 `eval_set` + `early_stopping_rounds=15`。验证集过同一套预处理(NaN填充→Kronos置零→winsor)。日志输出早停轮次。置换检验的shuf模型也复用同一验证集早停，保证对比公平 |
+| **目的** | 当前 7天命中率仅 LONG 13% / SHORT 23%，模型过自信(预测概率 57-71%)——是过拟合症状。早停直接解决"无验证集硬跑200轮到过拟合"问题 |
+| **影响范围** | `auto_dual_trade.py`: `train_and_predict()` 数据切分+fit参数, `_run_permutation_test()` 签名扩展; `current_params.json`: +`TRAIN_VAL_SPLIT`/`EARLY_STOPPING_ROUNDS`/`TRADING_ENABLED` |
+| **回退** | `TRADING_ENABLED=true` + `TRAIN_VAL_SPLIT=0` 恢复原始行为 |
+| **后注(7/24)** | early_stopping 次日即引爆: XGBoost 3.x 已移除 fit 的 `early_stopping_rounds` kwarg, 7/24 08:05 全盘崩溃(TypeError), 恢复1.3时**早停代码已整体删除**, 当前代码无早停/TRAIN_VAL_SPLIT; TRADING_ENABLED 开关保留至今 |
+
 ### 地球版 1.2 (2026-07-20 定版)
 
 | 变更 | 内容 |
