@@ -54,6 +54,7 @@ DATA_FILES = {
     '算力': '/home/myuser/hashrate_data/hashrate_history.json',
     'TVL(ETH)': '/home/myuser/defillama_data/ethereum_tvl.json',
     # crypto_sectors.json是静态板块映射，不需要每天更新，从新鲜度检查中移除
+    # (也不做MD5一致性检查: 两端各自采集分类, 新币归类时序不同, 内容合法不一致)
 }
 
 # 异常关键词
@@ -255,7 +256,8 @@ def check_md5_sync():
     files_to_check = [
         ('auto_dual_trade.py', '/home/myuser/websocket_new/auto_dual_trade.py'),
         ('daily_predictor.py', '/home/myuser/websocket_new/daily_predictor.py'),
-        ('crypto_sectors.json', '/home/myuser/websocket_new/data/crypto_sectors.json'),
+        ('daily_digest_email.py', '/home/myuser/websocket_new/daily_digest_email.py'),
+        ('daily_momentum_email.py', '/home/myuser/websocket_new/daily_momentum_email.py'),
     ]
 
     lines = []
