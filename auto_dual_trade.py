@@ -124,6 +124,7 @@ _DEFAULTS = {
     'PROB_THRESHOLD': 60.0, 'LEVERAGE': 2,
      'TOP_N_SYMBOLS': 150, 'MIN_VOLUME_24H': 500000, 'TRAIN_DAYS': 180,
      'TRADING_ENABLED': True, 'DAILY_REPORT_EMAIL': True, 'LONG_MOM_FILTER': True,
+     'SOUP_ON': True,
 }
 try:
     with open(SHARED_CONFIG) as _cf:
@@ -1105,6 +1106,21 @@ def train_and_predict(by_day, today_ts, klines):
         with open(model_short_file,'wb') as f: pickle.dump(model_short, f)
     except Exception as e: log(f'空头模型保存失败: {e}')
 
+    # SOUP 时间集成 (2026-07-30): 保存带日期模型副本 + 清理>4天旧副本
+    # 回测: 旧regime Sharpe+0.64/MaxDD34%→15.6%; 新regime(温和档) 32.30→37.32 — 消每日重训抖动
+    if SOUP_ON:
+        try:
+            import shutil as _sh, glob as _g
+            _tag = datetime.fromtimestamp(today_ts, timezone.utc).strftime('%Y%m%d')
+            for _f in (model_long_file, model_short_file):
+                if os.path.exists(_f):
+                    _sh.copy(_f, _f.replace('.pkl', f'_{_tag}.pkl'))
+            for _f in _g.glob(os.path.join(models_dir, 'xgb_daily_*_2*.pkl')):
+                if time.time() - os.path.getmtime(_f) > 4 * 86400:
+                    os.remove(_f)
+        except Exception as _e:
+            log(f'SOUP模型轮换失败(不影响当日流程): {_e}')
+
     # FIX: 打印并累积Kronos维度特征重要性（7天筛选实验）
     SECTOR_ORDER = ['AI', 'AI Agent', 'BTC生态', 'Base生态', 'DEX', 'DeFi', 'DePIN', 'DeSci',
                     'ETH生态', 'L1', 'L2', 'Meme', 'RWA', 'Solana', 'TON生态',
@@ -1198,6 +1214,31 @@ def train_and_predict(by_day, today_ts, klines):
         X_pred[:, 72:91] = 0.0   # liq 19维置零
     probs_long = model_long.predict_proba(X_pred)[:, 1]
     probs_short = model_short.predict_proba(X_pred)[:, 1]
+    if SOUP_ON:
+        # SOUP 时间集成: 今日模型 + 最近2个历史日期模型概率平均 (不足3个按实际数量降级)
+        try:
+            import glob as _g
+            _tag = datetime.fromtimestamp(today_ts, timezone.utc).strftime('%Y%m%d')
+            _pl, _ps = [probs_long], [probs_short]
+            for _side, _lst in (('long', _pl), ('short', _ps)):
+                _hist = sorted(_g.glob(os.path.join(models_dir, f'xgb_daily_{_side}_2*.pkl')), reverse=True)
+                for _hf in _hist:
+                    if f'_{_tag}.pkl' in _hf:
+                        continue  # 今日模型已在内存
+                    try:
+                        with open(_hf, 'rb') as _fh:
+                            _lst.append(pickle.load(_fh).predict_proba(X_pred)[:, 1])
+                    except Exception:
+                        continue
+                    if len(_lst) >= 3:
+                        break
+            if len(_pl) > 1:
+                probs_long = np.mean(_pl, axis=0)
+            if len(_ps) > 1:
+                probs_short = np.mean(_ps, axis=0)
+            log(f'SOUP时间集成: LONG {len(_pl)}个模型 / SHORT {len(_ps)}个模型 概率平均')
+        except Exception as _e:
+            log(f'SOUP集成失败, 回退当日单模型: {_e}')
 
     # 收集所有有效预测结果，输出Top10 (复用过滤函数, 与Perm Test保持同一份样本集)
     valid_samples, valid_indices = _filter_valid_samples(pred_samples, klines, today_ts)
