@@ -39,7 +39,7 @@ def build_momentum_body():
     if not os.path.exists(pred_file):
         return '(预测文件不存在)'
     pred = json.load(open(pred_file))
-    probs = {s: p for s, p in pred.get('all_long', [])}
+    probs = {s: float(p) for s, p in pred.get('all_long', [])}  # float(): 兼容旧存档中numpy被json序列化成字符串的概率
     klines = json.load(open('/home/myuser/backtester/data_cache/notusdt_1d_full.json'))['klines']
 
     # 昨日涨幅≥5%的全部币种 (按昨日成交额降序, 连续2日≥5%标记🔥)

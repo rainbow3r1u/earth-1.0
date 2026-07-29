@@ -1459,12 +1459,12 @@ def main():
         pred_archive = {
             'date': today_str,
             'updated': time.time(),
-            'best_long': {'symbol': best_long[0], 'prob': round(best_long[1]*100, 1)} if best_long else None,
-            'best_short': {'symbol': best_short[0], 'prob': round(best_short[1]*100, 1)} if best_short else None,
-            'top10_long': [{'symbol': s, 'prob': round(p*100, 1)} for s, p, r in top10_long],
-            'top10_short': [{'symbol': s, 'prob': round(p*100, 1)} for s, p, r in top10_short],
-            'all_long': [[s, round(p*100, 1)] for s, p, r in _VALID_LONG_SHORT.get('long', [])],
-            'all_short': [[s, round(p*100, 1)] for s, p, r in _VALID_LONG_SHORT.get('short', [])],
+            'best_long': {'symbol': best_long[0], 'prob': round(float(best_long[1])*100, 1)} if best_long else None,
+            'best_short': {'symbol': best_short[0], 'prob': round(float(best_short[1])*100, 1)} if best_short else None,
+            'top10_long': [{'symbol': s, 'prob': round(float(p)*100, 1)} for s, p, r in top10_long],
+            'top10_short': [{'symbol': s, 'prob': round(float(p)*100, 1)} for s, p, r in top10_short],
+            'all_long': [[s, round(float(p)*100, 1)] for s, p, r in _VALID_LONG_SHORT.get('long', [])],
+            'all_short': [[s, round(float(p)*100, 1)] for s, p, r in _VALID_LONG_SHORT.get('short', [])],
         }
         archive_file = os.path.join(pred_archive_dir, f'pred_{today_str}.json')
         if not os.path.exists(archive_file):
