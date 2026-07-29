@@ -231,23 +231,22 @@ guardian.py (进程守护, cron每分钟)
 * * * * *  cd /home/myuser/websocket_new && /usr/bin/python3 guardian.py >> /tmp/guardian.log 2>&1
 0 6 * * *  cd /home/myuser/websocket_new && /usr/bin/python3 daily_data_collection.py >> logs/collect.log 2>&1
 30 7 * * * K线+OI缓存补采 (update_klines_oi) >> logs/collect.log 2>&1
-35 7 * * * 推送K线缓存+OI到观察端 (scp)
-36 7 * * * 推送情绪数据到观察端 (rsync, 7/18新增)
 5 8 * * *  cd /home/myuser/websocket_new && /usr/bin/python3 auto_dual_trade.py >> logs/auto_dual.log 2>&1
-18 8 * * * 同步daily_predictions.json到观察端 (scp)
-30 8 * * * daily_health_check.py >> logs/health_check.log 2>&1
-0 9 * * *  alert_monitor.py --report (每日健康报告邮件) >> logs/alert.log 2>&1
+40 8 * * * cron_monitor.py --task 交易预测 (确认失败才自动重试一次, 7/27启用) >> logs/cron_monitor.log 2>&1
+0 9 * * *  cd /home/myuser/websocket_new && /usr/bin/python3 daily_digest_email.py >> logs/digest.log 2>&1
 ```
+
+> 观察端(38.55.252.66)已于 2026-07-29 下线: 三条同步cron(scp K线/OI、rsync情绪、scp预测存档)已停用,
+> 健康检查中的两端MD5一致性检查同步移除。现为生产端单端运行。
 
 | 时间 | 脚本 | 作用 |
 |------|------|------|
 | 每分钟 | guardian.py | 进程存活+文件新鲜度+自动重启 (7/18重新启用) |
 | 每天6:00 | daily_data_collection.py | 统一采集所有外部数据源 (含K线/OI缓存刷新) |
-| 每天7:30 | update_klines_oi | 交易前K线/OI补采(冗余) + 推送观察端 |
-| 每天7:36 | rsync sentiment_data | 推送情绪数据到观察端 (7/18新增, 防两端漂移) |
-| 每天8:05 | auto_dual_trade.py | 检查持仓→训练(944维/180窗/aligned)→预测(入场日)→交易 |
-| 每天8:30 | daily_health_check.py | 健康检查邮件(数据新鲜度/持仓/两端MD5) |
-| 每天9:00 | alert_monitor.py --report | 每日健康报告邮件 |
+| 每天7:30 | update_klines_oi | 交易前K线/OI补采(冗余) |
+| 每天8:05 | auto_dual_trade.py | 检查持仓→训练(946维/180窗/aligned)→预测(入场日)→交易 |
+| 每天8:40 | cron_monitor.py --task 交易预测 | 检查8:05运行是否成功, 确认失败才重试一次 (7/27启用) |
+| 每天9:00 | daily_digest_email.py | 晨报总览一封: 交易摘要+2日验证+强势股资金榜+健康检查(7/27合并, 原8:19日报/8:27强势股/8:30健康检查/9:00健康报告已停) |
 
 ---
 
@@ -548,6 +547,9 @@ ls -lh kronos_finetune/kronos_pretrained/Kronos-Tokenizer-base/model.safetensors
 | 2026-07-20 | **止损 -10%→-5% 上线**: 退出规则实验(7天70笔+23天208笔, -5%优于-10%) + 全系统180d回测(Sharpe 9.00→**9.82**, MaxDD 28.3%→34.0%, 胜率72%→64%) — Sharpe提升即接入; 邮件验证口径同步读配置(三口径一致), 历史记录按-5%重建 |
 | 2026-07-20 | 实验(训练侧动量模型 TRAIN_MOM_LONG, 只用动量样本训练): Sharpe 9.00/MaxDD **23.8%(史上最浅)** vs 闸门侧 9.82/34.0% — **闸门侧收益更优, 训练侧回撤更浅**; 决策: 保持1.3闸门侧, 训练侧作低回撤备选, 一周后看LONG实盘战绩再定 (GPU坑: 子集训练触发CUDA dense断言, 改CPU解决) |
 | 2026-07-18 | 实验(4h分辨率版, 与日线同构仅K线换4h): Sharpe 1.66/Cum +124.7%/MaxDD 62.7% vs 日线8.13/36.1% — **4h预测无效, alpha为日线尺度**; 同日Rule B证伪实验(4h限价等1%回踩≤24h): Sharpe 8.13→**9.97**, 止损36→22, 胜率69→72% — **4h数据用于执行有效, 用于预测无效** |
+| 2026-07-27 | 邮件体系合并: 4封邮件(8:19日报/8:27强势股/8:30健康检查/9:00健康报告)合并为9:00晨报总览(daily_digest_email.py, 信息无删减); 强势股板块加成交额降序+成交额列+连续2日≥5%🔥标记; 8:40 cron_monitor交易失败自动重试启用(确认失败才动手) |
+| 2026-07-29 | 修复: 预测存档概率被`json default=str`序列化成字符串(numpy标量) — float()强转, 强势股邮件'>='报错修复; 强势股板块首次有真实概率(0看涨, 与LONG偏弱一致) |
+| 2026-07-29 | **观察端(38.55.252.66)下线**: 三条同步cron停用(scp K线/OI、rsync情绪、scp预测存档), 健康检查两端MD5一致性检查移除(crypto_sectors.json系两端各自采集的合法不一致, 每日误报) — 现为生产端单端运行 |
 
 ---
 

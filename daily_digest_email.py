@@ -42,15 +42,14 @@ def section_momentum():
 
 def section_health():
     parts = []
-    # 4a. 每日健康检查 5 项(原 daily_health_check.py)
+    # 4a. 每日健康检查 4 项(原 daily_health_check.py; MD5同步检查已随观察端下线移除)
     try:
         import daily_health_check as dhc
         checks = []
         for name, fn in [('日志异常检查', dhc.check_trade_log),
                          ('特征NaN/Inf检查', dhc.check_feature_nan),
                          ('数据新鲜度', dhc.check_data_freshness),
-                         ('持仓状态', dhc.check_positions),
-                         ('MD5同步', dhc.check_md5_sync)]:
+                         ('持仓状态', dhc.check_positions)]:
             try:
                 ok, msg = fn()
             except Exception as e:

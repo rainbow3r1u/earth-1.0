@@ -248,9 +248,9 @@ def check_positions():
 
 
 def check_md5_sync():
-    """检查三端MD5同步（仅生产端执行）"""
-    if IS_OBSERVER:
-        return True, '观察端跳过MD5同步检查'
+    """检查三端MD5同步（仅生产端执行）。观察端已于2026-07-29下线, 跳过。"""
+    if True or IS_OBSERVER:
+        return True, '观察端已下线(2026-07-29), 跳过MD5同步检查'
 
     import subprocess
     files_to_check = [
