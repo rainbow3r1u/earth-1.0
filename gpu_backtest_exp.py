@@ -36,6 +36,8 @@ BB_FEATS = os.environ.get('BB_FEATS', '0') == '1'  # 布林特征包: 乖离率+
 VOLRAW_FEATS = os.environ.get('VOLRAW_FEATS', '0') == '1'  # 原始成交额q(不归一化) (945维)
 FUND_FEATS = os.environ.get('FUND_FEATS', '0') == '1'  # 单币资金费率原值 (配合VOLRAW=946维)
 RAW_RET_FEATS = os.environ.get('RAW_RET_FEATS', '0') == '1'  # 原始涨幅r1d/r3d/r5d(不归一化, 保留绝对幅度; 946→949维)
+EXT_FEATS = os.environ.get('EXT_FEATS', '0') == '1'  # 量能见顶家族+残差家族扩展(946→953维): vol_pct/days_climax/vol_decline/climax_red/vol_res/res_3d/res_5d
+DIV_FEATS = os.environ.get('DIV_FEATS', '0') == '1'  # 背离家族(连续测量仪版): pv_corr_20d/pv_slope_div/high_vol_ratio/obv_slope_div
 LONG_MOM_FILTER = os.environ.get('LONG_MOM_FILTER', '0') == '1'  # LONG候选强制高动量: 连涨≥2天+20日位置>0.7
 LABEL_1D = os.environ.get('LABEL_1D', '0') == '1'  # 1日标签/24h持仓 (替代48h)
 KRONOS_ON = os.environ.get('KRONOS_ON', '0') == '1'  # Kronos 832D复测 (解除置零)
@@ -52,8 +54,10 @@ NAN_RAW = os.environ.get('NAN_RAW', '0') == '1'  # 保留NaN让XGB原生处理(�
 WINSOR_OFF = os.environ.get('WINSOR_OFF', '0') == '1'  # 全关截尾 (验证winsor压制追涨假设)
 WINSOR_Q = float(os.environ.get('WINSOR_Q', '0'))  # >0时改用自定义分位 (如0.001=0.1%/99.9%)
 WF_OFFSET = int(os.environ.get('WF_OFFSET', '0'))  # 评估窗口整体前移N天 (稳健性复核: 换时段防单窗口运气)
+ENTRY_SLIP = float(os.environ.get('ENTRY_SLIP', '0'))
+FEAT_SHIFT = int(os.environ.get('FEAT_SHIFT', '0'))  # 阴性对照: 特征前移N天(故意前视), 管道正确则此臂必须爆炸到~100%胜率  # 入场价不利漂移%: LONG按开盘价*(1+x)成交, SHORT*(1-x) — 检验5分钟延迟的真实成本
 # lag/nolag 共用同一份样本缓存; aligned 标签不同, 独立缓存
-CACHE_DIR = f'{HOME}/backtester/data_cache/by_day_cache_v5' + ('_aligned' if MODE == 'aligned' else '') + ('_bb' if BB_FEATS else '') + ('_volraw' if VOLRAW_FEATS else '') + ('_fund' if FUND_FEATS else '') + ('_1d' if LABEL_1D else '') + ('_kr' if KRONOS_ON else '') + ('_rawr' if RAW_RET_FEATS else '') + os.environ.get('CACHE_SUFFIX', '')  # CACHE_SUFFIX: 特殊宇宙(如MIN_KLINES=35)隔离缓存防污染
+CACHE_DIR = f'{HOME}/backtester/data_cache/by_day_cache_v5' + ('_aligned' if MODE == 'aligned' else '') + ('_bb' if BB_FEATS else '') + ('_volraw' if VOLRAW_FEATS else '') + ('_fund' if FUND_FEATS else '') + ('_1d' if LABEL_1D else '') + ('_kr' if KRONOS_ON else '') + ('_rawr' if RAW_RET_FEATS else '') + ('_ext' if EXT_FEATS else '') + ('_div' if DIV_FEATS else '') + os.environ.get('CACHE_SUFFIX', '')  # CACHE_SUFFIX: 特殊宇宙(如MIN_KLINES=35)隔离缓存防污染
 
 DAYS   = int(sys.argv[1]) if len(sys.argv) > 1 else 180
 STRIDE = int(sys.argv[2]) if len(sys.argv) > 2 else 1
@@ -79,8 +83,8 @@ if PRUNE_COLS and os.path.exists(PRUNE_COLS):
 _exp_tags = [t for t, on in [('RANK', RANK_MODE), ('DECAY' + str(int(TIME_DECAY)), TIME_DECAY > 0),
              ('DART', DART_ON), ('SOUP', SOUP_ON), ('LGBM', LGBM_ON),
              ('PRUNE', bool(_prune_idx)), ('NOWIN', WINSOR_OFF),
-             ('WINQ' + str(WINSOR_Q), WINSOR_Q > 0), ('OFF' + str(WF_OFFSET), WF_OFFSET > 0),
-             ('RAWR', RAW_RET_FEATS), ('NAN', NAN_RAW)] if on]
+             ('WINQ' + str(WINSOR_Q), WINSOR_Q > 0), ('OFF' + str(WF_OFFSET), WF_OFFSET > 0), ('ESLIP' + str(ENTRY_SLIP), ENTRY_SLIP > 0), ('FSHIFT' + str(FEAT_SHIFT), FEAT_SHIFT > 0),
+             ('RAWR', RAW_RET_FEATS), ('NAN', NAN_RAW), ('EXT', EXT_FEATS), ('DIV', DIV_FEATS)] if on]
 exp_label = '+'.join(_exp_tags) if _exp_tags else 'BASELINE'
 
 
@@ -122,7 +126,7 @@ def load_oi_offline(klines):
 
 # ============ 并行样本构建 ============
 def _build_coin_samples(args):
-    sym, kls, oi_map, btc_rets, sector_map, sector_heats, fund_rows = args
+    sym, kls, oi_map, btc_rets, sector_map, sector_heats, fund_rows, btc_vols = args
 
     if KRONOS_ON:
         # Kronos复测: 加载832维嵌入缓存 (每个worker独立加载)
@@ -171,7 +175,7 @@ def _build_coin_samples(args):
     samples = []
     i_end = (n - 1 if LABEL_1D else n - 2) if MODE == 'aligned' else n - 1  # aligned需c[i_+2]; 1d标签只需c[i_+1]
     for i_ in range(25, i_end):
-        j = i_ - 1
+        j = i_ - 1 + FEAT_SHIFT
         try:
             r1d = (c[j]-c[j-1])/c[j-1] if c[j-1]>0 else 0
             r3d = (c[j]-c[max(0,j-3)])/c[max(0,j-3)] if c[max(0,j-3)]>0 else 0
@@ -242,6 +246,56 @@ def _build_coin_samples(args):
                 feat = feat + [fund_rates[_fi] if _fi >= 0 else 0.0]
             if RAW_RET_FEATS:
                 feat = feat + [r1d, r3d, r5d]  # 原始涨幅原值(不归一化): 绝对幅度信息, 与归一化版并存让模型自选
+            if EXT_FEATS:
+                # 量能见顶家族 + 残差家族 (索引946-952)
+                _v20w = v_[max(0, j-19):j+1]
+                _vmax = max(_v20w) if _v20w else 0
+                vol_pct = sum(1 for _x in _v20w if _x < v_[j]) / len(_v20w) if _v20w else 0.5
+                days_since = (j - max(0, j-19) - int(np.argmax(_v20w))) if _v20w else 0
+                vol_decline = v_[j] / _vmax if _vmax > 0 else 1.0
+                climax_red = 1 if (_vmax > 0 and v_[j] >= _vmax and c[j] < o_[j]) else 0
+                # 成交量残差: 币量对BTC量 20日OLS, 残差比=实际/预测-1 (鲸鱼脚印 vs 随大流)
+                _bv = btc_vols[max(0, j-19):j+1]; _cv = v_[max(0, j-19):j+1]
+                if len(_bv) >= 5 and np.std(_bv) > 1e-8:
+                    _bvv = float(np.cov(_bv, _cv)[0, 1] / np.var(_bv))
+                    _bav = float(np.mean(_cv) - _bvv * np.mean(_bv))
+                    _vpre = _bav + _bvv * btc_vols[j]
+                    vol_res = v_[j] / _vpre - 1 if _vpre > 0 else 0.0
+                else:
+                    vol_res = 0.0
+                # 多周期涨幅残差: coin kd涨幅 - beta20 × btc kd涨幅
+                _b3 = float(np.prod([1 + _x for _x in btc_rets[max(0, j-2):j+1]]) - 1) if j >= 2 else 0.0
+                _b5 = float(np.prod([1 + _x for _x in btc_rets[max(0, j-4):j+1]]) - 1) if j >= 4 else 0.0
+                res_3d = r3d - b * _b3
+                res_5d = r5d - b * _b5
+                feat = feat + [round(vol_pct, 4), days_since, round(vol_decline, 4), climax_red,
+                               round(vol_res, 4), round(res_3d, 4), round(res_5d, 4)]
+            if DIV_FEATS:
+                # 背离家族: 连续测量仪, 非0/1开关
+                _w = 20
+                _cw = c[max(0, j-_w+1):j+1]; _vw = v_[max(0, j-_w+1):j+1]
+                if len(_cw) >= 10 and np.std(_cw) > 0 and np.std(_vw) > 0:
+                    pv_corr = float(np.corrcoef(_cw, _vw)[0, 1])
+                    _xs = np.arange(len(_cw))
+                    _pslope = float(np.polyfit(_xs, _cw, 1)[0] / (np.std(_cw) + 1e-12))
+                    _vslope = float(np.polyfit(_xs, _vw, 1)[0] / (np.std(_vw) + 1e-12))
+                    pv_slope_div = _pslope - _vslope
+                    # 新高量能比: 今日若创20日收盘新高, 量比上次新高日的量
+                    _prevs = _cw[:-1]
+                    _prev_hi_i = int(np.argmax(_prevs))
+                    if c[j] >= max(_prevs) and _vw[_prev_hi_i] > 0:
+                        high_vol_ratio = v_[j] / _vw[_prev_hi_i]
+                    else:
+                        high_vol_ratio = 1.0
+                    # OBV斜率差
+                    _obv = [0.0]
+                    for _k in range(1, len(_cw)):
+                        _obv.append(_obv[-1] + (_vw[_k] if _cw[_k] > _cw[_k-1] else (-_vw[_k] if _cw[_k] < _cw[_k-1] else 0)))
+                    _oslope = float(np.polyfit(_xs, _obv, 1)[0] / (np.std(_obv) + 1e-12))
+                    obv_div = _pslope - _oslope
+                else:
+                    pv_corr, pv_slope_div, high_vol_ratio, obv_div = 0.0, 0.0, 1.0, 0.0
+                feat = feat + [round(pv_corr, 4), round(pv_slope_div, 4), round(high_vol_ratio, 4), round(obv_div, 4)]
             ll_=1 if nr>0.05 else 0; ls_=1 if nr<-0.05 else 0
             samples.append((ts,sym,feat,ll_,ls_,nr*100))
         except: continue
@@ -249,10 +303,11 @@ def _build_coin_samples(args):
 
 def build_samples_parallel(klines, oi_data, sector_map, sector_heats, btc_rets, n_workers, fund_data=None):
     fund_data = fund_data or {}
+    btc_vols = [k['q'] for k in klines.get('BTCUSDT', [])]
     tasks = []
     for sym, kls in klines.items():
         if len(kls) < 30: continue
-        tasks.append((sym, kls, oi_data.get(sym, {}), btc_rets, sector_map, sector_heats, fund_data.get(sym, [])))
+        tasks.append((sym, kls, oi_data.get(sym, {}), btc_rets, sector_map, sector_heats, fund_data.get(sym, []), btc_vols))
 
     log(f'并行构建: {len(tasks)} 币种 × {n_workers} workers (MODE={MODE})')
     t0 = time.time()
@@ -449,6 +504,8 @@ def train_and_predict_batch(train_ts_list, pred_ts, entry_ts, klines, soup_hist=
     kd = klines.get(sym, []); ki = dp._find_kline_index(kd, entry_ts)
     if ki is None or ki >= len(kd)-2: return None
     ep = kd[ki]['o']
+    if ENTRY_SLIP > 0:
+        ep = ep * (1 + ENTRY_SLIP/100) if direction == 'long' else ep * (1 - ENTRY_SLIP/100)
     pnl = 0; hit = False; reason = 'hold'
     for off in ([1] if LABEL_1D else [1, 2]):
         i2 = ki + off
