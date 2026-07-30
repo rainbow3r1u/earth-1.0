@@ -67,6 +67,16 @@
       "cos": "klines/cache/funding_hist.json",
       "local": "backtester/data_cache/funding_hist.json",
       "desc": "单币资金费率历史(fund_raw特征源, 8h结算序列), 每日增量更新"
+    },
+    {
+      "cos": "klines/coingecko_data/mcap_latest.json",
+      "local": "coingecko_data/mcap_latest.json",
+      "desc": "全币种市值/流通量(CoinGecko, 96%匹配), 每日更新"
+    },
+    {
+      "cos": "klines/data/exchange_info.json",
+      "local": "websocket_new/data/exchange_info.json",
+      "desc": "币安合约onboardDate币龄+underlyingSubType板块, 每日更新"
     }
   ],
   "daily_synced_dirs": [
@@ -80,6 +90,12 @@
       "cos_prefix": "klines/sentiment_data/",
       "local_dir": "sentiment_data/",
       "desc": "情绪数据(费率/多空比)小时文件, 目录结构 YYYYMMDD/HH.json"
+    },
+    {
+      "cos_prefix": "klines/coingecko_data/mcap/",
+      "local_dir": "coingecko_data/mcap/",
+      "match": ".json",
+      "desc": "市值历史每日快照"
     }
   ],
   "bootstrap_seed_files": [
