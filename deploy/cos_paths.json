@@ -96,6 +96,12 @@
       "local_dir": "coingecko_data/mcap/",
       "match": ".json",
       "desc": "市值历史每日快照"
+    },
+    {
+      "cos_prefix": "klines/coingecko_data/mcap_hist/",
+      "local_dir": "coingecko_data/mcap_hist/",
+      "match": ".json",
+      "desc": "市值历史回填(近似法close*circ), 524币全历史"
     }
   ],
   "bootstrap_seed_files": [
