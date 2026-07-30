@@ -16,6 +16,14 @@ OVERRIDES = {
     '龙虾': None, '币安人生': None, '我踏马来了': None,
     'BTC': 'bitcoin', 'ETH': 'ethereum', 'SOL': 'solana', 'XRP': 'ripple',
     'DOGE': 'dogecoin', 'PEPE': 'pepe', 'SHIB': 'shiba-inu',
+    # 改名/符号不一致手工映射 (7/30清洗审计)
+    'MATIC': 'polygon-ecosystem-token',   # MATIC已改名POL, gecko旧条目市值为0
+    'RONIN': 'ronin',                     # Binance RONINUSDT → gecko symbol ron
+    'RAYSOL': 'raydium',                  # Binance RAYSOLUSDT → gecko raydium
+    'IP': 'story-protocol',               # Story Protocol, gecko symbol非ip
+    'LUNA2': 'terra-luna-2',              # LUNA2 → terra-luna-2
+    'VELODROME': 'velodrome-finance',     # VELODROME → velodrome-finance (非velo)
+    'BEAMX': 'beam-2',                    # BEAMX(Merit Circle迁移) → beam-2
 }
 PREFIXES = ['1000000', '1000']
 UA = {'User-Agent': 'mcap-collector/1.0'}
