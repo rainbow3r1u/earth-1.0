@@ -28,9 +28,9 @@ STATE_FILE = '/home/myuser/websocket_new/logs/health_reminder_state.json'
 PROD_AUTO_DUAL = '/home/myuser/websocket_new/auto_dual_trade.py'
 OBSERVER_HOST = 'myuser@38.55.252.66'
 OBSERVER_PATH = '/home/myuser/websocket_new/auto_dual_trade.py'
-GPU_HOST = 'linux@175.155.64.171'
-GPU_PORT = '24048'
-GPU_PASS = 'Nk#dx'
+GPU_HOST = os.environ.get('GPU_HOST', 'linux@175.155.64.171')   # GPU按天租, 每次地址/端口会变
+GPU_PORT = os.environ.get('GPU_PORT', '24048')
+GPU_PASS = os.environ.get('GPU_PASS', '')   # 密码从环境变量读, 绝不硬编码(脚本当前已在cron禁用)
 GPU_BACKTEST = '/home/linux/websocket_new/gpu_backtest.py'
 
 TRADE_LOG = '/home/myuser/websocket_new/logs/auto_dual.log'
