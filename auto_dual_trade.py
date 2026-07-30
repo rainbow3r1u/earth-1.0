@@ -1040,11 +1040,11 @@ def train_and_predict(by_day, today_ts, klines):
         _validation_issues.append(f'{len(_unexpected_zero)}个异常全零列(前10: {_unexpected_zero[:10]})')
         log(f'⚠️ 发现{len(_unexpected_zero)}个异常全零列: {_unexpected_zero[:10]}')
     
-    # 3. 极端值检查 (单元素绝对值>1e6)
+    # 3. 极端值检查 (单元素绝对值>1e6) — 绝大多数为vol_raw原始成交额的天然量级(日成交额中位数>1e6), 非脏数据
     _extreme_count = int(np.sum(np.abs(X_train) > 1e6))
     if _extreme_count > 0:
         _validation_issues.append(f'{_extreme_count}个极端值(>1e6)')
-        log(f'⚠️ 发现{_extreme_count}个极端值, winsor将处理')
+        log(f'极端值统计: {_extreme_count}个>1e6 (主要为vol_raw天然量级), 温和截尾0.1%/99.9%处理')
     
     if _validation_issues:
         log(f'训练数据校验: {"; ".join(_validation_issues)}')
