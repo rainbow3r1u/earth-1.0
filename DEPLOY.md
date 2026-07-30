@@ -24,8 +24,11 @@
 ## 1. 克隆代码
 
 ```bash
+# 私有仓库, 先配好读取权限的 git 凭证(token 或 ssh key)
 git clone https://github.com/rainbow3r1u/earth-1.0.git /home/myuser/websocket_new
 cd /home/myuser/websocket_new && mkdir -p logs
+# 预测公证 cron 需要推送权限: git remote set-url 配上带写权限的 token
+git remote set-url xgboot https://<TOKEN>@github.com/rainbow3r1u/earth-1.0.git
 ```
 
 ## 2. 配置 .env
