@@ -1196,7 +1196,7 @@ def train_and_predict(by_day, today_ts, klines):
         log(f'训练数据保存失败: {e}')
     
     # FIX: 运行过拟合测试（Permutation Test）— 多空双测，按边阻断
-    long_ok, short_ok = _run_permutation_test(X_train, y_long, y_short, model_long, model_short, by_day, today_ts, bounds, klines)
+    # 2026-07-31: 调用点下移到SOUP集成之后, 保证Perm Test Best = 交易Best (SOUP会改排名)
     
     pred_samples = by_day.get(today_ts, [])
     if not pred_samples:
@@ -1239,6 +1239,11 @@ def train_and_predict(by_day, today_ts, klines):
             log(f'SOUP时间集成: LONG {len(_pl)}个模型 / SHORT {len(_ps)}个模型 概率平均')
         except Exception as _e:
             log(f'SOUP集成失败, 回退当日单模型: {_e}')
+
+    # Permutation Test 按边阻断 (在SOUP平均后执行, 传入集成概率, 保证Perm Best=交易Best)
+    long_ok, short_ok = _run_permutation_test(X_train, y_long, y_short, model_long, model_short,
+                                              by_day, today_ts, bounds, klines,
+                                              probs_long_override=probs_long, probs_short_override=probs_short)
 
     # 收集所有有效预测结果，输出Top10 (复用过滤函数, 与Perm Test保持同一份样本集)
     valid_samples, valid_indices = _filter_valid_samples(pred_samples, klines, today_ts)
@@ -1967,7 +1972,8 @@ def _filter_valid_samples(pred_samples, klines, today_ts):
     return valid_samples, valid_indices
 
 
-def _run_permutation_test(X_train, y_long, y_short, model_long, model_short, by_day, today_ts, bounds, klines):
+def _run_permutation_test(X_train, y_long, y_short, model_long, model_short, by_day, today_ts, bounds, klines,
+                          probs_long_override=None, probs_short_override=None):
     """Permutation Test: 打乱标签看概率是否暴跌 (多空双测, 按边返回)
 
     Returns:
@@ -1975,12 +1981,13 @@ def _run_permutation_test(X_train, y_long, y_short, model_long, model_short, by_
 
     注意: 使用与交易决策相同的过滤后样本(成交量达标)做argmax,
     确保Perm Test Best = 交易Best, 避免日志与存档不一致
+    probs_*_override: SOUP集成概率(7/31起) — 有则用之替代单模型预测, 保持与交易一致
     """
     try:
         pred_samples = by_day.get(today_ts, [])
         if not pred_samples:
             log('[PERM-TEST] 今日无预测样本，跳过')
-            return True
+            return True, True
         
         X_pred = np.array([s[1] for s in pred_samples])
         X_pred = np.nan_to_num(X_pred, nan=0.0, copy=False)
@@ -1996,13 +2003,14 @@ def _run_permutation_test(X_train, y_long, y_short, model_long, model_short, by_
         valid_samples, valid_indices = _filter_valid_samples(pred_samples, klines, today_ts)
         if not valid_indices:
             log('[PERM-TEST] 过滤后无有效样本(成交量均不达标)，跳过')
-            return True
+            return True, True
 
-        def _test_side(label, y_true, model_normal, random_state):
+        def _test_side(label, y_true, model_normal, random_state, probs_override=None):
             """测试单边 (LONG/SHORT), 返回 (passed, best_sym, prob_normal, prob_shuf, drop)
             基于过滤后样本argmax, 与交易Best保持一致
+            probs_override: SOUP集成概率(优先于单模型)
             """
-            probs_normal = model_normal.predict_proba(X_pred)[:, 1]
+            probs_normal = probs_override if probs_override is not None else model_normal.predict_proba(X_pred)[:, 1]
             # 只在过滤后的样本中取argmax
             probs_valid = probs_normal[valid_indices]
             best_local = int(np.argmax(probs_valid))
@@ -2043,8 +2051,8 @@ def _run_permutation_test(X_train, y_long, y_short, model_long, model_short, by_
             log(f'[PERM-TEST] [{label}] Best={best_sym} normal={best_prob*100:.1f}% shuf={best_prob_shuf*100:.1f}% drop={drop*100:+.1f}% → {verdict}')
             return passed, best_sym, best_prob, best_prob_shuf, drop
         
-        passed_long, sym_l, prob_l, prob_ls, drop_l = _test_side('LONG', y_long, model_long, 42)
-        passed_short, sym_s, prob_s, prob_ss, drop_s = _test_side('SHORT', y_short, model_short, 43)
+        passed_long, sym_l, prob_l, prob_ls, drop_l = _test_side('LONG', y_long, model_long, 42, probs_long_override)
+        passed_short, sym_s, prob_s, prob_ss, drop_s = _test_side('SHORT', y_short, model_short, 43, probs_short_override)
         
         overall = passed_long and passed_short
         
