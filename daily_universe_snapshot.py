@@ -10,6 +10,8 @@ from datetime import datetime, timezone
 KLINES = '/home/myuser/backtester/data_cache/notusdt_1d_full.json'
 OUT_DIR = '/home/myuser/websocket_new/data/universe'
 
+SECTOR_SRC = '/home/myuser/websocket_new/data/crypto_sectors.json'
+
 def main():
     k = json.load(open(KLINES))['klines']
     day = datetime.now(timezone.utc).strftime('%Y-%m-%d')
@@ -22,6 +24,11 @@ def main():
     out = f'{OUT_DIR}/{day}.json'
     json.dump({'date': day, 'n': len(coins), 'coins': coins}, open(out, 'w'))
     print(f'宇宙快照: {len(coins)}币 → {out}')
+    # 板块地图快照: sector_map每日漂移会回写历史板块热度, 需point-in-time冻结
+    sector = json.load(open(SECTOR_SRC))
+    sout = f'{OUT_DIR}/sector_{day}.json'
+    json.dump({'date': day, 'n': len(sector), 'map': sector}, open(sout, 'w'))
+    print(f'板块地图快照: {len(sector)}币 → {sout}')
 
 if __name__ == '__main__':
     main()
