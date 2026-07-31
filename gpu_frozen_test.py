@@ -68,7 +68,8 @@ def trade(sym, direction, ts):
     if ki >= len(kls)-2: return None
     ep = kls[ki]['o']
     if ep <= 0: return None
-    for off in (1, 2):
+    # FIX 2026-07-31(GPT审计发现): 止盈止损检查必须含入场日当天(off=0), 原从ki+1起豁免当天止损
+    for off in (0, 1, 2):
         k = kls[ki+off]
         if direction == 'long':
             if k['l'] <= ep*(1-STOP_LOSS/100): return -STOP_LOSS-COST

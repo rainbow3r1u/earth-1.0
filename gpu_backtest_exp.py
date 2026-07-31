@@ -507,7 +507,9 @@ def train_and_predict_batch(train_ts_list, pred_ts, entry_ts, klines, soup_hist=
     if ENTRY_SLIP > 0:
         ep = ep * (1 + ENTRY_SLIP/100) if direction == 'long' else ep * (1 - ENTRY_SLIP/100)
     pnl = 0; hit = False; reason = 'hold'
-    for off in ([1] if LABEL_1D else [1, 2]):
+    # FIX 2026-07-31(GPT审计发现): 止盈止损检查必须含入场日当天(off=0) —
+    # 原代码从ki+1开始, 入场日当天-5%波动被豁免, 36/180笔(20%)当天已止损却记盈利, 虚增~17pp胜率
+    for off in ([1] if LABEL_1D else [0, 1, 2]):
         i2 = ki + off
         if i2 >= len(kd): continue
         k = kd[i2]; h = k['h']; l = k['l']
