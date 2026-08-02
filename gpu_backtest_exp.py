@@ -24,6 +24,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import daily_predictor as dp
+import auto_dual_trade as adt  # 生产同源特征构建 (2026-08-01)
 from xgboost import XGBClassifier
 
 HOME = os.path.expanduser('~')
@@ -98,7 +99,15 @@ def _quantile_bounds(X, q):
     for j in range(m):
         col = Xc[:, j]
         col.partition([k1, k99])
-        bounds.append((float(col[k1]), float(col[k99])))
+        lo = float(col[k1])
+        hi = float(col[k99])
+        if lo == 0.0 and hi == 0.0:
+            # 与生产dp._fast_winsor_bounds一致: 稀疏列分位全零时回退min/max, 防抹掉真实信号
+            col_min = float(col.min())
+            col_max = float(col.max())
+            if col_min < 0.0 or col_max > 0.0:
+                lo, hi = col_min, col_max
+        bounds.append((lo, hi))
     return bounds
 TRAIN_WINDOW = 180; PROB_THRESHOLD = 60.0
 STOP_LOSS = float(os.environ.get('SL_PCT', 10.0)); TAKE_PROFIT = float(os.environ.get('TP_PCT', 10.0))  # SL_PCT/TP_PCT环境变量可改止损止盈
@@ -124,21 +133,16 @@ def load_oi_offline(klines):
                 oi[sym] = {int(k): float(v) for k, v in raw[sym].items()}
     return oi
 
-# ============ 并行样本构建 ============
+# ============ 并行样本构建 (生产同源) ============
 def _build_coin_samples(args):
+    """生产同源特征构建 (2026-08-01 修复):
+    回测特征矩阵改用 auto_dual_trade._build_feat_impl, 与生产完全一致。
+    此前两套独立实现导致回测自训模型输出饱和(90~100%)而生产只有54~71%,
+    回测水位(Sharpe 17~20)不可信。"""
     sym, kls, oi_map, btc_rets, sector_map, sector_heats, fund_rows, btc_vols = args
 
-    if KRONOS_ON:
-        # Kronos复测: 加载832维嵌入缓存 (每个worker独立加载)
-        if not getattr(dp, '_kr_features', None):
-            _kf = f'{HOME}/websocket_new/data/kronos_features_cache.json'
-            if os.path.exists(_kf):
-                with open(_kf) as f:
-                    _cache = json.load(f)
-                dp._kr_features = {int(k): v[:dp.EMBEDDING_DIM] for k, v in _cache.items()}
-    else:
-        dp._kr_features = {}
-
+    # dp 外部特征加载 (每个worker独立加载, 与生产 _build_feat_impl 依赖一致)
+    dp._kr_features = {}
     dp._etf_features = dp._load_etf_features()
     dp._chain_features = dp._load_chain_features()
     dp._sent_features = dp._load_sent_features()
@@ -159,149 +163,27 @@ def _build_coin_samples(args):
             dp._proto_map_local = {k: v[0] for k, v in json.load(f).items()}
     except: pass
 
-    c = [k['c'] for k in kls]; o_ = [k['o'] for k in kls]
-    hh = [k['h'] for k in kls]; ll = [k['l'] for k in kls]
-    v_ = [k['q'] for k in kls]
-    n_ = [k['n'] if 'n' in k else 0 for k in kls]
-    tbq_ = [k.get('tbq') for k in kls]
-    ts_list = [k['t']//1000 for k in kls]
-    crets = dp._compute_returns(c)
-    n = len(kls)
-    # fund_raw: 单币费率原值 (取样本日前最近一次8h结算, 无前视)
-    import bisect as _bisect
-    fund_times = [r[0] for r in fund_rows] if FUND_FEATS else []
-    fund_rates = [r[1] for r in fund_rows] if FUND_FEATS else []
-
-    samples = []
-    i_end = (n - 1 if LABEL_1D else n - 2) if MODE == 'aligned' else n - 1  # aligned需c[i_+2]; 1d标签只需c[i_+1]
-    for i_ in range(25, i_end):
-        j = i_ - 1 + FEAT_SHIFT
-        try:
-            r1d = (c[j]-c[j-1])/c[j-1] if c[j-1]>0 else 0
-            r3d = (c[j]-c[max(0,j-3)])/c[max(0,j-3)] if c[max(0,j-3)]>0 else 0
-            r5d = (c[j]-c[max(0,j-5)])/c[max(0,j-5)] if c[max(0,j-5)]>0 else 0
-            r20 = [(c[k]-c[k-1])/c[k-1] if c[k-1]>0 else 0 for k in range(j-18,j+1)] if j>=20 else [0]
-            v20d = float(np.std(r20)) if j>=20 else 0.02
-            clip = max(v20d, 0.002)
-            r1n = round(r1d/clip,4); r3n = round(r3d/(clip*1.732),4); r5n = round(r5d/(clip*2.236),4)
-            vol = np.std([(c[k]-c[k-1])/c[k-1] if c[k-1]>0 else 0 for k in range(j-3,j+1)]) if j>=5 else 0.02
-            vr = v_[j]/np.mean(v_[max(0,j-5):j]) if j>=5 and np.mean(v_[max(0,j-5):j])>0 else 1
-            c20 = c[j-19:j+1] if j>=20 else [0,1]
-            pp = (c[j]-min(c20))/(max(c20)-min(c20)) if max(c20)!=min(c20) else 0.5
-            amp = (hh[j]-ll[j])/o_[j] if o_[j]>0 else 0
-            stk = 0
-            for k_ in range(j, max(0, j-7) - 1, -1):
-                if c[k_] > o_[k_]: stk += 1
-                else: break
-            ds = 1 if(c[j]>c[j-3] and v_[j]<v_[j-3]*0.7) else 0
-            ts = ts_list[i_]
-            oin = oi_map.get(ts_list[j],0); oip = oi_map.get(ts_list[j-1],0)
-            oic = (oin-oip)/oip if oip>0 else 0
-            if sym=='BTCUSDT': b,a_,r2_,res = 1.0,0.0,1.0,0.0
-            else: b,a_,r2_,res = dp._regression_features(btc_rets, crets, j)
-            sfeat = dp._get_sector_features(sym, ts-86400, sector_map, sector_heats)
-            mfeat = dp._get_macro_features(ts); mfeat = dp._apply_chain_tvl(mfeat, sym, ts)
-            if MODE == 'aligned':
-                # ab改prev_date: 同日值22:00 UTC才采集, 在no-lag入场(T开盘)时不可得
-                mfeat[-1] = dp._ab_features.get(int(ts-86400), [0.0])[0]
-            # 标签: lag/nolag=2日收益(从j收盘); aligned=入场开盘→T+2收盘; LABEL_1D=入场开盘→T+1收盘(24h)
-            if MODE == 'aligned':
-                if LABEL_1D:
-                    nr = (c[i_+1]-o_[i_])/o_[i_] if o_[i_]>0 and i_+1<n else 0
-                else:
-                    nr = (c[i_+2]-o_[i_])/o_[i_] if o_[i_]>0 and i_+2<n else 0
-            else:
-                nr = (c[i_+1]-c[j])/c[j] if c[j]>0 and i_+1<n else 0
-            if abs(nr)>5.0: continue
-            rsi7=dp._compute_rsi(c,7,j); rsi14=dp._compute_rsi(c,14,j); rsi30=dp._compute_rsi(c,30,j)
-            rsi90=dp._compute_rsi(c,90,j) if j>=90 else 50.0
-            r90=[(c[k]-c[k-1])/c[k-1] if c[k-1]>0 else 0 for k in range(j-88,j+1)] if j>=90 else [0]
-            v90d=float(np.std(r90)) if j>=90 else 0.02
-            c90=c[j-89:j+1] if j>=90 else [0,1]
-            pp90=(c[j]-min(c90))/(max(c90)-min(c90)) if j>=90 and max(c90)!=min(c90) else 0.5
-            r30d=(c[j]-c[max(0,j-30)])/c[max(0,j-30)] if c[max(0,j-30)]>0 else 0
-            r60d=(c[j]-c[max(0,j-60)])/c[max(0,j-60)] if c[max(0,j-60)]>0 else 0
-            r90d_ret=(c[j]-c[max(0,j-90)])/c[max(0,j-90)] if c[max(0,j-90)]>0 else 0
-            rsi14s=dp._compute_rsi_series(c,14)
-            rsi_div=dp._compute_rsi_divergence(c,rsi14s,j,window=20)
-            tr_ratio = n_[j]/np.mean(n_[max(0,j-5):j]) if j>=5 and np.mean(n_[max(0,j-5):j])>0 else 1
-            _tb = tbq_[j]
-            tbr = _tb/v_[j] if (_tb is not None and v_[j]>0) else 0.5
-            vol_col=dp._compute_vol_clustering(c,j)
-            feat = [r1n,r3n,r5n,vol,vr,pp,amp,stk,ds,oic]+vol_col+[b,a_,r2_,res,rsi7,rsi14,rsi30]+rsi_div+sfeat+mfeat+[rsi90,v90d,pp90,r30d,r60d,r90d_ret]+[tr_ratio,tbr]
-            if BB_FEATS:
-                # 布林特征包 (20日, 2σ): 乖离率(独立信息量) + %B + 带宽
-                c20_ = c[j-19:j+1] if j>=19 else c[:j+1]
-                ma20 = float(np.mean(c20_)); sd20 = float(np.std(c20_))
-                up_, lo_ = ma20+2*sd20, ma20-2*sd20
-                bias20 = c[j]/ma20 - 1 if ma20>0 else 0
-                pct_b = (c[j]-lo_)/(up_-lo_) if up_>lo_ else 0.5
-                bb_width = (up_-lo_)/ma20 if ma20>0 else 0
-                feat = feat + [round(bias20,5), round(pct_b,5), round(bb_width,5)]
-            if VOLRAW_FEATS:
-                feat = feat + [v_[j]]  # 原始成交额q(USDT), 不平均/不归一
-            if FUND_FEATS:
-                # 单币资金费率原值: 样本日前最近一次8h结算 (无前视, 无数据=0)
-                _fi = _bisect.bisect_right(fund_times, ts * 1000) - 1
-                feat = feat + [fund_rates[_fi] if _fi >= 0 else 0.0]
-            if RAW_RET_FEATS:
-                feat = feat + [r1d, r3d, r5d]  # 原始涨幅原值(不归一化): 绝对幅度信息, 与归一化版并存让模型自选
-            if EXT_FEATS:
-                # 量能见顶家族 + 残差家族 (索引946-952)
-                _v20w = v_[max(0, j-19):j+1]
-                _vmax = max(_v20w) if _v20w else 0
-                vol_pct = sum(1 for _x in _v20w if _x < v_[j]) / len(_v20w) if _v20w else 0.5
-                days_since = (j - max(0, j-19) - int(np.argmax(_v20w))) if _v20w else 0
-                vol_decline = v_[j] / _vmax if _vmax > 0 else 1.0
-                climax_red = 1 if (_vmax > 0 and v_[j] >= _vmax and c[j] < o_[j]) else 0
-                # 成交量残差: 币量对BTC量 20日OLS, 残差比=实际/预测-1 (鲸鱼脚印 vs 随大流)
-                _bv = btc_vols[max(0, j-19):j+1]; _cv = v_[max(0, j-19):j+1]
-                if len(_bv) >= 5 and np.std(_bv) > 1e-8:
-                    _bvv = float(np.cov(_bv, _cv)[0, 1] / np.var(_bv))
-                    _bav = float(np.mean(_cv) - _bvv * np.mean(_bv))
-                    _vpre = _bav + _bvv * btc_vols[j]
-                    vol_res = v_[j] / _vpre - 1 if _vpre > 0 else 0.0
-                else:
-                    vol_res = 0.0
-                # 多周期涨幅残差: coin kd涨幅 - beta20 × btc kd涨幅
-                _b3 = float(np.prod([1 + _x for _x in btc_rets[max(0, j-2):j+1]]) - 1) if j >= 2 else 0.0
-                _b5 = float(np.prod([1 + _x for _x in btc_rets[max(0, j-4):j+1]]) - 1) if j >= 4 else 0.0
-                res_3d = r3d - b * _b3
-                res_5d = r5d - b * _b5
-                feat = feat + [round(vol_pct, 4), days_since, round(vol_decline, 4), climax_red,
-                               round(vol_res, 4), round(res_3d, 4), round(res_5d, 4)]
-            if DIV_FEATS:
-                # 背离家族: 连续测量仪, 非0/1开关
-                _w = 20
-                _cw = c[max(0, j-_w+1):j+1]; _vw = v_[max(0, j-_w+1):j+1]
-                if len(_cw) >= 10 and np.std(_cw) > 0 and np.std(_vw) > 0:
-                    pv_corr = float(np.corrcoef(_cw, _vw)[0, 1])
-                    _xs = np.arange(len(_cw))
-                    _pslope = float(np.polyfit(_xs, _cw, 1)[0] / (np.std(_cw) + 1e-12))
-                    _vslope = float(np.polyfit(_xs, _vw, 1)[0] / (np.std(_vw) + 1e-12))
-                    pv_slope_div = _pslope - _vslope
-                    # 新高量能比: 今日若创20日收盘新高, 量比上次新高日的量
-                    _prevs = _cw[:-1]
-                    _prev_hi_i = int(np.argmax(_prevs))
-                    if c[j] >= max(_prevs) and _vw[_prev_hi_i] > 0:
-                        high_vol_ratio = v_[j] / _vw[_prev_hi_i]
-                    else:
-                        high_vol_ratio = 1.0
-                    # OBV斜率差
-                    _obv = [0.0]
-                    for _k in range(1, len(_cw)):
-                        _obv.append(_obv[-1] + (_vw[_k] if _cw[_k] > _cw[_k-1] else (-_vw[_k] if _cw[_k] < _cw[_k-1] else 0)))
-                    _oslope = float(np.polyfit(_xs, _obv, 1)[0] / (np.std(_obv) + 1e-12))
-                    obv_div = _pslope - _oslope
-                else:
-                    pv_corr, pv_slope_div, high_vol_ratio, obv_div = 0.0, 0.0, 1.0, 0.0
-                feat = feat + [round(pv_corr, 4), round(pv_slope_div, 4), round(high_vol_ratio, 4), round(obv_div, 4)]
-            ll_=1 if nr>0.05 else 0; ls_=1 if nr<-0.05 else 0
-            samples.append((ts,sym,feat,ll_,ls_,nr*100))
-        except: continue
-    return samples
+    if len(kls) < 35:
+        return []
+    res = adt._build_feat_impl(sym, kls, oi_map, btc_rets, sector_map, sector_heats)
+    out = []
+    for ts, s, feat, ll_, ls_, ret in res:
+        if ll_ == 0 and ls_ == 0 and abs(ret) < 1e-9:
+            continue  # 预测样本/标签未实现样本: 与原回测一致, 训练仅用标签可实现样本
+        out.append((ts, s, feat, ll_, ls_, ret))
+    return out
 
 def build_samples_parallel(klines, oi_data, sector_map, sector_heats, btc_rets, n_workers, fund_data=None):
+    # 生产同源模式: 依赖独立特征构建的实验臂不可用 (KRONOS已禁用/其余已证伪关闭)
+    _unsupported = [
+        (KRONOS_ON, 'KRONOS_ON'), (BB_FEATS, 'BB_FEATS'), (RAW_RET_FEATS, 'RAW_RET_FEATS'),
+        (EXT_FEATS, 'EXT_FEATS'), (DIV_FEATS, 'DIV_FEATS'), (LABEL_1D, 'LABEL_1D'),
+    ]
+    _on = [n for v, n in _unsupported if v]
+    if FEAT_SHIFT != 0:
+        _on.append('FEAT_SHIFT')
+    if _on:
+        raise SystemExit(f'生产同源构建模式不支持实验臂: {", ".join(_on)} (已证伪关闭或需独立构建, 2026-08-01)')
     fund_data = fund_data or {}
     btc_vols = [k['q'] for k in klines.get('BTCUSDT', [])]
     tasks = []
