@@ -140,7 +140,7 @@ def main():
             direction, sym, prob = max(cands, key=lambda x: x[2])
             results.append(settle(sym, day, direction, prob))
 
-    print(f"\n{'日期':<7}{'方向':<4}{'币':<12}{'概率':<6}{'结果':<6}{'对错':<7}{'48h收益'}")
+    print(f"\n{'日期':<7}{'方向':<4}{'币':<12}{'概率':<6}{'结果':<6}{'对错':<7}{'无止损48h'}")
     print('-' * 47)
     for r in results:
         if r.get('dir_ok') is None:
@@ -163,7 +163,7 @@ def main():
     with_retrace = [r for r in results if r.get('max_retrace') is not None and r.get('dir_ret') is not None]
     if with_retrace:
         print("\n===== 止损建议 (基于最大反向深度) =====")
-        print(f"{'日期':<7}{'币':<12}{'向':<4}{'止损':<7}{'反向':<8}{'方向':<6}{'48h'}")
+        print(f"{'日期':<7}{'币':<12}{'向':<4}{'止损':<7}{'反向':<8}{'方向':<6}{'无止损48h'}")
         for r in with_retrace:
             d = '✅对' if r.get('dir_ok') else '❌错'
             trig = '✅止损' if r['result'] == '-5.0%' else ('✅止盈' if r['result'] == '+10.0%' else '⏳未')
