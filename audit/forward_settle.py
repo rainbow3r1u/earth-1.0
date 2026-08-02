@@ -229,7 +229,8 @@ def tables_html(results):
     # 止损建议表
     with_r = [r for r in results if r.get('max_retrace') is not None and r.get('dir_ret') is not None]
     if with_r:
-        h.append('<br><table style="' + style + '"><tr>')
+        h.append('<br><b>止损建议 (反向测算: 最大反向深度/无止损48h)</b><br>')
+        h.append('<table style="' + style + '"><tr>')
         for c in ['日期', '币', '方向', '止损', '最大反向', '方向对错', '无止损48h']:
             h.append(f'<th style="{th}">{c}</th>')
         h.append('</tr>')
