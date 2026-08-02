@@ -104,3 +104,77 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+def build_momentum_body_html():
+    """强势股 + 资金榜 → HTML 表格版(晨报富文本, 黑体窄列)"""
+    pred_file = '/home/myuser/websocket_new/data/daily_predictions.json'
+    if not os.path.exists(pred_file):
+        return '<p>(预测文件不存在)</p>'
+    pred = json.load(open(pred_file))
+    probs = {s: float(p) for s, p in pred.get('all_long', [])}
+    _ranked = sorted(probs.items(), key=lambda x: -x[1])
+    ranks = {s: i + 1 for i, (s, _) in enumerate(_ranked)}
+    n_scored = len(_ranked)
+    klines = json.load(open('/home/myuser/backtester/data_cache/notusdt_1d_full.json'))['klines']
+
+    rows = []
+    for sym, kls in klines.items():
+        if len(kls) < 3:
+            continue
+        prev, last = kls[-3], kls[-2]
+        if prev['c'] > 0:
+            g = (last['c'] - prev['c']) / prev['c'] * 100
+            if g >= GAIN_MIN:
+                streak = (len(kls) >= 4 and kls[-4]['c'] > 0
+                          and (prev['c'] - kls[-4]['c']) / kls[-4]['c'] * 100 >= GAIN_MIN)
+                rows.append((sym, g, probs.get(sym), last.get('q', 0.0), streak))
+    rows.sort(key=lambda x: -x[3])
+    top10set = {t['symbol'] for t in pred.get('top10_long', [])}
+
+    def esc(v):
+        return str(v).replace('<', '&lt;').replace('>', '&gt;')
+    style = ("border-collapse:collapse;font-family:'SimHei','Microsoft YaHei';font-size:11px;white-space:nowrap;")
+    td = "border:1px solid #ddd;padding:2px 5px;text-align:left;"
+    th = "border:1px solid #999;padding:2px 5px;background:#f5f5f5;"
+
+    h = ['<b>昨日强势股 · 模型续涨判定</b><br>',
+         f'<table style="{style}"><tr>']
+    for c in ['币种', '昨日涨幅', '成交额', '续涨概率', '排名', '判定']:
+        h.append(f'<th style="{th}">{c}</th>')
+    h.append('</tr>')
+    for sym, g, p, q, streak in rows:
+        r = ranks.get(sym)
+        rtxt = f'{r}/{n_scored}' if r else '—'
+        if p is None or r is None:
+            verdict, ptxt = '无评分', '—'
+        elif r <= 10:
+            verdict, ptxt = '✓强', f'{p:.1f}%'
+        elif r <= max(10, n_scored // 10):
+            verdict, ptxt = '~中', f'{p:.1f}%'
+        else:
+            verdict, ptxt = '✗弱', f'{p:.1f}%'
+        star = '★' if sym in top10set else ''
+        fire = '🔥' if streak else ''
+        h.append(f"<tr><td style='{td}'>{star}{esc(sym)} {fire}</td>"
+                 f"<td style='{td}'>{g:+.1f}%</td>"
+                 f"<td style='{td}'>{_fmt(q)}</td>"
+                 f"<td style='{td}'>{ptxt}</td>"
+                 f"<td style='{td}'>{rtxt}</td>"
+                 f"<td style='{td}'>{verdict}</td></tr>")
+    h.append('</table>')
+    h.append(f"<p style='font-size:11px;color:#666;'>昨日涨幅≥{GAIN_MIN}%共 {len(rows)} 个; "
+             f"★=入选 LONG Top10, 🔥=连续2日≥5%; 判定按排名: ✓强=Top10, ~中=Top10%, ✗弱=其余</p>")
+
+    h.append('<b>每日资金榜 (合约24h成交额 Top10)</b><br>')
+    h.append(f'<table style="{style}"><tr>')
+    for c in ['#', '币种', '成交额', '24h涨跌']:
+        h.append(f'<th style="{th}">{c}</th>')
+    h.append('</tr>')
+    for i, t in enumerate(_vol_top10(), 1):
+        h.append(f"<tr><td style='{td}'>{i}</td>"
+                 f"<td style='{td}'>{esc(t['symbol'])}</td>"
+                 f"<td style='{td}'>{_fmt(t['qv'])}</td>"
+                 f"<td style='{td}'>{t['chg']:+.1f}%</td></tr>")
+    h.append('</table>')
+    return ''.join(h)

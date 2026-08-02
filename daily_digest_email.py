@@ -133,10 +133,10 @@ def section_verify():
 
 def section_momentum():
     try:
-        from daily_momentum_email import build_momentum_body
-        return build_momentum_body()
+        from daily_momentum_email import build_momentum_body_html
+        return build_momentum_body_html()
     except Exception as e:
-        return f'(强势股/资金榜生成失败: {e})'
+        return f'<p style="color:#c00">(强势股/资金榜生成失败: {e})</p>'
 
 
 def section_health():
