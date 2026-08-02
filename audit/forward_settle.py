@@ -42,41 +42,55 @@ def fetch_1m(sym, start_ms, end_ms):
     return out
 
 def settle(sym, date_str, direction, prob):
-    """返回 dict: 入场/触发类型/时间/价格/结果%; 未触发 → 当前浮盈"""
+    """返回 dict: 入场/触发类型/时间/价格/结果%; 未触发 → 当前浮盈
+    附加: 方向判定(dir_ok=价格最终朝开仓方向走) + 不止损48h收益(dir_ret)"""
     t0 = ts_utc(*map(int, date_str.split('-')), 0, 21)
     t_end = t0 + 3 * 86400000
     k = fetch_1m(sym, t0, t_end)
     if len(k) < 3:
         return {'sym': sym, 'date': date_str, 'direction': direction, 'prob': prob,
-                'result': '无数据', 'entry': None}
+                'result': '无数据', 'entry': None, 'dir_ok': None, 'dir_ret': None}
     entry = float(k[0][1])
     sl_hi, sl_lo = entry * 1.05, entry * 0.95
     tp_hi, tp_lo = entry * 1.10, entry * 0.90
+    # 48h 判定价: 窗口内最后一根收盘 (T+2 已过则为收盘, 未过则为当前最新)
+    cur = float(k[-1][4])
+    if direction == 'SHORT':
+        dir_ok = cur < entry
+        dir_ret = (entry - cur) / entry * 100
+    else:
+        dir_ok = cur > entry
+        dir_ret = (cur - entry) / entry * 100
     for x in k:
         h, l = float(x[2]), float(x[3])
         if direction == 'SHORT':
             if h >= sl_hi:
                 return {'sym': sym, 'date': date_str, 'direction': direction, 'prob': prob,
                         'entry': entry, 'result': '-5.0%', 'trigger': '止损',
-                        'time': fmt(x[0]), 'price': h, 'reason_note': 'high 打穿 +5%'}
+                        'time': fmt(x[0]), 'price': h, 'reason_note': 'high 打穿 +5%',
+                        'dir_ok': dir_ok, 'dir_ret': dir_ret}
             if l <= tp_lo:
                 return {'sym': sym, 'date': date_str, 'direction': direction, 'prob': prob,
                         'entry': entry, 'result': '+10.0%', 'trigger': '止盈',
-                        'time': fmt(x[0]), 'price': l, 'reason_note': 'low 打穿 -10%'}
+                        'time': fmt(x[0]), 'price': l, 'reason_note': 'low 打穿 -10%',
+                        'dir_ok': dir_ok, 'dir_ret': dir_ret}
         else:
             if l <= sl_lo:
                 return {'sym': sym, 'date': date_str, 'direction': direction, 'prob': prob,
                         'entry': entry, 'result': '-5.0%', 'trigger': '止损',
-                        'time': fmt(x[0]), 'price': l, 'reason_note': 'low 打穿 -5%'}
+                        'time': fmt(x[0]), 'price': l, 'reason_note': 'low 打穿 -5%',
+                        'dir_ok': dir_ok, 'dir_ret': dir_ret}
             if h >= tp_hi:
                 return {'sym': sym, 'date': date_str, 'direction': direction, 'prob': prob,
                         'entry': entry, 'result': '+10.0%', 'trigger': '止盈',
-                        'time': fmt(x[0]), 'price': h, 'reason_note': 'high 打穿 +10%'}
+                        'time': fmt(x[0]), 'price': h, 'reason_note': 'high 打穿 +10%',
+                        'dir_ok': dir_ok, 'dir_ret': dir_ret}
     c = float(k[-1][4])
     ret = (entry - c) / entry * 100 if direction == 'SHORT' else (c - entry) / entry * 100
     return {'sym': sym, 'date': date_str, 'direction': direction, 'prob': prob,
             'entry': entry, 'result': f'{ret:+.2f}%', 'trigger': '未到期/未触发',
-            'time': fmt(k[-1][0]), 'price': c, 'reason_note': '48h 窗口未触发, 当前价结算'}
+            'time': fmt(k[-1][0]), 'price': c, 'reason_note': '48h 窗口未触发, 当前价结算',
+            'dir_ok': dir_ok, 'dir_ret': dir_ret}
 
 def get_days(args):
     days = [a for a in args if not a.startswith('-')]
@@ -114,17 +128,25 @@ def main():
             direction, sym, prob = max(cands, key=lambda x: x[2])
             results.append(settle(sym, day, direction, prob))
 
-    print(f"\n{'预测日':<12}{'方向':<6}{'币':<16}{'prob':<7}{'入场':<12}{'触发':<8}{'时间':<14}{'触发价':<12}{'结果':<9}")
-    print('-' * 100)
+    print(f"\n{'预测日':<12}{'方向':<6}{'币':<16}{'prob':<7}{'入场':<12}{'触发':<8}{'时间':<14}{'触发价':<12}{'结果':<9}{'方向':<8}{'不止损收益'}")
+    print('-' * 120)
     for r in results:
         entry = f"{r['entry']:.6g}" if r['entry'] else '-'
+        if r.get('dir_ok') is None:
+            dir_s = '-'
+        else:
+            dir_s = '✅方向对(扫损)' if (r['dir_ok'] and r['trigger'] == '止损') else ('✅方向对' if r['dir_ok'] else '❌方向错')
+        dir_ret = f"{r['dir_ret']:+.2f}%" if r.get('dir_ret') is not None else '-'
         print(f"{r['date']:<12}{r['direction']:<6}{r['sym']:<16}{r['prob']:<7.1f}{entry:<12}"
-              f"{r['trigger']:<8}{r['time']:<14}{r['price']:<12.6g}{r['result']:<9}")
+              f"{r['trigger']:<8}{r['time']:<14}{r['price']:<12.6g}{r['result']:<9}{dir_s:<10}{dir_ret}")
     # 汇总
     closed = [r for r in results if r['result'] in ('-5.0%', '+10.0%')]
-    print(f"\n已到期: {len(closed)}/{len(results)} 笔 | "
-          f"止损 {sum(1 for r in closed if r['result']=='-5.0%')} / "
-          f"止盈 {sum(1 for r in closed if r['result']=='+10.0%')}")
+    stops = [r for r in closed if r['result'] == '-5.0%']
+    takes = [r for r in closed if r['result'] == '+10.0%']
+    swept = [r for r in stops if r.get('dir_ok')]
+    print(f"\n已到期: {len(closed)}/{len(results)} 笔 | 止损 {len(stops)} / 止盈 {len(takes)}")
+    if stops:
+        print(f"止损中方向对(扫损): {len(swept)}/{len(stops)} | 方向错: {len(stops)-len(swept)}")
 
 if __name__ == '__main__':
     main()
