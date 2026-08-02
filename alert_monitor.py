@@ -79,7 +79,7 @@ def send_email(subject, body, priority='normal'):
         <h2 style="margin: 0;">⚠️ {subject}</h2>
     </div>
     <div style="padding: 15px; border: 1px solid #ddd; margin-top: 10px;">
-        <pre style="white-space: pre-wrap; font-size: 14px;">{body}</pre>
+        <pre style="white-space: pre-wrap; font-size: 13px; font-family: Consolas, Menlo, 'Courier New', monospace; line-height: 1.5;">{body}</pre>
     </div>
     <hr style="border: 1px solid #eee;">
     <p style="color: #999; font-size: 12px;">
