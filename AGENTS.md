@@ -15,7 +15,7 @@
 
 | 源 | 路径 | 内容 |
 |---|---|---|
-| **Obsidian 知识库** | `/home/myuser/Sync/rainbow/` | 权威: 系统/ 7篇(总览/参数卡/特征工程/标签规则/数据管道/部署运维/版本历史) + 研究/ 14篇(审计/实验/调查) + 回溯日志/ |
+| **Obsidian 知识库** | `/home/myuser/Sync/rainbow/` — git: `github.com/rainbow3r1u/rainbow-vault`(私有, 2026-08-02 入版本管理) | 权威: 系统/ 7篇(总览/参数卡/特征工程/标签规则/数据管道/部署运维/版本历史) + 研究/ 14篇(审计/实验/调查) + 回溯日志/ |
 | **调查文档(8/2, 必读)** | `Sync/rainbow/研究/前向观察与回测生产差异调查-20260802.md` | 前向4连止损→生产npz特征偏差全链路调查 + 接手指引 |
 | **回测日志** | `Sync/rainbow/回溯日志/001_946D_180d_GPU.md` | 180d 真实水位 17.29 |
 | 代码仓库文档 | 本仓库 `SYSTEM_OVERVIEW.md` / `DEPLOY.md` / `docs/gpu_server_connection.md` | 全景/部署/GPU(注意: SYSTEM_OVERVIEW 停在 7/18 地球版 1.1, 现状以 Obsidian 为准) |
