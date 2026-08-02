@@ -50,8 +50,8 @@ def settle(sym, date_str, direction, prob):
     if len(k) < 3:
         return {'sym': sym, 'date': date_str, 'direction': direction, 'prob': prob,
                 'result': '无数据', 'entry': None, 'dir_ok': None, 'dir_ret': None, 'max_retrace': None}
-    # 未到期判定: T+2 日线收盘 = 预测日 +3 天 00:00 UTC; 未到期不给具体结果(8/2 用户要求)
-    expiry_ms = ts_utc(*map(int, date_str.split('-')), 0, 0) + 3 * 86400000
+    # 未到期判定: 实盘 48h 到期自动平 = 入场(预测日 00:21 UTC) + 48h = 预测日 +2 天 00:21 UTC (8/2 用户纠正: 原+3天晚24h)
+    expiry_ms = t0 + 2 * 86400000
     if datetime.now(timezone.utc).timestamp() * 1000 < expiry_ms:
         return {'sym': sym, 'date': date_str, 'direction': direction, 'prob': prob,
                 'entry': float(k[0][1]), 'result': '⏳未到期', 'trigger': '进行中',
@@ -63,8 +63,10 @@ def settle(sym, date_str, direction, prob):
     # 48h 判定价: 窗口内最后一根收盘 (T+2 已过则为收盘, 未过则为当前最新)
     cur = float(k[-1][4])
     # 最大反向深度: 48h 窗口内价格相对入场最深反向(不设止损时的最深不利波动)
-    max_h = max(float(x[2]) for x in k)
-    min_l = min(float(x[3]) for x in k)
+    end48 = t0 + 2 * 86400000
+    k48 = [x for x in k if x[0] <= end48] or k
+    max_h = max(float(x[2]) for x in k48)
+    min_l = min(float(x[3]) for x in k48)
     if direction == 'SHORT':
         max_retrace = (max_h - entry) / entry * 100
         dir_ok = cur < entry
@@ -97,11 +99,15 @@ def settle(sym, date_str, direction, prob):
                         'entry': entry, 'result': '+10.0%', 'trigger': '止盈',
                         'time': fmt(x[0]), 'price': h, 'reason_note': 'high 打穿 +10%',
                         'dir_ok': dir_ok, 'dir_ret': dir_ret, 'max_retrace': max_retrace}
-    c = float(k[-1][4])
+    # 结算价 = 入场后 48h 时刻的 1m 收盘 (取 t0+48h 前最后一根)
+    end48 = t0 + 2 * 86400000
+    k48 = [x for x in k if x[0] <= end48]
+    xlast = k48[-1] if k48 else k[-1]
+    c = float(xlast[4])
     ret = (entry - c) / entry * 100 if direction == 'SHORT' else (c - entry) / entry * 100
     return {'sym': sym, 'date': date_str, 'direction': direction, 'prob': prob,
-            'entry': entry, 'result': f'{ret:+.2f}%', 'trigger': '未到期/未触发',
-            'time': fmt(k[-1][0]), 'price': c, 'reason_note': '48h 窗口未触发, 当前价结算',
+            'entry': entry, 'result': f'{ret:+.2f}%', 'trigger': '未触发/48h平仓',
+            'time': fmt(xlast[0]), 'price': c, 'reason_note': '48h 到期未触发, 按48h收盘结算',
             'dir_ok': dir_ok, 'dir_ret': dir_ret, 'max_retrace': max_retrace}
 
 def get_days(args):
