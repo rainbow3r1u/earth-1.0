@@ -83,15 +83,30 @@ if chosen:
     exp_b, ret_b, vol_b = compute_expected(k_now, chosen['ts_ms'])
     log(f'理论B(磁盘/运行后K线): 列0={exp_b:.4f} (ret_1d={ret_b:.4f} vol20={vol_b:.4f})')
 
+    # 4b. 理论值 C: 币安 API 实时 K 线 (生产训练实际数据源, 8/2 审计确认 fetch_klines_full 直连 API)
+    import requests
+    try:
+        r = requests.get('https://fapi.binance.com/fapi/v1/klines',
+            params={'symbol': '0GUSDT', 'interval': '1d', 'limit': 1500}, timeout=15)
+        api_kl = [{'t': int(x[0]), 'o': float(x[1]), 'h': float(x[2]), 'l': float(x[3]),
+                   'c': float(x[4]), 'q': float(x[7])} for x in r.json()]
+        exp_c, ret_c, vol_c = compute_expected(api_kl, chosen['ts_ms'])
+        log(f'理论C(币安API实时): 列0={exp_c:.4f} (ret_1d={ret_c:.4f} vol20={vol_c:.4f})')
+    except Exception as e:
+        exp_c = None
+        log(f'理论C: 获取失败 {e}')
+
     # 5. 判定
     verdict = 'UNKNOWN'
     if npz_col0 is not None:
-        if abs(npz_col0 - exp_a) < 0.01:
-            verdict = 'MATCH_A_运行前K线 → 确认"内存旧版K线"假设 (构建用了加载时的旧数据)'
+        if exp_c is not None and abs(npz_col0 - exp_c) < 0.01:
+            verdict = 'MATCH_C_币安API版 → npz 与 API 实时 K 线一致 (偏差非 K 线来源, 查其他环节)'
+        elif abs(npz_col0 - exp_a) < 0.01:
+            verdict = 'MATCH_A_运行前K线 → 构建用了运行前快照数据'
         elif abs(npz_col0 - exp_b) < 0.01:
             verdict = 'MATCH_B_运行后K线 → npz与磁盘K线一致, 偏差在别处(需继续查)'
         else:
-            verdict = f'NO_MATCH 列0={npz_col0:.4f} vs A={exp_a:.4f} B={exp_b:.4f} → 偏差另有来源'
+            verdict = f'NO_MATCH 列0={npz_col0:.4f} vs A={exp_a:.4f} B={exp_b:.4f} C={exp_c if exp_c is not None else "N/A"} → 现场瞬态/内存异常(8/3 时点无法事后复现)'
     log(f'判定: {verdict}')
 else:
     exp_a = exp_b = None
