@@ -100,25 +100,18 @@ def _format_trade_summary():
 
 
 def section_forward():
-    """前向结算(修正口径 1m): 7/28 起全部预测日 TOP1 累计 + 方向判定 + 止损建议 (8/2 并入晨报)"""
+    """前向结算(修正口径 1m): 7/28 起 TOP1, 输出 HTML 表格(黑体/窄列, 邮件富文本)"""
     try:
-        import io, contextlib, glob
+        import glob
         sys.path.insert(0, os.path.join(BASE, 'audit'))
         import forward_settle as fs
         days = sorted(glob.glob(os.path.join(fs.PRED_DIR, 'pred_*.json')))
         days = [os.path.basename(f).replace('pred_', '').replace('.json', '') for f in days
                 if os.path.basename(f) >= 'pred_2026-07-28.json']
-        buf = io.StringIO()
-        with contextlib.redirect_stdout(buf):
-            old_argv = sys.argv
-            sys.argv = ['forward_settle'] + days
-            try:
-                fs.main()
-            finally:
-                sys.argv = old_argv
-        return buf.getvalue().strip()
+        results = fs.settle_days(days)
+        return fs.tables_html(results)
     except Exception as e:
-        return f'(前向结算生成失败: {e})'
+        return f'<p style="color:#c00">(前向结算生成失败: {e})</p>'
 
 
 def section_trade():
@@ -181,24 +174,21 @@ def section_health():
 
 def main():
     today = datetime.date.today().isoformat()
-    body = f"""晨报总览 {today}
-
-===== 1. 交易摘要 =====
-{section_trade()}
-
-===== 2. 前向结算 TOP1 (1m修正口径) =====
+    # 文本节转 pre; 第2节(前向结算)为 HTML 表格
+    pre_style = ("style=\"white-space:pre-wrap;font-size:11px;"
+                 "font-family:'SimHei','Microsoft YaHei','PingFang SC',Consolas,monospace;line-height:1.5;\"")
+    body_html = f"""<h2 style="margin:0 0 8px;">晨报总览 {today}</h2>
+<b>1. 交易摘要</b>
+<pre {pre_style}>{section_trade()}</pre>
+<b>2. 前向结算 TOP1 (1m修正口径)</b>
 {section_forward()}
-
-===== 3. 2日验证命中率 =====
-{section_verify()}
-
-===== 4. 强势股续涨 + 每日资金榜 =====
-{section_momentum()}
-
-===== 5. 系统健康 =====
-{section_health()}
-"""
-    send_email(f'晨报总览 {today}', body, priority='info')
+<b>3. 2日验证命中率</b>
+<pre {pre_style}>{section_verify()}</pre>
+<b>4. 强势股续涨 + 每日资金榜</b>
+<pre {pre_style}>{section_momentum()}</pre>
+<b>5. 系统健康</b>
+<pre {pre_style}>{section_health()}</pre>"""
+    send_email(f'晨报总览 {today}', '', body_html=body_html)
     print('digest sent')
 
 

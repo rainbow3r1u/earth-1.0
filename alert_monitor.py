@@ -60,8 +60,8 @@ ALERT_STATE = '/home/myuser/websocket_new/logs/alert_state.json'
 ALERT_COOLDOWN_HOURS = 6  # 同一告警6小时冷却
 
 # ============ 邮件发送 ============
-def send_email(subject, body, priority='normal'):
-    """发送邮件到QQ邮箱"""
+def send_email(subject, body, priority='normal', body_html=None):
+    """发送邮件到QQ邮箱; body_html 可选: 提供时用其替换 pre 文本区(支持表格等富文本)"""
     if not SMTP_USER or not SMTP_AUTH_CODE:
         print('[ALERT] SMTP未配置, 跳过邮件发送. 请在.env中设置 SMTP_USER 和 SMTP_AUTH_CODE')
         return False
@@ -73,13 +73,19 @@ def send_email(subject, body, priority='normal'):
 
     # HTML邮件体
     color = {'high': '#dc3545', 'normal': '#ffc107', 'info': '#17a2b8'}.get(priority, '#17a2b8')
+    if body_html is not None:
+        content = body_html
+    else:
+        content = (f'<pre style="white-space: pre-wrap; font-size: 11px; '
+                   f"font-family: 'SimHei', 'Microsoft YaHei', 'PingFang SC', Consolas, monospace; line-height: 1.5;\">"
+                   f'{body}</pre>')
     html = f"""
     <html><body style="font-family: 'Microsoft YaHei', Arial; color: #333;">
     <div style="background: {color}; color: white; padding: 12px; border-radius: 5px;">
         <h2 style="margin: 0;">⚠️ {subject}</h2>
     </div>
     <div style="padding: 15px; border: 1px solid #ddd; margin-top: 10px;">
-        <pre style="white-space: pre-wrap; font-size: 11px; font-family: 'SimHei', 'Microsoft YaHei', 'PingFang SC', Consolas, monospace; line-height: 1.5;">{body}</pre>
+        {content}
     </div>
     <hr style="border: 1px solid #eee;">
     <p style="color: #999; font-size: 12px;">

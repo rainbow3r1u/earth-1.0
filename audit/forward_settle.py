@@ -197,3 +197,77 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+def tables_html(results):
+    """生成 HTML 表格(黑体/窄列, 邮件用) — 主表 + 止损建议表"""
+    def esc(v):
+        return str(v).replace('<', '&lt;').replace('>', '&gt;')
+    style = ("border-collapse:collapse;font-family:'SimHei','Microsoft YaHei';font-size:11px;"
+             "white-space:nowrap;")
+    td = "border:1px solid #ddd;padding:2px 5px;text-align:left;"
+    th = "border:1px solid #999;padding:2px 5px;background:#f5f5f5;"
+    # 主表
+    h = [f'<table style="{style}"><tr>']
+    for c in ['日期', '方向', '币', '概率', '结果', '对错', '无止损48h']:
+        h.append(f'<th style="{th}">{c}</th>')
+    h.append('</tr>')
+    for r in results:
+        if r.get('dir_ok') is None:
+            dir_s = '-'
+        else:
+            dir_s = '✅扫损' if (r['dir_ok'] and r['trigger'] == '止损') else ('✅对' if r['dir_ok'] else '❌错')
+        dir_ret = f"{r['dir_ret']:+.1f}%" if r.get('dir_ret') is not None else '-'
+        h.append(f"<tr><td style='{td}'>{esc(r['date'][5:])}</td>"
+                 f"<td style='{td}'>{r['direction']}</td>"
+                 f"<td style='{td}'>{esc(r['sym'])}</td>"
+                 f"<td style='{td}'>{r['prob']:.1f}</td>"
+                 f"<td style='{td}'>{esc(r['result'])}</td>"
+                 f"<td style='{td}'>{dir_s}</td>"
+                 f"<td style='{td}'>{dir_ret}</td></tr>")
+    h.append('</table>')
+    # 止损建议表
+    with_r = [r for r in results if r.get('max_retrace') is not None and r.get('dir_ret') is not None]
+    if with_r:
+        h.append('<br><table style="' + style + '"><tr>')
+        for c in ['日期', '币', '方向', '止损', '最大反向', '方向对错', '无止损48h']:
+            h.append(f'<th style="{th}">{c}</th>')
+        h.append('</tr>')
+        for r in with_r:
+            d = '✅对' if r.get('dir_ok') else '❌错'
+            trig = '✅止损' if r['result'] == '-5.0%' else ('✅止盈' if r['result'] == '+10.0%' else '⏳未到')
+            h.append(f"<tr><td style='{td}'>{esc(r['date'][5:])}</td>"
+                     f"<td style='{td}'>{esc(r['sym'])}</td>"
+                     f"<td style='{td}'>{r['direction']}</td>"
+                     f"<td style='{td}'>{trig}</td>"
+                     f"<td style='{td}'>{r['max_retrace']:.1f}%</td>"
+                     f"<td style='{td}'>{d}</td>"
+                     f"<td style='{td}'>{r['dir_ret']:+.1f}%</td></tr>")
+        h.append('</table>')
+    return ''.join(h)
+
+
+def settle_days(days, top10=False):
+    """批量结算, 返回 results 列表 (供 main 与邮件 html 共用)"""
+    results = []
+    for day in days:
+        pf = os.path.join(PRED_DIR, f'pred_{day}.json')
+        if not os.path.exists(pf):
+            continue
+        d = json.load(open(pf))
+        if top10:
+            for side, key in [('LONG', 'top10_long'), ('SHORT', 'top10_short')]:
+                for item in d.get(key, []):
+                    results.append(settle(item['symbol'], day, side, float(item['prob'])))
+        else:
+            bl, bs = d.get('best_long'), d.get('best_short')
+            cands = []
+            if bl:
+                cands.append(('LONG', bl['symbol'], float(bl['prob'])))
+            if bs:
+                cands.append(('SHORT', bs['symbol'], float(bs['prob'])))
+            if not cands:
+                continue
+            direction, sym, prob = max(cands, key=lambda x: x[2])
+            results.append(settle(sym, day, direction, prob))
+    return results
