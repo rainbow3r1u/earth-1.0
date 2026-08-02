@@ -13,12 +13,96 @@ sys.path.insert(0, BASE)
 from alert_monitor import send_email
 
 
-def section_trade():
-    """交易摘要: 复用 auto_dual_trade 日报的正文构造(含 verify_yesterday 保持 tracker 新鲜)"""
+def _format_trade_summary():
+    """读取今日 trade.log, 输出结构化中文摘要(替代原始日志行平铺)"""
+    import daily_predictor as dp
+    today_str = datetime.date.today().isoformat()
+    log_file = '/home/myuser/.local/share/auto_trade/trade.log'
     try:
-        import auto_dual_trade as adt
-        body = adt.build_daily_report_body(include_verify=False)
-        return body if body else '(今日无交易日志)'
+        with open(log_file) as f:
+            lines = [l.strip() for l in f if today_str in l]
+    except Exception:
+        return '(今日无交易日志)'
+    if not lines:
+        return '(今日无交易日志)'
+
+    # 保持 tracker 新鲜(原 build_daily_report_body 内逻辑)
+    try:
+        dp.LOG_DIR = os.path.join(BASE, 'data')
+        dp.TRACK_FILE = os.path.join(dp.LOG_DIR, 'prediction_tracker.json')
+        dp.verify_yesterday()
+    except Exception:
+        pass
+
+    def clean(l):
+        c = l.split('] ', 1)[-1] if '] ' in l else l
+        return c.replace('[PERM-TEST] ', '').strip()
+
+    out = []
+    # 1) 钱包状态
+    for l in lines:
+        c = clean(l)
+        if '钱包' in c:
+            out.append(f'💰 钱包: {c.split("钱包:",1)[-1].strip()}')
+            break
+    # 2) 训练信息
+    for l in lines:
+        c = clean(l)
+        if c.startswith('样本:') or c.startswith('训练:'):
+            out.append(f'📚 训练: {c}')
+        if '特征维度' in c:
+            out.append(f'🔬 {c}')
+        if '预测日期' in c:
+            out.append(f'📅 {c}')
+        if '板块热度' in c and '预计算' not in c:
+            out.append(f'🗂 {c}')
+    # 3) 置换检验(翻译成中文, 分侧)
+    perm = {'LONG': None, 'SHORT': None}
+    for l in lines:
+        if '[PERM-TEST]' in l and 'Best=' in l:
+            side = 'LONG' if '[LONG]' in l else ('SHORT' if '[SHORT]' in l else None)
+            if side:
+                import re
+                m = re.search(r'normal=([\d.]+)% shuf=([\d.]+)% drop=([+\-][\d.]+)%', l)
+                if m:
+                    n, s, d = m.group(1), m.group(2), m.group(3)
+                    verdict = '✅ 正常' if float(d) >= 5 else ('⚠️ 偏弱' if float(d) >= 0 else '❌ 过拟合')
+                    perm[side] = f'{side} 侧: {verdict} (真实 {n}% vs 打乱 {s}%, drop {d}%)'
+    if perm['LONG']:
+        out.append(f'🧪 置换检验: {perm["LONG"]}')
+    if perm['SHORT']:
+        out.append(f'🧪 置换检验: {perm["SHORT"]}')
+    # 4) 阻断/信号结论
+    for l in lines:
+        c = clean(l)
+        if '过拟合' in c and '禁止' in c:
+            out.append(f'⛔ {c}')
+        if c.startswith('置信度不足'):
+            out.append(f'🚫 {c}')
+    # 5) 今日信号(决策依据)
+    for l in lines:
+        c = clean(l)
+        if '决策依据' in c or ('信号' in c and 'prob=' in c and '开仓:' not in c):
+            out.append(f'🎯 {c}')
+    # 6) 交易动作
+    for l in lines:
+        c = clean(l)
+        if c.startswith('开仓:') or c.startswith('跳过交易') or c.startswith('本金不足') or c.startswith('空仓') or c.startswith('无有效信号'):
+            out.append(f'⚙️ {c}')
+    # 7) 兜底: 关键词行(过滤原始 PERM 英文长行)
+    if len(out) <= 2:
+        keywords = ['PERM-CAND', '做多概率', '做空概率', '止盈', '止损']
+        for l in lines:
+            c = clean(l)
+            if any(k in c for k in keywords):
+                out.append(c)
+    return '\n'.join(out) if out else '(今日无交易日志)'
+
+
+def section_trade():
+    """交易摘要: 结构化中文摘要(替代原始日志平铺)"""
+    try:
+        return _format_trade_summary()
     except Exception as e:
         return f'(交易摘要读取失败: {e})'
 
