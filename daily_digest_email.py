@@ -99,6 +99,27 @@ def _format_trade_summary():
     return '\n'.join(out) if out else '(今日无交易日志)'
 
 
+def section_forward():
+    """前向结算(修正口径 1m): 最近5个预测日 TOP1 + 方向判定 + 止损建议 (8/2 并入晨报)"""
+    try:
+        import io, contextlib, glob
+        sys.path.insert(0, os.path.join(BASE, 'audit'))
+        import forward_settle as fs
+        days = sorted(glob.glob(os.path.join(fs.PRED_DIR, 'pred_*.json')))[-5:]
+        days = [os.path.basename(f).replace('pred_', '').replace('.json', '') for f in days]
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            old_argv = sys.argv
+            sys.argv = ['forward_settle'] + days
+            try:
+                fs.main()
+            finally:
+                sys.argv = old_argv
+        return buf.getvalue().strip()
+    except Exception as e:
+        return f'(前向结算生成失败: {e})'
+
+
 def section_trade():
     """交易摘要: 结构化中文摘要(替代原始日志平铺)"""
     try:
@@ -164,13 +185,16 @@ def main():
 ===== 1. 交易摘要 =====
 {section_trade()}
 
-===== 2. 2日验证命中率 =====
+===== 2. 前向结算 TOP1 (1m修正口径) =====
+{section_forward()}
+
+===== 3. 2日验证命中率 =====
 {section_verify()}
 
-===== 3. 强势股续涨 + 每日资金榜 =====
+===== 4. 强势股续涨 + 每日资金榜 =====
 {section_momentum()}
 
-===== 4. 系统健康 =====
+===== 5. 系统健康 =====
 {section_health()}
 """
     send_email(f'晨报总览 {today}', body, priority='info')
