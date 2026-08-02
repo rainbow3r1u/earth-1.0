@@ -140,16 +140,16 @@ def main():
             direction, sym, prob = max(cands, key=lambda x: x[2])
             results.append(settle(sym, day, direction, prob))
 
-    print(f"\n{'日期':<7}{'方向':<4}{'币':<12}{'概率':<6}{'结果':<6}{'对错':<7}{'无止损48h'}")
-    print('-' * 47)
+    print(f"\n{'日期':<5}{'方向':<4}{'币':<10}{'概率':<4}{'结果':<5}{'对错':<6}{'无止损48h'}")
+    print('-' * 38)
     for r in results:
         if r.get('dir_ok') is None:
             dir_s = '-'
         else:
             dir_s = '✅扫损' if (r['dir_ok'] and r['trigger'] == '止损') else ('✅对' if r['dir_ok'] else '❌错')
         dir_ret = f"{r['dir_ret']:+.1f}%" if r.get('dir_ret') is not None else '-'
-        print(f"{r['date'][5:]:<7}{r['direction']:<4}{r['sym']:<12}{r['prob']:<6.1f}"
-              f"{r['result']:<6}{dir_s:<7}{dir_ret}")
+        print(f"{r['date'][5:]:<5}{r['direction']:<4}{r['sym']:<10}{r['prob']:<4.1f}"
+              f"{r['result']:<5}{dir_s:<6}{dir_ret}")
     # 汇总
     closed = [r for r in results if r['result'] in ('-5.0%', '+10.0%')]
     stops = [r for r in closed if r['result'] == '-5.0%']
