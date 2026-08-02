@@ -282,3 +282,48 @@ Sharpe 17.29 / +1050% / MaxDD 15.6% / win 76% — nearly identical to dirty-data
 1. 生产 npz 特征偏差(待 8/3 判定+修复)
 2. `verify_yesterday` 早盘快照偏置 → 邮件/tracker 收益数字不可信, 需改完整 K 线结算(生产文件, 需 180d 回测对比+用户同意)
 3. 前向 TOP1 4 连止损 = 偏差特征模型的输出, 不代表修复后表现
+
+---
+
+## 12. 换服务器/迁移接手 Checklist(2026-08-02)
+
+> 目标: 新服务器上 30 分钟内恢复"研究+运行"能力, 不依赖旧服务器。两个仓库:
+> - 代码/文档: `github.com/rainbow3r1u/earth-1.0`(公开)
+> - 知识库: `github.com/rainbow3r1u/rainbow-vault`(**私有**, 需 git 凭证)
+
+### 步骤
+```bash
+# 1. 克隆代码 + 知识库
+git clone https://github.com/rainbow3r1u/earth-1.0.git /home/myuser/websocket_new
+cd /home/myuser/websocket_new && mkdir -p logs
+git clone https://github.com/rainbow3r1u/rainbow-vault.git /home/myuser/Sync/rainbow   # 私有, 配好凭证
+
+# 2. 配 .env(照 .env.example): COS_SECRET_ID/KEY、BINANCE_API/KEY、SMTP 必填
+cp .env.example .env
+
+# 3. 依赖 + git 身份
+pip3 install -r requirements.txt
+git config user.name "rainbow3r1u" && git config user.email "rainbow3r1u@users.noreply.github.com"
+
+# 4. 从 COS 一键拉取全部数据(~1700 文件, K线/OI/费率/外部数据)
+python3 deploy/bootstrap_from_cos.py --dry-run   # 先预览
+python3 deploy/bootstrap_from_cos.py             # 实际拉取
+
+# 5. 挂 cron(含 8/2 新增审计两条)
+# 照 §6 cron 全表 + 审计:
+#   4 8 * * * audit/audit_snapshot.py
+#   25 8 * * * audit/audit_verify.py
+```
+
+### 验证清单(换机后必做)
+- [ ] `ls backtester/data_cache/notusdt_1d_full.json` 存在且 MD5 与 COS 一致(或 >90天K线数 ~532币)
+- [ ] 手动跑一次 `python3 auto_dual_trade.py`(观察训练+预测正常, 输出 pred_YYYY-MM-DD.json)
+- [ ] `python3 audit/audit_verify.py` 干跑通过(或看 logs/audit.log 有正常判定)
+- [ ] guardian 启动后 `/tmp/guardian_status.json` 正常
+- [ ] 模型目录 `~/.local/share/auto_trade/models/` 存在(首次由 auto_dual_trade 自动生成)
+- [ ] 知识库: 读 `AGENTS.md` → Obsidian `首页.md` → `系统/参数卡.md` 确认现状
+
+### 注意事项
+- `.env` 含密钥绝不入库; 换机后手动配置
+- 数据以 COS 为准(每日自动备份); 代码/文档以 GitHub 为准
+- GPU 回测机独立(175.155.64.171:22160), 不随生产迁移; 数据从生产 scp
