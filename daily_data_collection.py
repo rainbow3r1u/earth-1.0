@@ -262,6 +262,8 @@ def update_klines_oi():
     # ---- COS 上传 ----
     _upload_to_cos(kline_cache, 'klines/cache/notusdt_1d_full.json', 'K线缓存')
     _upload_to_cos(oi_cache, 'klines/cache/oi_daily.json', 'OI缓存')
+    # 8/2 审计修复: 费率缓存此前从未上传 COS(本地每日更新, COS 停在 7/30)
+    _upload_to_cos(fund_file, 'klines/cache/funding_hist.json', '费率缓存')
 
     log('[K线+OI] 缓存更新完成')
     log('-' * 40)
