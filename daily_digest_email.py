@@ -100,12 +100,12 @@ def _format_trade_summary():
 
 
 def section_forward():
-    """前向结算(修正口径 1m): 最近5个预测日 TOP1 + 方向判定 + 止损建议 (8/2 并入晨报)"""
+    """前向结算(修正口径 1m): 全部预测日 TOP1 累计 + 方向判定 + 止损建议 (8/2 并入晨报, 全量累计)"""
     try:
         import io, contextlib, glob
         sys.path.insert(0, os.path.join(BASE, 'audit'))
         import forward_settle as fs
-        days = sorted(glob.glob(os.path.join(fs.PRED_DIR, 'pred_*.json')))[-5:]
+        days = sorted(glob.glob(os.path.join(fs.PRED_DIR, 'pred_*.json')))
         days = [os.path.basename(f).replace('pred_', '').replace('.json', '') for f in days]
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):

@@ -184,7 +184,10 @@ def main():
             if tot > best_pnl:
                 best_pnl, best_sl = tot, sl
             print(f"  SL {sl:>2}%: 总收益 {tot:+.1f}%{bar}")
-        print(f"\n🎯 综合止损建议: {best_sl}% (5单总收益 {best_pnl:+.1f}%; 现 5% 为 {sum(-5 if r['result']=='-5.0%' else 10 for r in results):+.1f}%)")
+        n_total = len(results)
+        n_closed = len(closed)
+        cur_pnl = sum(-5 if r['result'] == '-5.0%' else (10 if r['result'] == '+10.0%' else 0) for r in results)
+        print(f"\n🎯 综合止损建议: {best_sl}% ({n_closed}单已到期总收益 {best_pnl:+.1f}%; 现 5% 口径 {n_closed}单为 {cur_pnl:+.1f}%)")
 
 if __name__ == '__main__':
     main()
