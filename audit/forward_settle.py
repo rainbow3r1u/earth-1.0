@@ -133,17 +133,17 @@ def main():
             direction, sym, prob = max(cands, key=lambda x: x[2])
             results.append(settle(sym, day, direction, prob))
 
-    print(f"\n{'日期':<7}{'向':<5}{'币':<14}{'p':<5}{'入场':<11}{'触发':<6}{'时刻':<13}{'触发价':<10}{'结果':<6}{'方向':<8}{'不止损'}")
-    print('-' * 92)
+    print(f"\n{'日期':<7}{'向':<4}{'币':<12}{'p':<5}{'入场':<9}{'时刻':<13}{'触发价':<9}{'结果':<6}{'方向':<7}{'48h'}")
+    print('-' * 78)
     for r in results:
         entry = f"{r['entry']:.6g}" if r['entry'] else '-'
         if r.get('dir_ok') is None:
             dir_s = '-'
         else:
-            dir_s = '✅扫损' if (r['dir_ok'] and r['trigger'] == '止损') else ('✅方向对' if r['dir_ok'] else '❌错')
+            dir_s = '✅扫损' if (r['dir_ok'] and r['trigger'] == '止损') else ('✅对' if r['dir_ok'] else '❌错')
         dir_ret = f"{r['dir_ret']:+.1f}%" if r.get('dir_ret') is not None else '-'
-        print(f"{r['date'][5:]:<7}{r['direction']:<5}{r['sym']:<14}{r['prob']:<5.1f}{entry:<11}"
-              f"{r['trigger']:<6}{r['time']:<13}{r['price']:<10.6g}{r['result']:<6}{dir_s:<8}{dir_ret}")
+        print(f"{r['date'][5:]:<7}{r['direction']:<4}{r['sym']:<12}{r['prob']:<5.1f}{entry:<9}"
+              f"{r['time']:<13}{r['price']:<9.6g}{r['result']:<6}{dir_s:<7}{dir_ret}")
     # 汇总
     closed = [r for r in results if r['result'] in ('-5.0%', '+10.0%')]
     stops = [r for r in closed if r['result'] == '-5.0%']
@@ -157,11 +157,11 @@ def main():
     with_retrace = [r for r in results if r.get('max_retrace') is not None and r.get('dir_ret') is not None]
     if with_retrace:
         print("\n===== 止损建议 (基于最大反向深度) =====")
-        print(f"{'日期':<7}{'币':<14}{'向':<5}{'止损':<7}{'最大反向':<10}{'方向':<7}{'不止损'}")
+        print(f"{'日期':<7}{'币':<12}{'向':<4}{'止损':<7}{'反向':<8}{'方向':<6}{'48h'}")
         for r in with_retrace:
             d = '✅对' if r.get('dir_ok') else '❌错'
-            trig = '✅止损' if r['result'] == '-5.0%' else ('✅止盈' if r['result'] == '+10.0%' else '⏳未触发')
-            print(f"{r['date'][5:]:<7}{r['sym']:<14}{r['direction']:<5}{trig:<7}{r['max_retrace']:>5.1f}%  {d:<5}{r['dir_ret']:+.1f}%")
+            trig = '✅止损' if r['result'] == '-5.0%' else ('✅止盈' if r['result'] == '+10.0%' else '⏳未')
+            print(f"{r['date'][5:]:<7}{r['sym']:<12}{r['direction']:<4}{trig:<7}{r['max_retrace']:>4.1f}%  {d:<5}{r['dir_ret']:+.1f}%")
         # 最大止损建议: 扫损单所需最小止损 = max(扫损单反向深度) + 缓冲
         swept_r = [r for r in with_retrace if r.get('dir_ok') and r['result'] == '-5.0%']
         if swept_r:
