@@ -188,14 +188,14 @@ def main():
             direction, sym, prob = max(cands, key=lambda x: x[2])
             results.append(settle(sym, day, direction, prob))
 
-    print(f"\n{'日期':<5}{'方向':<4}{'币':<10}{'概率':<4}{'结果':<5}{'对错':<6}{'无止损48h'}")
+    print(f"\n{'日期':<5}{'方向':<4}{'币':<10}{'概率':<4}{'结果':<5}{'对错':<6}{'48h自然平仓'}")
     print('-' * 38)
     for r in results:
         if r.get('dir_ok') is None:
             dir_s = '-'
         else:
             dir_s = '✅扫损' if (r['dir_ok'] and r['trigger'] == '止损') else ('✅对' if r['dir_ok'] else '❌错')
-        # 已止盈/止损的单: 交易已结束, "无止损48h"假设收益不再展示(用户 8/3 定)
+        # 已止盈/止损的单: 交易已结束, "48h自然平仓"假设收益不再展示(用户 8/3 定)
         if r.get('trigger') in ('止损', '止盈'):
             dir_ret = '-'
         else:
@@ -215,7 +215,7 @@ def main():
     with_retrace = [r for r in results if r.get('max_retrace') is not None and r.get('dir_ret') is not None]
     if with_retrace:
         print("\n===== 止损建议 (基于最大反向深度) =====")
-        print(f"{'日期':<7}{'币':<12}{'向':<4}{'止损':<7}{'反向':<8}{'方向':<6}{'无止损48h'}")
+        print(f"{'日期':<7}{'币':<12}{'向':<4}{'止损':<7}{'反向':<8}{'方向':<6}{'48h自然平仓'}")
         for r in with_retrace:
             d = '✅对' if r.get('dir_ok') else '❌错'
             trig = '✅止损' if r['result'] == '-5.0%' else ('✅止盈' if r['result'] == '+10.0%' else '⏳未')
@@ -261,7 +261,7 @@ def tables_html(results):
     th = "border:1px solid #999;padding:2px 5px;background:#f5f5f5;"
     # 主表
     h = [f'<table style="{style}"><tr>']
-    for c in ['日期', '方向', '币', '概率', '结果', '对错', '无止损48h']:
+    for c in ['日期', '方向', '币', '概率', '结果', '对错', '48h自然平仓']:
         h.append(f'<th style="{th}">{c}</th>')
     h.append('</tr>')
     for r in results:
@@ -269,7 +269,7 @@ def tables_html(results):
             dir_s = '-'
         else:
             dir_s = '✅扫损' if (r['dir_ok'] and r['trigger'] == '止损') else ('✅对' if r['dir_ok'] else '❌错')
-        # 已止盈/止损的单: 交易已结束, "无止损48h"假设收益不再展示(用户 8/3 定)
+        # 已止盈/止损的单: 交易已结束, "48h自然平仓"假设收益不再展示(用户 8/3 定)
         if r.get('trigger') in ('止损', '止盈'):
             dir_ret = '-'
         else:
@@ -285,9 +285,9 @@ def tables_html(results):
     # 止损建议表
     with_r = [r for r in results if r.get('max_retrace') is not None and r.get('dir_ret') is not None]
     if with_r:
-        h.append('<br><b>止损建议 (反向测算: 最大反向深度/无止损48h)</b><br>')
+        h.append('<br><b>止损建议 (反向测算: 最大反向深度/48h自然平仓)</b><br>')
         h.append('<table style="' + style + '"><tr>')
-        for c in ['日期', '币', '方向', '止损', '最大反向', '方向对错', '无止损48h']:
+        for c in ['日期', '币', '方向', '止损', '最大反向', '方向对错', '48h自然平仓']:
             h.append(f'<th style="{th}">{c}</th>')
         h.append('</tr>')
         for r in with_r:
