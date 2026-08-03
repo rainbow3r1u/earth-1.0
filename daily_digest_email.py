@@ -23,6 +23,12 @@ def _format_trade_summary():
             lines = [l.strip() for l in f if today_str in l]
     except Exception:
         return '(今日无交易日志)'
+    # 只取最后一次运行的日志(同日多次手动运行/重试会重复, 摘要只需最新一次)
+    cut = 0
+    for i, l in enumerate(lines):
+        if '自动多空二选一交易启动' in l:
+            cut = i
+    lines = lines[cut:]
     if not lines:
         return '(今日无交易日志)'
 
@@ -39,24 +45,30 @@ def _format_trade_summary():
         return c.replace('[PERM-TEST] ', '').strip()
 
     out = []
-    # 1) 钱包状态
-    for l in lines:
+    # 1) 钱包状态(取最后一次)
+    for l in reversed(lines):
         c = clean(l)
         if '钱包' in c:
             out.append(f'💰 钱包: {c.split("钱包:",1)[-1].strip()}')
             break
-    # 2) 训练信息
+    # 2) 训练信息(每组只保留最后一次; 同日多次运行只显示最新)
+    seen = {}
     for l in lines:
         c = clean(l)
-        if c.startswith('样本:') or c.startswith('训练:'):
-            out.append(f'📚 训练: {c}')
+        if c.startswith('样本:'):
+            seen['sample'] = f'📚 {c}'
+        if c.startswith('训练:'):
+            seen['train'] = f'📚 {c}'
         if '特征维度' in c:
-            out.append(f'🔬 {c}')
+            seen['feat'] = f'🔬 {c}'
         if '预测日期' in c:
-            out.append(f'📅 {c}')
+            seen['date'] = f'📅 {c}'
         if '板块热度' in c and '预计算' not in c:
-            out.append(f'🗂 {c}')
-    # 3) 置换检验(翻译成中文, 分侧)
+            seen['sector'] = f'🗂 {c}'
+    for k in ('sector', 'sample', 'train', 'date', 'feat'):
+        if seen.get(k):
+            out.append(seen[k])
+    # 3) 置换检验(翻译成中文, 分侧, 只取最后一次)
     perm = {'LONG': None, 'SHORT': None}
     for l in lines:
         if '[PERM-TEST]' in l and 'Best=' in l:
@@ -72,23 +84,29 @@ def _format_trade_summary():
         out.append(f'🧪 置换检验: {perm["LONG"]}')
     if perm['SHORT']:
         out.append(f'🧪 置换检验: {perm["SHORT"]}')
-    # 4) 阻断/信号结论
-    for l in lines:
+    # 4) 阻断/信号结论(只取最后一次)
+    for l in reversed(lines):
         c = clean(l)
         if '过拟合' in c and '禁止' in c:
             out.append(f'⛔ {c}')
+            break
+    for l in reversed(lines):
+        c = clean(l)
         if c.startswith('置信度不足'):
             out.append(f'🚫 {c}')
-    # 5) 今日信号(决策依据)
-    for l in lines:
+            break
+    # 5) 今日信号(决策依据, 只取最后一次)
+    for l in reversed(lines):
         c = clean(l)
         if '决策依据' in c or ('信号' in c and 'prob=' in c and '开仓:' not in c):
             out.append(f'🎯 {c}')
-    # 6) 交易动作
-    for l in lines:
+            break
+    # 6) 交易动作(只取最后一次)
+    for l in reversed(lines):
         c = clean(l)
         if c.startswith('开仓:') or c.startswith('跳过交易') or c.startswith('本金不足') or c.startswith('空仓') or c.startswith('无有效信号'):
             out.append(f'⚙️ {c}')
+            break
     # 7) 兜底: 关键词行(过滤原始 PERM 英文长行)
     if len(out) <= 2:
         keywords = ['PERM-CAND', '做多概率', '做空概率', '止盈', '止损']
