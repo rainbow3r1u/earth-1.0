@@ -1477,7 +1477,26 @@ def main():
     log('构建特征...')
     by_day = build_features_78d(klines, oi_data, sector_map, sector_heats_all)
     log(f'样本: {len(by_day)}天, 总样本{sum(len(v) for v in by_day.values())}')
-    
+
+    # 实时采样: 3个已知样本特征核对 (8/3 幽灵排查, 只读日志, 不影响任何逻辑)
+    try:
+        import numpy as _np
+        for _sym in ('0GUSDT', '1000BONKUSDT', 'BTCUSDT'):
+            _found = False
+            for _ts in sorted(by_day.keys())[-2:]:
+                for _row in by_day[_ts]:
+                    if _row[0] == _sym:
+                        _f = _np.array(_row[1], dtype=_np.float32)
+                        log(f'[SAMPLECHK] {_sym} 样本日{_ts}: 列0={_f[0]:.4f} 列16={_f[16]:.4f} 列944={_f[944]:.2f}')
+                        _found = True
+                        break
+                if _found:
+                    break
+            if not _found:
+                log(f'[SAMPLECHK] {_sym}: 不在最近2天by_day')
+    except Exception as _e:
+        log(f'[SAMPLECHK] 采样失败: {_e}')
+
     # 9. 训练预测（无论余额是否充足，都训练模型保持最新）
     if len(by_day) < 2:
         log('数据不足')
