@@ -60,17 +60,16 @@ def settle(sym, date_str, direction, prob):
         tp_hi, tp_lo = entry * 1.10, entry * 0.90
         # 已发生区间的方向判定 + 最大反向深度 (进止损建议表用)
         k_sofar = [x for x in k if x[0] <= now_ms]
-        cur = float(k_sofar[-1][4])
         max_h = max(float(x[2]) for x in k_sofar)
         min_l = min(float(x[3]) for x in k_sofar)
         if direction == 'SHORT':
             max_retrace = (max_h - entry) / entry * 100
-            dir_ok = cur < entry
-            dir_ret = (entry - cur) / entry * 100
+            dir_ok = None  # 48h未到, 方向/自然平仓收益未定(用户 8/3 定: 超48h才固定)
+            dir_ret = None
         else:
             max_retrace = (entry - min_l) / entry * 100
-            dir_ok = cur > entry
-            dir_ret = (cur - entry) / entry * 100
+            dir_ok = None  # 48h未到, 方向/自然平仓收益未定
+            dir_ret = None
         for x in k_sofar:
             h, l = float(x[2]), float(x[3])
             if direction == 'SHORT':
@@ -274,7 +273,7 @@ def tables_html(results):
                  f"<td style='{td}'>{dir_ret}</td></tr>")
     h.append('</table>')
     # 止损建议表
-    with_r = [r for r in results if r.get('max_retrace') is not None and r.get('dir_ret') is not None]
+    with_r = [r for r in results if r.get('max_retrace') is not None]
     if with_r:
         h.append('<br><b>止损建议 (反向测算: 最大反向深度/48h自然平仓)</b><br>')
         h.append('<table style="' + style + '"><tr>')
@@ -282,15 +281,17 @@ def tables_html(results):
             h.append(f'<th style="{th}">{c}</th>')
         h.append('</tr>')
         for r in with_r:
-            d = '✅对' if r.get('dir_ok') else '❌错'
+            d = '✅对' if r.get('dir_ok') else ('❌错' if r.get('dir_ok') is not None else '⏳')
             trig = '✅止损' if r['result'] == '-5.0%' else ('✅止盈' if r['result'] == '+10.0%' else '⏳未到')
+            # 48h未到: 自然平仓收益未定显示⏳; 超48h: 固定48h收盘不再随行情变
+            ret_disp = f"{r['dir_ret']:+.1f}%" if r.get('dir_ret') is not None else '⏳未定'
             h.append(f"<tr><td style='{td}'>{esc(r['date'][5:])}</td>"
                      f"<td style='{td}'>{esc(r['sym'])}</td>"
                      f"<td style='{td}'>{r['direction']}</td>"
                      f"<td style='{td}'>{trig}</td>"
                      f"<td style='{td}'>{r['max_retrace']:.1f}%</td>"
                      f"<td style='{td}'>{d}</td>"
-                     f"<td style='{td}'>{r['dir_ret']:+.1f}%</td></tr>")
+                     f"<td style='{td}'>{ret_disp}</td></tr>")
         h.append('</table>')
     return ''.join(h)
 
