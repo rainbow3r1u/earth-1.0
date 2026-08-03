@@ -197,6 +197,15 @@ python3 -c "import json; d=json.load(open('/home/myuser/websocket_new/data/daily
 ### 180d true watermark (08-02, full sync + prod-sourced build)
 Sharpe 17.29 / +1050% / MaxDD 15.6% / win 76% — 干净数据训练(回测走安全 winsor 路径), 修复后预期保持 ~17~18(待修复版 180d 复核)
 
+### 8/3 邮件/结算体系改动(用户逐项要求, commits 1ba0588~ef05b96)
+- **交易摘要去重**: 同日多次运行只显示最后一次(以"自动多空二选一交易启动"为界); 45行→9行; 决策依据 LONG+SHORT 双币
+- **前向结算主表**: 6列(日期/方向/币/概率/结果/48h自然平仓); 去"对错"; 未到期也逐根触发检查(成交即盯盘, HOME 8/3 当天显示止盈); 已触发单"48h自然平仓"="-"; 列名"无止损48h"→"48h自然平仓"
+- **止损建议表**: 全保留; **边界修复: 48h未到="⏳未定", 超48h固定48h收盘不再随行情变**(评审数据可复现)
+- **2日验证**: LONG/SHORT 双向 TOP10 明细(对称)
+- **SAMPLECHK 体检进晨报**: [SAMPLECHK 特征体检] ✅3/3(幽灵防复发可视化)
+- 涉及: daily_digest_email.py / audit/forward_settle.py / auto_dual_trade.py(_build_verify_summary)
+- 用户每日看邮件 3 处: 摘要看信号(prob 90%+) / 主表看盈亏(±10%/±5%) / 体检看健康(3/3)
+
 ---
 
 ## 10. 2026-08-02 完整工作总结(与 Obsidian 研究文档同步)
