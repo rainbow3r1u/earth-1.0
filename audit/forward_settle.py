@@ -52,10 +52,52 @@ def settle(sym, date_str, direction, prob):
                 'result': '无数据', 'entry': None, 'dir_ok': None, 'dir_ret': None, 'max_retrace': None}
     # 未到期判定: 实盘 48h 到期自动平 = 入场(预测日 00:21 UTC) + 48h = 预测日 +2 天 00:21 UTC (8/2 用户纠正: 原+3天晚24h)
     expiry_ms = t0 + 2 * 86400000
-    if datetime.now(timezone.utc).timestamp() * 1000 < expiry_ms:
+    now_ms = datetime.now(timezone.utc).timestamp() * 1000
+    if now_ms < expiry_ms:
+        # 未到期但可能已触发: 逐根检查已发生的K线 (先止损后止盈, v2口径"成交即盯盘")
+        entry = float(k[0][1])
+        sl_hi, sl_lo = entry * 1.05, entry * 0.95
+        tp_hi, tp_lo = entry * 1.10, entry * 0.90
+        # 已发生区间的方向判定 + 最大反向深度 (进止损建议表用)
+        k_sofar = [x for x in k if x[0] <= now_ms]
+        cur = float(k_sofar[-1][4])
+        max_h = max(float(x[2]) for x in k_sofar)
+        min_l = min(float(x[3]) for x in k_sofar)
+        if direction == 'SHORT':
+            max_retrace = (max_h - entry) / entry * 100
+            dir_ok = cur < entry
+            dir_ret = (entry - cur) / entry * 100
+        else:
+            max_retrace = (entry - min_l) / entry * 100
+            dir_ok = cur > entry
+            dir_ret = (cur - entry) / entry * 100
+        for x in k_sofar:
+            h, l = float(x[2]), float(x[3])
+            if direction == 'SHORT':
+                if h >= sl_hi:
+                    return {'sym': sym, 'date': date_str, 'direction': direction, 'prob': prob,
+                            'entry': entry, 'result': '-5.0%', 'trigger': '止损',
+                            'time': fmt(x[0]), 'price': h, 'reason_note': 'high 打穿 +5% (未到期已触发)',
+                            'dir_ok': dir_ok, 'dir_ret': dir_ret, 'max_retrace': max_retrace}
+                if l <= tp_lo:
+                    return {'sym': sym, 'date': date_str, 'direction': direction, 'prob': prob,
+                            'entry': entry, 'result': '+10.0%', 'trigger': '止盈',
+                            'time': fmt(x[0]), 'price': l, 'reason_note': 'low 打穿 -10% (未到期已触发)',
+                            'dir_ok': dir_ok, 'dir_ret': dir_ret, 'max_retrace': max_retrace}
+            else:
+                if l <= sl_lo:
+                    return {'sym': sym, 'date': date_str, 'direction': direction, 'prob': prob,
+                            'entry': entry, 'result': '-5.0%', 'trigger': '止损',
+                            'time': fmt(x[0]), 'price': l, 'reason_note': 'low 打穿 -5% (未到期已触发)',
+                            'dir_ok': dir_ok, 'dir_ret': dir_ret, 'max_retrace': max_retrace}
+                if h >= tp_hi:
+                    return {'sym': sym, 'date': date_str, 'direction': direction, 'prob': prob,
+                            'entry': entry, 'result': '+10.0%', 'trigger': '止盈',
+                            'time': fmt(x[0]), 'price': h, 'reason_note': 'high 打穿 +10% (未到期已触发)',
+                            'dir_ok': dir_ok, 'dir_ret': dir_ret, 'max_retrace': max_retrace}
         return {'sym': sym, 'date': date_str, 'direction': direction, 'prob': prob,
                 'entry': float(k[0][1]), 'result': '⏳未到期', 'trigger': '进行中',
-                'time': '-', 'price': None, 'reason_note': '48h 窗口未走完',
+                'time': '-', 'price': None, 'reason_note': '48h 窗口未走完, 暂未触发',
                 'dir_ok': None, 'dir_ret': None, 'max_retrace': None}
     entry = float(k[0][1])
     sl_hi, sl_lo = entry * 1.05, entry * 0.95
