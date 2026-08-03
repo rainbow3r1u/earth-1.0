@@ -193,6 +193,20 @@ def section_health():
         parts.append('\n'.join(lines))
     except Exception as e:
         parts.append(f'(健康检查执行失败: {e})')
+    # 4a2. SAMPLECHK 特征体检(幽灵防复发): 显示今日探针值 + 数量检查
+    try:
+        log_file = '/home/myuser/.local/share/auto_trade/trade.log'
+        with open(log_file) as f:
+            slines = [l.split('] ', 1)[-1].strip() for l in f if '[SAMPLECHK]' in l]
+        if slines:
+            slines = slines[-3:]
+            parts.append('[SAMPLECHK 特征体检] ' + ('✅ 3/3' if len(slines) == 3 else f'⚠️ 仅{len(slines)}/3'))
+            for s in slines:
+                parts.append('  ' + s)
+        else:
+            parts.append('[SAMPLECHK 特征体检] ⚠️ 今日无记录(构建异常?)')
+    except Exception as e:
+        parts.append(f'(SAMPLECHK读取失败: {e})')
     # 4b. 服务/接口健康报告(原 alert_monitor --report)
     try:
         from alert_monitor import generate_health_report
