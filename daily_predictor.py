@@ -681,7 +681,9 @@ _winsor_bounds_backtest = None  # 回测内复用，避免逐窗口漂移
 
 def _fast_winsor_bounds(X):
     """np.partition (QuickSelect O(n)) 替代 np.percentile (全排序 O(n log n)) — 15-20x 加速
-    原地修改 X 的列顺序，后续 winsor 结果不变 (裁剪与顺序无关)
+    FIX 2026-08-03 (幽灵bug根因): 原实现 col.partition() 在 X 的列视图上原地分区,
+    每列独立重排 → 破坏行的完整性(同行的特征来自不同样本), 训练标签与特征错位!
+    修复: 在拷贝上分区, 不再修改 X。
     FIX: 稀疏列(>99%为零)的1%/99%分位都在零值区间, 导致[0,0]截尾抹掉真实信号
     → 回退到列min/max作为截尾边界 (partition不保证极值在端点, 需用min/max)
     CHANGE 2026-07-30 (地球版1.4候选): 截尾分位 1%/99% → 0.1%/99.9%
@@ -694,7 +696,7 @@ def _fast_winsor_bounds(X):
     k99 = min(n - 1, int(n * 0.999))
     bounds = []
     for j in range(m):
-        col = X[:, j]
+        col = X[:, j].copy()  # FIX 2026-08-03: 拷贝后再分区, 不修改 X
         col.partition([k1, k99])
         lo = float(col[k1])
         hi = float(col[k99])
