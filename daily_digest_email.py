@@ -153,7 +153,10 @@ def section_verify():
     try:
         import auto_dual_trade as adt
         tracker = json.load(open(f'{BASE}/data/prediction_tracker.json'))
-        return adt._build_verify_summary(tracker)
+        out = adt._build_verify_summary(tracker)
+        # 过滤 adt import 时泄漏的"配置加载"噪音行
+        lines = [l for l in str(out).split('\n') if '配置: 从' not in l]
+        return '\n'.join(lines)
     except Exception as e:
         return f'(验证数据读取失败: {e})'
 
