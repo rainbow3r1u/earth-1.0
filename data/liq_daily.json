@@ -551,11 +551,11 @@
   },
   {
     "date": "2026-08-03",
-    "total_long_liq": 148.78,
-    "total_short_liq": 144.43,
-    "liq_ratio": 1.0301,
-    "long_peak_dist_pct": -5.8,
-    "short_peak_dist_pct": 3.2,
+    "total_long_liq": 146.3,
+    "total_short_liq": 143.51,
+    "liq_ratio": 1.0194,
+    "long_peak_dist_pct": -3.1,
+    "short_peak_dist_pct": 3.8,
     "funding_rate": 0.0001,
     "long_ratio": 0.51
   }

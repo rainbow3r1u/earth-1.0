@@ -162,34 +162,40 @@ python3 -c "import json; d=json.load(open('/home/myuser/websocket_new/data/daily
 
 ## 9. 2026-08-02 Ops Log (audit & maintenance)
 
-> 详见 Obsidian: `Sync/rainbow/研究/前向观察与回测生产差异调查-20260802.md` + `Sync/rainbow/回溯日志/001_946D_180d_GPU.md`
+> 详见 Obsidian: `Sync/rainbow/研究/幽灵问题-生产训练特征矩阵列错位.md`(8/3, 幽灵已修复) + `Sync/rainbow/回溯日志/001_946D_180d_GPU.md`
 
-### GPU connection (2026-08-02)
-- `ssh -p 22160 linux@175.155.64.171` (provider rotated box: RTX 3080 20GB, disk preserved)
-- Old ports 22183/22156 dead; DEPLOY examples using 22193 are stale
+### GPU connection (2026-08-03)
+- `ssh -p 24090 linux@175.155.64.171` (RTX 3080 20GB; 端口 8/3 变更, 旧 22160/22183/22156 全失效)
+- GPU 无法访问币安 API, 数据一律从生产端 rsync(见 AGENTS.md §8)
 
 ### Data sync (prod → GPU, all MD5-verified)
-- klines/OI/funding/sector(+overrides, was missing)/sentiment/coingecko/hashrate/stablecoin/defillama/blockchair
-- Fixed: GPU external data had stalled at 07-17/18
+- klines/OI/funding/sector(+overrides)/sentiment/coingecko/hashrate/stablecoin/defillama/blockchair
+- 8/2 修复: GPU external data had stalled at 07-17/18
 
 ### Backtest engine change
-- `gpu_backtest_exp.py::_build_coin_samples` now calls `auto_dual_trade._build_feat_impl` (prod-sourced features); backup `.bak_0801`
+- `gpu_backtest_exp.py::_build_coin_samples` now calls `auto_dual_trade._build_feat_impl` (prod-sourced features)
 - Unsupported experiment arms (KRONOS/BB/EXT/DIV/RAWR/LABEL_1D/FEAT_SHIFT) raise explicitly
+
+### 幽灵问题修复 (2026-08-03, commit 3ef51c5) ⭐
+- **根因**: `daily_predictor.py::_fast_winsor_bounds` 里 `col.partition([k1,k99])` 在 X_train 列视图上**原地分区**, 每列独立重排 → 破坏行完整性, 训练标签与特征错位(6/12 引入; 生产 8/1 起 npz 特征偏差、回测vs生产不一致、前向4连止损的根因)
+- **修复**: `col = X[:, j].copy()` 后再 partition
+- **验证**: 全量复刻 npz 0GUSDT 7/30=-1.8388 / 7/31=-0.2000 与构建真值一致; 生产手动运行 [SAMPLECHK] 全部正确; prob 恢复 90%+ 级(LONG BROCCOLIF3BUSDT 80.7% / SHORT HOMEUSDT 93.1%)
+- **回测=生产逐日一致性**: GPU 重放实验 7/28/7/30 完全同币, 7/29 差 0.1pp 浮点噪声(工具: `gpu_replay_prod.py`)
+- **SOUP 错位模型**: 7/31~8/2 模型副本已隔离至 `/tmp/poison_models/`(SOUP 自 8/3 只用干净模型)
 
 ### Audit cron (read-only, added 08-02)
 ```
 4 8 * * *  websocket_new/audit/audit_snapshot.py   # pre-run snapshot (data MD5 + 3 probe coins 40 klines)
 25 8 * * * websocket_new/audit/audit_verify.py     # post-run verify (npz probe vs snapshot/disk theory)
 ```
-- Purpose: locate why `train_data_latest.npz` features ≠ code rebuild (since 08-01; 0GUSDT col0: theory -1.9970 vs npz -0.2601)
-- Verdict: MATCH_A = in-memory stale klines confirmed / MATCH_B = disk / NO_MATCH = other source; log `logs/audit.log`
 
 ### Known issues (open)
-- **Prod npz feature drift** (since 08-01): training features inconsistent with code rebuild; suspected load-timing; prod model ≠ backtest model (explains forward 4-stop-loss)
+- ~~Prod npz feature drift~~ → **已修复 8/3**(见上); 遗留: 8/4 08:05 验证 / 180d 回测复核 / 错位模型副本 7 天后清理
 - **verify_yesterday early-snapshot bias**: settles with unclosed kline at 08:21; email/tracker returns are optimistic; needs full-kline settle (pending review)
+- **前向 4 连止损(7/29~8/1)** = 错位模型产物; 修复后(8/3 起)重新前向观察, 8/6 评审分开统计
 
 ### 180d true watermark (08-02, full sync + prod-sourced build)
-Sharpe 17.29 / +1050% / MaxDD 15.6% / win 76% — nearly identical to dirty-data 18.68; stable watermark for prod-sourced features; reproducible after prod drift fix (pending forward confirmation)
+Sharpe 17.29 / +1050% / MaxDD 15.6% / win 76% — 干净数据训练(回测走安全 winsor 路径), 修复后预期保持 ~17~18(待修复版 180d 复核)
 
 ---
 
@@ -245,38 +251,35 @@ Sharpe 17.29 / +1050% / MaxDD 15.6% / win 76% — nearly identical to dirty-data
 
 ---
 
-## 11. 接手指引 (For Next AI, 2026-08-02)
+## 11. 接手指引 (For Next AI, 2026-08-03 更新)
 
-> 本调查一句话: 前向 4 连止损 vs 回测 17~20 Sharpe 背离 → 追查发现**生产端每日保存的训练数据(npz)特征与代码重建不一致**(8/1 起); 回测(正确构建)反而是干净参照系; 180d 真实水位 17.29 是"生产同源特征"的稳定水位。
+> 一句话: 前向 4 连止损 vs 回测 17~20 Sharpe 背离 → 追查发现**生产训练特征矩阵行错位**(幽灵, 8/3 已修复): 根因 `_fast_winsor_bounds` 的 `col.partition()` 原地重排 X_train 每列。修复后生产 prob 恢复 90%+ 级, **回测=生产逐日一致性已由 GPU 重放实验验证**(7/28/7/30 同币, 7/29 差 0.1pp 浮点噪声)。完整依据与实验过程见 Obsidian `Sync/rainbow/研究/幽灵问题-生产训练特征矩阵列错位.md`。
 
 ### 术语速查
 | 术语 | 含义 |
 |---|---|
-| `npz` | `~/.local/share/auto_trade/train_data_latest.npz`, 生产每天 8:17 保存的训练数据(X_train 为 winsor 后特征) |
+| `npz` | `~/.local/share/auto_trade/train_data_latest.npz`, 生产每天保存的训练数据(X_train 为 winsor 后特征; 8/3 起干净) |
 | `adt` | `auto_dual_trade.py`(生产主程序); `adt._build_feat_impl` = 生产特征构建函数(唯一正确实现) |
-| `回测引擎` | `gpu_backtest_exp.py`(GPU 端), 8/2 起样本构建调用 `adt._build_feat_impl`(生产同源) |
-| `饱和` | 模型输出概率 90~100%(回测自训模型固有输出分布); 生产模型输出 54~71% |
+| `回测引擎` | `gpu_backtest_exp.py`(GPU 端), 样本构建调用 `adt._build_feat_impl`(生产同源) |
+| `幽灵` | 已修复 bug: `_fast_winsor_bounds` 的 `col.partition()` 原地重排(commit 3ef51c5, 2026-08-03) |
+| `饱和` | 模型输出概率 90~100%(干净模型固有分布); 错位模型输出 54~71% |
 | `早盘快照` | `verify_yesterday`(daily_predictor.py)在结算日 08:21 用未收盘 K 线结算 → 收益乐观偏置 |
 | `特征日/样本日` | 样本日 ts 的特征用 ts-1 蜡烛; 回测缓存文件名 = 样本日 |
-| `MATCH_A/B/NO_MATCH` | 审计判定(见下) |
+| `重放` | `gpu_replay_prod.py`: 复刻生产每天训练+SOUP+预测, 与 pred 存档对比 TOP1(回测=生产校验工具) |
 
 ### 关键路径
 - 生产代码: `/home/myuser/websocket_new/`(`auto_dual_trade.py` / `daily_predictor.py`)
 - 生产训练数据: `/home/myuser/.local/share/auto_trade/train_data_latest.npz`
-- 审计脚本: `/home/myuser/websocket_new/audit/{audit_snapshot,audit_verify}.py`
-- 审计日志: `/home/myuser/websocket_new/logs/audit.log`
-- GPU: `ssh -p 22160 linux@175.155.64.171`, 代码 `/home/linux/websocket_new/`(磁盘按天租但保留)
-- 回测缓存: `~/backtester/data_cache/by_day_cache_v5_aligned_volraw_fund{,_prod}`(`_prod`=数据全同步+adt同源构建)
-
-### 审计判定决策树(8/3 08:25 后看 logs/audit.log)
-- `MATCH_A` = npz 特征与**运行前** K 线一致 → 内存旧版 K 线实锤。修复方向: 检查 `auto_dual_trade.py` 数据加载顺序, 确保 K 线刷新写盘发生在内存加载**之前**; 修后次日重验 + 前向重新观察
-- `MATCH_B` = 与运行后磁盘一致 → 偏差在别处(npz 保存环节 / 其他进程覆盖), 继续查
-- `NO_MATCH` = 另有来源, 继续挖
+- 审计脚本: `/home/myuser/websocket_new/audit/{audit_snapshot,audit_verify}.py`; 日志 `logs/audit.log`
+- GPU: `ssh -p 24090 linux@175.155.64.171`, 代码 `/home/linux/websocket_new/`
+- 回测缓存: `~/backtester/data_cache/by_day_cache_v5_aligned_volraw_fund{,_prod,_replay}`(`_replay`=MIN_KLINES=35 生产宇宙版)
+- 错位模型副本(7/31~8/2): `/tmp/poison_models/`(SOUP 已不用, 7 天后可删)
 
 ### 接手第一步
-1. 读 `logs/audit.log` 尾部判定行 → 按决策树行动
-2. 修完偏差后: GPU 重跑 180d 验证水位仍 ~17.29, 生产前向重新观察(修复前 4 连止损不代表修复后)
-3. 更新本档 + Obsidian `Sync/rainbow/研究/前向观察与回测生产差异调查-20260802.md`
+1. 读 `logs/audit.log` 尾部(8/3 起应 MATCH 干净) + `tail trade.log` 看 [SAMPLECHK] 是否=构建真值(0GUSDT 7/31=-0.2000)
+2. 读 Obsidian 幽灵文档(依据+实验过程全记录) → 处理「遗留动作」(180d 回测复核 / 8/6 评审口径)
+3. 回测=生产校验: GPU 跑 `gpu_replay_prod.py` 对比当日 pred 存档
+4. 更新本档 + Obsidian 幽灵文档
 
 ### 已知问题(接手时仍开放)
 1. 生产 npz 特征偏差(待 8/3 判定+修复)

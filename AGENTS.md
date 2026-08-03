@@ -1,6 +1,6 @@
 # AGENTS.md — 系统接手总入口(For Any AI, 不依赖对话上下文)
 
-> 最后更新: 2026-08-02 | 适用目录: `/home/myuser/websocket_new/`(earth-1.0 仓库)
+> 最后更新: 2026-08-03(幽灵问题已修复) | 适用目录: `/home/myuser/websocket_new/`(earth-1.0 仓库)
 > 本文件是接手本系统的**第一份必读文档**。读完本文件后按「接手顺序」逐份阅读即可独立工作。
 
 ---
@@ -9,24 +9,27 @@
 
 **地球版量化交易系统**:XGBoost 双模型(LONG/SHORT)每日全量重训,基于 946 维特征(主传感器=对BTC残差)预测币安 U-M 合约 2 日涨跌,aligned 时序(预测日=入场日),止盈+10%/止损-5%/48h 退出。三端架构:生产端(本机,每日训练+预测+公证)/ GPU 回溯端(175.155.64.171,回测实验)/ 观察端(已下线)。
 
-**当前状态(2026-08-02)**:完全体·前向观察期(7/30~8/6),`TRADING_ENABLED=false`(只预测不开仓),8/6 评审定版「地球版 1.9」。**研究中:生产训练数据特征偏差(见「已知问题」)。**
+**当前状态(2026-08-03)**:完全体·前向观察期(7/30~8/6),`TRADING_ENABLED=false`(只预测不开仓),8/6 评审定版「地球版 1.9」。**幽灵问题已修复(8/3)**:`_fast_winsor_bounds` 的 `col.partition()` 原地重排 X_train 每列(6/12 引入,生产一直在错位数据上训练)→ 已修复并验证(生产 prob 恢复 90%+ 级)。
 
 ## 1. 知识权威源(按优先级)
 
 | 源 | 路径 | 内容 |
 |---|---|---|
 | **Obsidian 知识库** | `/home/myuser/Sync/rainbow/` — git: `github.com/rainbow3r1u/rainbow-vault`(私有, 2026-08-02 入版本管理) | 权威: 系统/ 7篇(总览/参数卡/特征工程/标签规则/数据管道/部署运维/版本历史) + 研究/ 14篇(审计/实验/调查) + 回溯日志/ |
-| **调查文档(8/2, 必读)** | `Sync/rainbow/研究/前向观察与回测生产差异调查-20260802.md` | 前向4连止损→生产npz特征偏差全链路调查 + 接手指引 |
-| **回测日志** | `Sync/rainbow/回溯日志/001_946D_180d_GPU.md` | 180d 真实水位 17.29 |
+| **调查文档(8/3, 必读)** | `Sync/rainbow/研究/幽灵问题-生产训练特征矩阵列错位.md` | 幽灵问题(行错位)全链路调查:根因/修复/验证/回测=生产一致性实验 + 接手指引 |
+| **8/2 调查文档** | `Sync/rainbow/研究/前向观察与回测生产差异调查-20260802.md` | 前向4连止损→回测生产矩阵差异调查(已被幽灵文档取代,保留作背景) |
+| **回测日志** | `Sync/rainbow/回溯日志/001_946D_180d_GPU.md` | 180d 真实水位 17.29(修复版待重跑复核) |
 | 代码仓库文档 | 本仓库 `SYSTEM_OVERVIEW.md` / `DEPLOY.md` / `docs/gpu_server_connection.md` | 全景/部署/GPU(注意: SYSTEM_OVERVIEW 停在 7/18 地球版 1.1, 现状以 Obsidian 为准) |
 | 背景记忆 | Reasonix memory(project scope, 仅本机 Reasonix 实例可见) | 前向评估口径 v2 / npz 偏差 / 矩阵差异 / GPU 连接 / 铁律 |
 
-## 2. 当前状态快照(2026-08-02)
+## 2. 当前状态快照(2026-08-03)
 
-- 前向观察期 7/30~8/6: TOP1 口径 4 连止损(-20%, 修正口径); Top10 口径 LONG +2.6% / SHORT -20%(1m 修正结算)
-- 回测 180d 真实水位(数据全同步+生产同源构建): **Sharpe 17.29 / +1050% / MaxDD 15.6% / 胜率 76%**(prob 全 90~100% 饱和是回测自训模型固有分布, 非 bug)
-- **市场存在可统计 alpha 已获实证**(脏/净两次回测几乎一致); 生产能否拿到待偏差修复+前向验证
+- 前向观察期 7/30~8/6: 修复前 TOP1 4 连止损(-20%, 错位模型产物, 不代表修复后); **修复后(8/3)首日: LONG BROCCOLIF3BUSDT 80.7% / SHORT HOMEUSDT 93.1%**(48h 到期 8/5 08:21)
+- 回测 180d 真实水位(数据全同步+生产同源构建): **Sharpe 17.29 / +1050% / MaxDD 15.6% / 胜率 76%**(prob 全 90~100% 饱和是干净模型固有分布, 非 bug)
+- **幽灵已修复(8/3)**: 生产训练矩阵行错位根因 = `_fast_winsor_bounds` 的 `col.partition()` 原地重排; 修复后 npz 干净、生产 prob 与回测一致(90%+)
+- **回测=生产逐日一致性已验证**(GPU 重放): 7/28/7/30 完全同币, 7/29 差 0.1pp 浮点噪声
 - 生产钱包 0u; TRADING_ENABLED=false; 每日训练/预测/公证/晨报自动运行
+- 错位模型副本(7/31~8/2)已隔离至 `/tmp/poison_models/`; SOUP 自 8/3 起只用干净模型
 
 ## 3. 关键文件地图
 
@@ -71,14 +74,18 @@
 
 ## 7. 已知问题(接手时开放)
 
-1. **生产 npz 特征偏差**(8/1 起): `train_data_latest.npz` 训练特征与代码重建不一致(0GUSDT 列0: 理论 -1.9970 vs npz -0.2601); 审计 cron 已挂, **8/3 08:25 后看 `logs/audit.log` 判定**(MATCH_A=内存旧版K线实锤 / MATCH_B / NO_MATCH), 按调查文档第八节决策树处理
+1. ~~**生产 npz 特征偏差**(8/1 起)~~ → **已修复 2026-08-03**: 根因 `_fast_winsor_bounds` 的 `col.partition()` 原地重排(commit 3ef51c5 修复); 详见幽灵文档。**遗留动作**: ① 8/4 08:05 验证 [SAMPLECHK]=构建真值 + prob 90%+; ② 用修复版重跑 180d 回测复核水位(17.29 → 预期 ~17~18); ③ 错位模型副本 7 天后可删(保留作审计)
 2. **verify_yesterday 早盘快照偏置**: 邮件/tracker 收益数字乐观偏置, 结算需改完整 K 线(生产文件, 走铁律 1)
-3. **前向 TOP1 4 连止损**: 是偏差特征模型的输出, 不代表修复后表现; 修复后需重新前向观察
-4. SYSTEM_OVERVIEW.md 内容滞后(7/18 版), 现状以 Obsidian 为准
+3. **前向 4 连止损(7/29~8/1)**: 错位模型的输出, 不代表修复后表现; 修复后(8/3 起)重新前向观察, 8/6 评审分开统计修复前后
+4. **SOUP 历史模型边界**: 8/3 已隔离 7/31~8/2 错位模型副本; 若从旧备份恢复模型目录, 需先甄别错位模型
+5. SYSTEM_OVERVIEW.md 内容滞后(7/18 版), 现状以 Obsidian 为准
+6. GPU SSH 端口已变更为 **24090**(旧 22160/22183/22156 全失效)
 
 ## 8. 常用操作
 
 - 看系统健康: `crontab -l` + `tail logs/auto_dual.log` + `~/.local/share/auto_trade/trade.log`
 - 手动触发训练: `cd /home/myuser/websocket_new && python3 auto_dual_trade.py`(会拿锁, 勿重复跑)
-- GPU 回测: `ssh -p 22160 linux@175.155.64.171` → `cd ~/websocket_new && env NOLAG_MODE=aligned VOLRAW_FEATS=1 FUND_FEATS=1 LONG_MOM_FILTER=0 SL_PCT=5 WINSOR_Q=0.001 python3 gpu_backtest_exp.py 180 1`
-- 审计判定: `tail -20 /home/myuser/websocket_new/logs/audit.log`
+- GPU 回测: `ssh -p 24090 linux@175.155.64.171` → `cd ~/websocket_new && env NOLAG_MODE=aligned VOLRAW_FEATS=1 FUND_FEATS=1 LONG_MOM_FILTER=0 SL_PCT=5 WINSOR_Q=0.001 python3 gpu_backtest_exp.py 180 1`
+- 生产=回测一致性重放校验: GPU 上 `python3 gpu_replay_prod.py`(见仓库, 对比当日 pred 存档)
+- 审计日志: `tail -20 /home/myuser/websocket_new/logs/audit.log`
+- 数据同步生产→GPU: `rsync -az --partial -e "sshpass -p '<密码>' ssh -p 24090" /home/myuser/backtester/data_cache/{notusdt_1d_full.json,oi_daily.json,funding_hist.json} linux@175.155.64.171:~/backtester/data_cache/` + 外部数据目录(见 DEPLOY.md §9)
