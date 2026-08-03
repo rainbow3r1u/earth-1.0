@@ -95,12 +95,21 @@ def _format_trade_summary():
         if c.startswith('置信度不足'):
             out.append(f'🚫 {c}')
             break
-    # 5) 今日信号(决策依据, 只取最后一次)
-    for l in reversed(lines):
+    # 5) 今日信号(决策依据, 最后一次运行的 LONG+SHORT 都展示)
+    decisions = {}
+    for l in lines:
         c = clean(l)
-        if '决策依据' in c or ('信号' in c and 'prob=' in c and '开仓:' not in c):
-            out.append(f'🎯 {c}')
-            break
+        if '决策依据' in c:
+            body = c.split('] ', 1)[-1] if '] ' in c else c
+            if body.startswith('LONG'):
+                decisions['long'] = f'🎯 {c}'
+            elif body.startswith('SHORT'):
+                decisions['short'] = f'🎯 {c}'
+        elif ('信号' in c and 'prob=' in c and '开仓:' not in c):
+            decisions['other'] = f'🎯 {c}'
+    for k in ('long', 'short', 'other'):
+        if decisions.get(k):
+            out.append(decisions[k])
     # 6) 交易动作(只取最后一次)
     for l in reversed(lines):
         c = clean(l)
