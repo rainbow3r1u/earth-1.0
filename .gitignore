@@ -100,3 +100,4 @@ data/btc_dominance_proxy.json
 
 # runtime logs
 logs/
+*.bak_*
