@@ -195,7 +195,11 @@ def main():
             dir_s = '-'
         else:
             dir_s = '✅扫损' if (r['dir_ok'] and r['trigger'] == '止损') else ('✅对' if r['dir_ok'] else '❌错')
-        dir_ret = f"{r['dir_ret']:+.1f}%" if r.get('dir_ret') is not None else '-'
+        # 已止盈/止损的单: 交易已结束, "无止损48h"假设收益不再展示(用户 8/3 定)
+        if r.get('trigger') in ('止损', '止盈'):
+            dir_ret = '-'
+        else:
+            dir_ret = f"{r['dir_ret']:+.1f}%" if r.get('dir_ret') is not None else '-'
         print(f"{r['date'][5:]:<5}{r['direction']:<4}{r['sym']:<10}{r['prob']:<4.1f}"
               f"{r['result']:<5}{dir_s:<6}{dir_ret}")
     # 汇总
@@ -265,7 +269,11 @@ def tables_html(results):
             dir_s = '-'
         else:
             dir_s = '✅扫损' if (r['dir_ok'] and r['trigger'] == '止损') else ('✅对' if r['dir_ok'] else '❌错')
-        dir_ret = f"{r['dir_ret']:+.1f}%" if r.get('dir_ret') is not None else '-'
+        # 已止盈/止损的单: 交易已结束, "无止损48h"假设收益不再展示(用户 8/3 定)
+        if r.get('trigger') in ('止损', '止盈'):
+            dir_ret = '-'
+        else:
+            dir_ret = f"{r['dir_ret']:+.1f}%" if r.get('dir_ret') is not None else '-'
         h.append(f"<tr><td style='{td}'>{esc(r['date'][5:])}</td>"
                  f"<td style='{td}'>{r['direction']}</td>"
                  f"<td style='{td}'>{esc(r['sym'])}</td>"
