@@ -2216,7 +2216,7 @@ def _build_verify_summary(tracker):
         _agg('LONG'),
         _agg('SHORT'),
     ]
-    # SHORT 明细: TOP10 每个的命中与收益 (LONG 只看总体, 不展开)
+    # SHORT 明细: TOP10 每个的命中与收益
     short_det = [d for d in last.get('details', []) if d.get('direction') == 'SHORT'][:10]
     if short_det:
         lines.append(f"\n--- SHORT 明细 TOP{len(short_det)} ---")
@@ -2227,6 +2227,17 @@ def _build_verify_summary(tracker):
         sh = sum(1 for d in short_det if d.get('hit'))
         sp = sum(d.get('pnl', 0) for d in short_det)
         lines.append(f"SHORT命中: {sh}/{len(short_det)}  收益合计: {sp:+.1f}%")
+    # LONG 明细: TOP10 每个的命中与收益 (与 SHORT 对称, 用户 8/3 要求)
+    long_det = [d for d in last.get('details', []) if d.get('direction') == 'LONG'][:10]
+    if long_det:
+        lines.append(f"\n--- LONG 明细 TOP{len(long_det)} ---")
+        for d in long_det:
+            r_ = d.get('reason')
+            mark = '✓' if d.get('hit') else ('⛔损' if r_ == 'stop' else ('⭕盈' if r_ == 'take' else '✗'))
+            lines.append(f"  {d['symbol']:<14} {d['prob']:.1f}% → {d['pnl']:+.1f}% {mark}")
+        lh = sum(1 for d in long_det if d.get('hit'))
+        lp = sum(d.get('pnl', 0) for d in long_det)
+        lines.append(f"LONG命中: {lh}/{len(long_det)}  收益合计: {lp:+.1f}%")
 
     def _trend_block(name):
         out = [f"\n=== 近{len(recent)}天趋势 · {name} ==="]
