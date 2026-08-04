@@ -2207,7 +2207,7 @@ def _build_verify_summary(tracker):
 
     def _agg(name):
         if name not in ds or ds[name][1] == 0:
-            return f'{name} 总体: 无样本'
+            return f'{name} 总体: 无样本(当日该方向被perm拦截或无合格预测)'
         h, n, pnl = ds[name]
         return f'{name} 总体: 命中 {h}/{n} ({h/n*100:.0f}%)  收益 {pnl:+.1f}%'
 
