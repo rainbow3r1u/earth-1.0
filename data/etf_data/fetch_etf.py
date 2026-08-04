@@ -31,11 +31,33 @@ def parse_farside_table(page, url, label):
 
             # 第一列是日期(格式: "28 Apr 2026")
             first = cells[0].inner_text().strip()
-            # FIX 2026-08-04: Total在第二列(实测官网表格: Total|IBIT|FBTC|...|BTC|Fee)
-            # 此前取最后一列是错的(那列是"BTC"统计, 与Total不同), 导致全部ETF数据错位
+            # Total在最后一列 (farside全量页列序: 日期|IBIT|FBTC|...|GBTC|BTC|Total)
+            # 8/4 误改取第2列=IBIT(错), 8/5 回滚为最后一列(正确)
             if len(cells) < 3:
                 continue
-            last = cells[1].inner_text().strip()
+            last = cells[-1].inner_text().strip()
+            # 校验: Total(最后一列)应 ≈ 各基金列之和(cells[1:-1], 排除日期/Total)
+            fund_sum = None
+            fund_cells = cells[1:-1]
+            vals_ok = True
+            for fc in fund_cells:
+                t = fc.inner_text().strip().replace(',', '')
+                try:
+                    fv = float(t.replace('(', '-').replace(')', ''))
+                except ValueError:
+                    vals_ok = False
+                    break
+            if vals_ok and fund_cells:
+                try:
+                    fs = 0.0
+                    for fc in fund_cells:
+                        t = fc.inner_text().strip().replace(',', '')
+                        sign = -1 if t.startswith('(') else 1
+                        t = t.replace('(', '').replace(')', '')
+                        fs += sign * float(t)
+                    fund_sum = fs
+                except ValueError:
+                    fund_sum = None
 
             # 匹配日期: "28 Apr 2026" 或 "01 May 2026"
             date_match = re.match(r'^(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{4})$', first)
@@ -66,7 +88,10 @@ def parse_farside_table(page, url, label):
                     if val == 0.0:
                         skipped_zero += 1
                         continue
-                    flows.append({'date': date_str, 'total_flow': round(val, 2)})
+                    rec = {'date': date_str, 'total_flow': round(val, 2)}
+                    if fund_sum is not None:
+                        rec['fund_sum'] = round(fund_sum, 2)
+                    flows.append(rec)
                 except ValueError:
                     continue
 
@@ -114,6 +139,20 @@ def main():
     btc, eth = scrape()
     print(f"BTC ETF: {len(btc)} 天" + (f" ({btc[0]['date']} → {btc[-1]['date']})" if btc else " [空]"))
     print(f"ETH ETF: {len(eth)} 天" + (f" ({eth[0]['date']} → {eth[-1]['date']})" if eth else " [空]"))
+
+    # 数据自校验 (8/5 加): 确保与官网一致
+    for label, flows in (('BTC', btc), ('ETH', eth)):
+        for f in flows:
+            # 校验1: 值域 (单日流量超5000百万美元=异常)
+            if abs(f['total_flow']) > 5000:
+                print(f"  [⚠️校验] {label} {f['date']}: 流量 {f['total_flow']} 超值域(±5000), 异常!")
+            # 校验2: Total vs 基金列和 (错位检测)
+            if 'fund_sum' in f and abs(f['total_flow'] - f['fund_sum']) > 100:
+                print(f"  [⚠️校验] {label} {f['date']}: Total={f['total_flow']} ≠ 基金列和={f['fund_sum']}, 可能错位/漏列!")
+        # 校验3: 突变检测 (与相邻日差>2000=异常)
+        for i in range(1, len(flows)):
+            if abs(flows[i]['total_flow'] - flows[i-1]['total_flow']) > 2000:
+                print(f"  [⚠️校验] {label}: {flows[i-1]['date']}={flows[i-1]['total_flow']} → {flows[i]['date']}={flows[i]['total_flow']} 突变>2000!")
 
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     # FIX 2026-07-12: 覆盖模式 — 新采集数据覆盖同日期旧数据
