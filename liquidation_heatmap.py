@@ -99,18 +99,19 @@ def compute(dist_pct=15, buckets=100):
 
     # 杠杆分布 (Bitfinex: 实际清算非常接近现价 → 绝大多数用高杠杆)
     leverage_dist = [
-        (10, 0.10),
-        (20, 0.25),
-        (25, 0.25),   # 主流高杠杆
-        (50, 0.25),
-        (75, 0.10),
-        (100,0.05),
+        # FIX 2026-08-05 (Bitfinex校准): 真实清算96%在现价±1%内, 高杠杆主导
+        # 原10x/20x占35%把清算分布拉宽到±10%, 与真实(±4%)不符
+        (25, 0.10),
+        (50, 0.30),
+        (75, 0.30),
+        (100, 0.30),
     ]
 
     # 开仓价分布参数 — 以Bitfinex实际清算价分布校准
     bfx_prices = fetch_bitfinex_liq()
     if bfx_prices and len(bfx_prices) >= 10:
-        bfx_std = np.std(bfx_prices)
+        # FIX 2026-08-05: 稳健σ = (p90-p10)/2.56 (std对尾部敏感, 76条样本σ失真到11%)
+        bfx_std = (np.percentile(bfx_prices, 90) - np.percentile(bfx_prices, 10)) / 2.56
         bfx_dist_pct = bfx_std / mid_price
         # 实际清算价标准差远小于ATR, 用Bitfinex校准
         sigma = bfx_std * 0.6  # 入口价分布比清算价分布更紧
@@ -322,23 +323,33 @@ def upload_cos():
         print(f"COS: {e}")
 
 def fetch_bitfinex_liq(sym='BTC'):
-    """拉Bitfinex公开清算数据做校准"""
+    """拉Bitfinex公开清算数据做校准 — 分页拉5000条(原500条样本太小σ失真)"""
+    import time as _t
+    prices = []
+    cursor = None
     try:
-        r = requests.get('https://api-pub.bitfinex.com/v2/liquidations/hist',
-                         params={'limit': 500, 'sort': -1}, timeout=10)
-        if r.status_code != 200:
-            return []
-        data = r.json()
-        prices = []
-        for item in data:
-            inner = item[0]
-            if sym in str(inner[4]) and inner[11] is not None:
-                liq_price = float(inner[11])
-                if liq_price > 0:
-                    prices.append(liq_price)
+        for _ in range(12):
+            params = {'limit': 500, 'sort': -1}
+            if cursor:
+                params['start'] = cursor
+            r = requests.get('https://api-pub.bitfinex.com/v2/liquidations/hist',
+                             params=params, timeout=10)
+            if r.status_code != 200:
+                break
+            data = r.json()
+            if not data:
+                break
+            for item in data:
+                inner = item[0]
+                if sym in str(inner[4]) and inner[11] is not None:
+                    liq_price = float(inner[11])
+                    if liq_price > 0:
+                        prices.append(liq_price)
+            cursor = data[-1][0][2] - 1
+            _t.sleep(0.15)
         return sorted(prices)
-    except:
-        return []
+    except Exception:
+        return sorted(prices)
 
 CALIB_LOG = "/tmp/liquidation_calibration.csv"
 
