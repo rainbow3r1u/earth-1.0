@@ -270,8 +270,10 @@ def cancel_all_orders(symbol):
     signed_request('DELETE', '/fapi/v1/algoOpenOrders', {'symbol': symbol})
 
 def get_open_algo_orders(symbol):
-    """查询某币种所有未触发的 Algo 条件单"""
-    r = signed_request('GET', '/fapi/v1/algoOpenOrders', {'symbol': symbol})
+    """查询某币种所有未触发的 Algo 条件单
+    FIX 2026-08-04: GET 接口名是 /fapi/v1/openAlgoOrders (algoOpenOrders 会404)
+    注: DELETE 仍是 /fapi/v1/algoOpenOrders (币安 GET/DELETE 不对称)"""
+    r = signed_request('GET', '/fapi/v1/openAlgoOrders', {'symbol': symbol})
     if isinstance(r, list):
         return r
     return []
