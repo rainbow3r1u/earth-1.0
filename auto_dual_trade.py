@@ -1031,6 +1031,8 @@ def train_and_predict(by_day, today_ts, klines):
     if not USE_KRONOS:
         X_train[:, KRONOS_START:KRONOS_END] = 0.0
         X_train[:, 72:91] = 0.0   # liq 19维→回退78D
+        if os.environ.get('ETF_ON', '0') != '1':
+            X_train[:, 46:48] = 0.0   # ETF 2维置零 (8/4修复前数据错位40天, 13天正确数据不足, 12月攒满再启用)
         log('Kronos 832D + liq 19D 已置零 (non-Kronos: 85D)')
     else:
         log('Kronos 832D 已置零 (BASELINE 104D)')
@@ -1214,6 +1216,8 @@ def train_and_predict(by_day, today_ts, klines):
         KRONOS_END_PRED = KRONOS_START_PRED + dp.EMBEDDING_DIM  # 932
         X_pred[:, KRONOS_START_PRED:KRONOS_END_PRED] = 0.0
         X_pred[:, 72:91] = 0.0   # liq 19维置零
+        if os.environ.get('ETF_ON', '0') != '1':
+            X_pred[:, 46:48] = 0.0   # ETF 2维置零 (同训练)
     probs_long = model_long.predict_proba(X_pred)[:, 1]
     probs_short = model_short.predict_proba(X_pred)[:, 1]
     if SOUP_ON:
@@ -2019,6 +2023,10 @@ def _run_permutation_test(X_train, y_long, y_short, model_long, model_short, by_
             KRONOS_END_PRED = KRONOS_START_PRED + dp.EMBEDDING_DIM  # 932
             X_pred[:, KRONOS_START_PRED:KRONOS_END_PRED] = 0.0
             X_pred[:, 72:91] = 0.0   # liq 19维置零
+            if os.environ.get('ETF_ON', '0') != '1':
+                X_pred[:, 46:48] = 0.0   # ETF 2维置零 (同训练)
+        if os.environ.get('ETF_ON', '0') != '1':
+            X_pred[:, 46:48] = 0.0   # ETF 2维置零 (同训练)
         
         # 过滤样本: 与交易决策使用同一份样本集, 确保Best一致
         valid_samples, valid_indices = _filter_valid_samples(pred_samples, klines, today_ts)

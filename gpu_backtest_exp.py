@@ -245,6 +245,8 @@ def train_and_predict_batch(train_ts_list, pred_ts, entry_ts, klines, soup_hist=
         X_train[:, 100:932] = 0.0   # Kronos置零 (与生产一致)
     if os.environ.get('LIQ_ON', '0') != '1':
         X_train[:, 72:91] = 0.0     # liq 19维置零 (与生产一致; LIQ_ON=1 实验启用)
+    if os.environ.get('ETF_ON', '0') != '1':
+        X_train[:, 46:48] = 0.0     # ETF 2维置零 (8/4修复错位, 数据不足; ETF_ON=1 实验启用)
     if _prune_idx:
         X_train[:, _prune_idx] = 0.0  # 死特征清零实验
 
@@ -331,6 +333,8 @@ def train_and_predict_batch(train_ts_list, pred_ts, entry_ts, klines, soup_hist=
         X_pred[:, 100:932] = 0.0
     if os.environ.get('LIQ_ON', '0') != '1':
         X_pred[:, 72:91] = 0.0
+    if os.environ.get('ETF_ON', '0') != '1':
+        X_pred[:, 46:48] = 0.0
     if _prune_idx:
         X_pred[:, _prune_idx] = 0.0
 
