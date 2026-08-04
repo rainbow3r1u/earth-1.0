@@ -76,11 +76,12 @@ CHECKS = [
         # start 只做告警记录，不重跑交易脚本（交易脚本由 cron 调度）
         "start": "/usr/bin/python3 -c \"import datetime; print(datetime.datetime.now().isoformat(), 'auto_dual_trade crashed - check /tmp/auto_dual_trade_crash.json')\" >> /tmp/auto_dual_trade_alert.log",
     },
-    {
-        "name": "Web服务(5003)",
-        "check": "process", "pattern": "market_monitor_app.py",
-        "start": "cd /home/myuser/websocket_new && screen -dmS web python3 -u market_monitor_app.py",
-    },
+    # 2026-08-05 停用: 旧监控面板 market_monitor_app.py(5003) 无人使用, 从守护列表移除
+    # {
+    #     "name": "Web服务(5003)",
+    #     "check": "process", "pattern": "market_monitor_app.py",
+    #     "start": "cd /home/myuser/websocket_new && screen -dmS web python3 -u market_monitor_app.py",
+    # },
     {
         "name": "MCP服务",
         "check": "process", "pattern": "mcp_server.py",
