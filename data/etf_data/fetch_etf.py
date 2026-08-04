@@ -29,10 +29,13 @@ def parse_farside_table(page, url, label):
             if len(cells) < 3:
                 continue
 
-            # 第一列是日期(格式: "28 Apr 2026")，最后一列是Total
+            # 第一列是日期(格式: "28 Apr 2026")
             first = cells[0].inner_text().strip()
-            # FIX: Total在最后一列，不是第二列
-            last = cells[-1].inner_text().strip()
+            # FIX 2026-08-04: Total在第二列(实测官网表格: Total|IBIT|FBTC|...|BTC|Fee)
+            # 此前取最后一列是错的(那列是"BTC"统计, 与Total不同), 导致全部ETF数据错位
+            if len(cells) < 3:
+                continue
+            last = cells[1].inner_text().strip()
 
             # 匹配日期: "28 Apr 2026" 或 "01 May 2026"
             date_match = re.match(r'^(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{4})$', first)
