@@ -243,7 +243,8 @@ def train_and_predict_batch(train_ts_list, pred_ts, entry_ts, klines, soup_hist=
         X_train = np.nan_to_num(X_train, nan=0.0, copy=False)
     if not KRONOS_ON:
         X_train[:, 100:932] = 0.0   # Kronos置零 (与生产一致)
-    X_train[:, 72:91] = 0.0     # liq 19维置零 (与生产一致)
+    if os.environ.get('LIQ_ON', '0') != '1':
+        X_train[:, 72:91] = 0.0     # liq 19维置零 (与生产一致; LIQ_ON=1 实验启用)
     if _prune_idx:
         X_train[:, _prune_idx] = 0.0  # 死特征清零实验
 
@@ -328,7 +329,8 @@ def train_and_predict_batch(train_ts_list, pred_ts, entry_ts, klines, soup_hist=
         X_pred = np.nan_to_num(X_pred, nan=0.0, copy=False)
     if not KRONOS_ON:
         X_pred[:, 100:932] = 0.0
-    X_pred[:, 72:91] = 0.0
+    if os.environ.get('LIQ_ON', '0') != '1':
+        X_pred[:, 72:91] = 0.0
     if _prune_idx:
         X_pred[:, _prune_idx] = 0.0
 
