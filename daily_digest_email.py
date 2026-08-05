@@ -207,6 +207,22 @@ def section_health():
             parts.append('[SAMPLECHK 特征体检] ⚠️ 今日无记录(构建异常?)')
     except Exception as e:
         parts.append(f'(SAMPLECHK读取失败: {e})')
+    # 4a3. 数据漂移监控(8/5 新增): 外部数据修订 + 重放探针校验 (data_drift_monitor.py)
+    try:
+        drift_path = '/home/myuser/websocket_new/data/drift_report.json'
+        if os.path.exists(drift_path):
+            dr = json.load(open(drift_path))
+            if dr.get('status') == 'OK':
+                parts.append(f"[数据漂移监控] ✅ OK (文件{len(dr.get('file_check', []))}项, "
+                             f"重放探针: {dr.get('replay', {}).get('detail', 'SKIP')})")
+            else:
+                parts.append(f"[数据漂移监控] ⚠️ ALERT {len(dr.get('alerts', []))}项!")
+                for a in dr.get('alerts', [])[:5]:
+                    parts.append('  ⚠️ ' + a)
+        else:
+            parts.append('[数据漂移监控] ⚠️ 无报告(监控未运行?)')
+    except Exception as e:
+        parts.append(f'(数据漂移监控读取失败: {e})')
     # 4b. 服务/接口健康报告(原 alert_monitor --report)
     try:
         from alert_monitor import generate_health_report

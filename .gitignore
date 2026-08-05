@@ -94,6 +94,7 @@ data/xgb_short_model_clean_full.pkl
 data/winsor_bounds.json
 data/winsor_bounds_short.json
 data/winsor_bounds_clean.json
+data/pred_feats_*.npz
 
 # proxy (deprecated)
 data/btc_dominance_proxy.json

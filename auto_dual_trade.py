@@ -67,7 +67,7 @@ _FEATURE_NAMES = (
     + [f'kr_{i}' for i in range(dp.EMBEDDING_DIM)]
     + ['sp500','dxy','gold','btc_dominance']
     + ['rsi90','vol_90d','pp_90','ret_30d','ret_60d','ret_90d']
-    + ['tr_ratio','tbr','vol_raw']
+    + ['tr_ratio','tbr','vol_raw','fund_raw']  # fund_raw费率(1.2) 8/5补齐(漏名导致决策依据越界)
 )
 
 # 特征中文名映射 (决策依据邮件/日志显示用)
@@ -1218,6 +1218,21 @@ def train_and_predict(by_day, today_ts, klines):
         X_pred[:, 72:91] = 0.0   # liq 19维置零
         if os.environ.get('ETF_ON', '0') != '1':
             X_pred[:, 46:48] = 0.0   # ETF 2维置零 (同训练)
+    # 预测特征存档 (2026-08-05 新增, 只读不影响任何逻辑): 每日 X_pred 原始特征+币种+winsor边界
+    # 用途: 支持任意历史日期的"重放=生产"逐位校验 (此前只存训练矩阵npz, 预测特征未存档)
+    try:
+        _ts_str = datetime.fromtimestamp(today_ts, timezone.utc).strftime('%Y-%m-%d')
+        _pf = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', f'pred_feats_{_ts_str}.npz')
+        np.savez_compressed(
+            _pf,
+            ts=today_ts,
+            syms=np.array([s[0] for s in pred_samples]),
+            feats=np.array([s[1] for s in pred_samples], dtype=np.float32),
+            bounds=np.array(bounds, dtype=np.float64),
+        )
+        log(f'预测特征存档: {_pf} ({len(pred_samples)}币)')
+    except Exception as _e:
+        log(f'预测特征存档失败: {_e}')
     probs_long = model_long.predict_proba(X_pred)[:, 1]
     probs_short = model_short.predict_proba(X_pred)[:, 1]
     if SOUP_ON:
@@ -1968,7 +1983,10 @@ def _log_pick_explain(model, best, valid_list, valid_indices, X_pred, direction)
         order = np.argsort(-np.abs(contribs))[:5]
         log(f'[决策依据] {direction} {best[0]} prob={best[1]*100:.1f}% (bias {bias:+.3f})')
         for i in order:
-            _en = _FEATURE_NAMES[i]
+            if i >= len(_FEATURE_NAMES):  # 防御: 特征名缺失时不崩(8/5)
+                _en = f'feat_{i}'
+            else:
+                _en = _FEATURE_NAMES[i]
             _cn = _FEATURE_NAMES_CN.get(_en, _en)
             log(f'    {_cn}({_en}) {contribs[i]:+.3f} (值 {row[0, i]:.4g})')
     except Exception as e:
