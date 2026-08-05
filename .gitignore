@@ -95,6 +95,7 @@ data/winsor_bounds.json
 data/winsor_bounds_short.json
 data/winsor_bounds_clean.json
 data/pred_feats_*.npz
+data/version_snapshots/
 
 # proxy (deprecated)
 data/btc_dominance_proxy.json
