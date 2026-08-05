@@ -223,6 +223,46 @@ def section_health():
             parts.append('[数据漂移监控] ⚠️ 无报告(监控未运行?)')
     except Exception as e:
         parts.append(f'(数据漂移监控读取失败: {e})')
+    # 4a4. 前向批作业(8/5 新增): 公证预测对答案, 横截面IC/AUC (forward_ic_check.py)
+    try:
+        ic_path = '/home/myuser/websocket_new/data/forward_ic_history.json'
+        if os.path.exists(ic_path):
+            ih = json.load(open(ic_path))
+            days = ih.get('days', [])
+            clean = [d for d in days if not d.get('dirty')]
+            dirty = [d for d in days if d.get('dirty')]
+            if days:
+                last = clean[-1] if clean else days[-1]
+                tag = '幽灵期' if last.get('dirty') else '干净期'
+                def _f(v, w=6):
+                    return f'{v:+.2f}'.rjust(w) if isinstance(v, (int, float)) else '  N/A '
+                lines = [f"[前向批作业] 最新: {last['date']} [{tag}] n={last['n_sym']}币 (预测日→2日后兑现K线对答案)"]
+                lines.append(f"  LONG:  IC={_f(last.get('ic_long'))} AUC={last.get('auc_long')} | SHORT: IC={_f(last.get('ic_short'))} AUC={last.get('auc_short')}")
+                s5 = last.get('short5_avg_ret', 0)
+                lines.append(f"  实际: LONG TOP1 {last.get('top1_long')} {last.get('top1_long_ret', 0):+.1f}% | 空前5均 {s5:+.1f}%{' (空头盈利✅)' if s5 < 0 else ' (空头亏损⚠️)'}")
+                if len(clean) > 1:
+                    lines.append('  干净期批作业: 日期   IC_L   IC_S   TOP1L   空前5')
+                    for d in clean[-7:]:
+                        lines.append(f"    {d['date'][5:]}  {_f(d.get('ic_long'))} {_f(d.get('ic_short'))} {d.get('top1_long_ret', 0):+6.1f}% {d.get('short5_avg_ret', 0):+6.1f}%")
+                if len(clean) >= 3:
+                    l5 = clean[-5:]
+                    ml = sum(abs(d['ic_long']) for d in l5 if d.get('ic_long') is not None) / max(1, sum(1 for d in l5 if d.get('ic_long') is not None))
+                    ms = sum(abs(d['ic_short']) for d in l5 if d.get('ic_short') is not None) / max(1, sum(1 for d in l5 if d.get('ic_short') is not None))
+                    verdict = '✅信号活着' if min(ml, ms) >= 0.10 else ('⚠️转弱' if min(ml, ms) >= 0.05 else '❌疑似失效(熔断线候选)')
+                    lines.append(f"  判定(近{len(l5)}日|IC|均值 L={ml:.2f}/S={ms:.2f}, 阈值0.10/0.05): {verdict}")
+                else:
+                    lines.append(f"  判定: 干净期样本累积中({len(clean)}/3天, ≥3天出判定)")
+                if dirty:
+                    dl = [d['ic_long'] for d in dirty if d.get('ic_long') is not None]
+                    ds = [d['ic_short'] for d in dirty if d.get('ic_short') is not None]
+                    lines.append(f"  幽灵期阴性对照({len(dirty)}天): IC_L均值{sum(dl)/len(dl):+.2f}/IC_S均值{sum(ds)/len(ds):+.2f}≈0 (错位模型无排序力, 方法有效✅)")
+                parts.append('\n'.join(lines))
+            else:
+                parts.append('[前向批作业] ⚠️ 暂无批作业记录')
+        else:
+            parts.append('[前向批作业] ⚠️ 无历史(forward_ic_check未运行?)')
+    except Exception as e:
+        parts.append(f'(前向批作业读取失败: {e})')
     # 4b. 服务/接口健康报告(原 alert_monitor --report)
     try:
         from alert_monitor import generate_health_report
