@@ -1546,43 +1546,23 @@ def _get_live_stop_loss_pct():
     except Exception:
         return 10.0
 
-def verify_yesterday(klines_all=None):
-    """验证2天前未验的预测 — 2日模型需等2天才能结算"""
+def _settle_one_date(date_part, local_klines=None):
+    """结算单个预测日的TOP预测, 返回 track dict (不可结算/失败返回 None)
+
+    结算口径 (2026-08-06 修复, 对齐前向口径v2):
+      - 入场价 = open[T] (aligned: 预测日=入场日)
+      - 止损/止盈扫描覆盖 入场日T + T+1 + T+2 共3根日线 — 入场日不再豁免
+        (旧版只扫T+1/T+2: 入场日内砸穿止损又拉回不记账, 乐观偏置)
+      - 同根K线内先查止损后查止盈; 止损比例与生产配置同步; 止盈±10%
+      - 调用前提: T+2 蜡烛已收盘 (T+3 00:00 UTC 之后), 否则回到快照偏置
+    """
     import datetime as _dt
-    pred_files = sorted([f for f in os.listdir(LOG_DIR) if f.startswith('pred_') and f.endswith('.json')])
-    if not pred_files:
-        print("[验证] 无预测文件")
-        return
-    # 找2天前的预测（今天14号 → 验12号及以前，需2天走完）
-    today = _dt.datetime.now(timezone.utc)
-    today_str = today.strftime('%Y-%m-%d')
-    cutoff = today - _dt.timedelta(days=2)
-    cutoff_str = cutoff.strftime('%Y-%m-%d')
-
-    pending = []
-    for fn in pred_files:
-        date_part = fn.replace('pred_','').replace('.json','')[:10]
-        if date_part <= cutoff_str:
-            pending.append((date_part, fn))
-    if not pending:
-        print(f"[验证] 2天前({cutoff_str}及以前)暂无待验证预测")
-        return
-
-    date_part, pred_file_name = pending[-1]  # 最近一条到期预测
-    pred_file = os.path.join(LOG_DIR, pred_file_name)
-
-    # 检查是否已验证过
-    if os.path.exists(TRACK_FILE):
-        with open(TRACK_FILE) as f:
-            tracker = json.load(f)
-        if any(t['date'] == date_part for t in tracker):
-            print(f"[验证] {date_part} 已验证过，跳过")
-            return
-
+    pred_file = os.path.join(LOG_DIR, f'pred_{date_part}.json')
+    if not os.path.exists(pred_file):
+        return None
     with open(pred_file) as f:
         pred = json.load(f)
 
-    # 读取预测 (兼容新旧格式)
     if 'predictions' in pred:
         predictions = pred['predictions']
     else:
@@ -1594,25 +1574,25 @@ def verify_yesterday(klines_all=None):
             prob_val = float(p['prob']) if isinstance(p.get('prob'), str) else p.get('prob', 0)
             predictions.append({'symbol': p['symbol'], 'prob': prob_val, 'direction': 'SHORT'})
 
-    print(f"[验证] {date_part}预测 → 2日后结算, 共{len(predictions)}个币种")
-    # 预测日的时间戳
     pred_ts = int(_dt.datetime.strptime(date_part, '%Y-%m-%d')
                   .replace(tzinfo=timezone.utc).timestamp() * 1000)
+    _sl = _get_live_stop_loss_pct() / 100  # 与生产配置同步 (current_params.json _live_trading)
 
     results = []
     for p in predictions[:50]:
         sym = p['symbol']
         direction = p.get('direction', 'LONG')
         try:
-            resp = requests.get('https://fapi.binance.com/fapi/v1/klines',
-                params={'symbol': sym, 'interval': '1d', 'limit': 5}, timeout=10)
-            if resp.status_code != 200:
-                continue
-            kls = resp.json()
+            if local_klines is not None and sym in local_klines:
+                kls = local_klines[sym]      # 本地缓存优先: 零API请求
+            else:
+                resp = requests.get('https://fapi.binance.com/fapi/v1/klines',
+                    params={'symbol': sym, 'interval': '1d', 'limit': 6}, timeout=10)
+                if resp.status_code != 200:
+                    continue
+                kls = resp.json()
             if len(kls) < 3: continue
 
-            # 找预测日那根K线，入场取开盘价(aligned: 预测日=入场日)
-            # 结算含过程判定 (与回测一致): 后2根日线先触-10%记为止损, 先触+10%记为止盈
             entry_close = None
             exit_close = None
             reason = 'close'
@@ -1620,9 +1600,8 @@ def verify_yesterday(klines_all=None):
                 if int(k[0]) == pred_ts:
                     entry_close = float(k[1])
                     if j + 2 < len(kls):
-                        exit_close = float(kls[j+2][4])
-                        _sl = _get_live_stop_loss_pct() / 100  # 与生产配置同步 (current_params.json _live_trading)
-                        for off in (1, 2):
+                        exit_close = float(kls[j+2][4])   # T+2 最终收盘 (调用方保证已收盘)
+                        for off in (0, 1, 2):             # 含入场日T: 不豁免(口径v2)
                             h2, l2 = float(kls[j+off][2]), float(kls[j+off][3])
                             if direction == 'LONG':
                                 if l2 <= entry_close * (1 - _sl):
@@ -1652,24 +1631,22 @@ def verify_yesterday(klines_all=None):
                 hit = actual_ret < -5
                 pnl = -actual_ret
             results.append({
-                'symbol': sym, 'prob': p['prob'], 'direction': direction,
+                'symbol': p['symbol'], 'prob': p['prob'], 'direction': direction,
                 'actual_ret': round(actual_ret, 2), 'pnl': round(pnl, 2), 'hit': hit,
                 'reason': reason,
             })
         except Exception:
             continue
 
-    if not results: return
+    if not results:
+        return None
     hits = sum(1 for r in results if r['hit'])
     top20_hits = sum(1 for r in results[:20] if r['hit'])
     top10_hits = sum(1 for r in results[:10] if r['hit'])
-
-    all_pnls = [r['pnl'] for r in results]
     top10_ret = round(sum(r['pnl'] for r in results[:10]), 2)
     top20_ret = round(sum(r['pnl'] for r in results[:20]), 2)
-    total_ret = round(sum(all_pnls), 2)
-
-    track = {
+    total_ret = round(sum(r['pnl'] for r in results), 2)
+    return {
         'date': date_part, 'total': len(results),
         'hits': hits, 'hit_rate': round(hits/len(results)*100, 1),
         'top10_hits': top10_hits, 'top20_hits': top20_hits,
@@ -1677,18 +1654,73 @@ def verify_yesterday(klines_all=None):
         'details': results[:30],
     }
 
-    # 追加到跟踪文件
+
+def verify_yesterday(klines_all=None):
+    """验证 T+2 蜡烛已走完的预测 (2026-08-06 口径修复版)
+
+    旧版在 T+2 早上8:05(T+2蜡烛才开盘5分钟)就用快照结算且永不重算 → 乐观偏置。
+    现: ① 新结算只收 预测日 ≤ 今日-3(UTC) 的到期日 (T+2已收盘);
+        ② 对 tracker 近7天已存条目滚动重算覆盖 (修复历史快照值 + 抗上游K线修订)。
+    """
+    import datetime as _dt
+    pred_files = sorted([f for f in os.listdir(LOG_DIR) if f.startswith('pred_') and f.endswith('.json')])
+    if not pred_files:
+        print("[验证] 无预测文件")
+        return
+    today = _dt.datetime.now(timezone.utc)
+    cutoff = (today - _dt.timedelta(days=3)).strftime('%Y-%m-%d')   # T+2收盘 ⇒ T+3 起才可结算
+
     tracker = []
     if os.path.exists(TRACK_FILE):
-        with open(TRACK_FILE) as f:
-            tracker = json.load(f)
-    tracker.append(track)
+        try:
+            with open(TRACK_FILE) as f:
+                tracker = json.load(f)
+        except Exception:
+            tracker = []
+    tracked_idx = {t.get('date'): i for i, t in enumerate(tracker)}
+
+    # 本地K线缓存优先(8:05运行时缓存刚刷新, 含完整T+2收盘蜡烛), 零额外API请求
+    local_klines = None
+    cache_path = '/home/myuser/backtester/data_cache/notusdt_1d_full.json'
+    try:
+        if os.path.exists(cache_path):
+            _kl = json.load(open(cache_path)).get('klines', {})
+            local_klines = {s: [[r['t'], r.get('o'), r.get('h'), r.get('l'), r.get('c')]
+                                for r in rows[-8:]] for s, rows in _kl.items() if rows}
+    except Exception:
+        local_klines = None
+
+    all_pred_dates = [fn.replace('pred_', '').replace('.json', '')[:10] for fn in pred_files]
+    new_days = [d for d in all_pred_dates if d <= cutoff and d not in tracked_idx]
+    recheck = [d for d in sorted(tracked_idx)[-7:] if d <= cutoff]
+    targets = sorted(set(new_days) | set(recheck))
+    if not targets:
+        print(f"[验证] 无待结算预测日 (截止{cutoff})")
+        return
+
+    changed = False
+    for date_part in targets:
+        track = _settle_one_date(date_part, local_klines)
+        if track is None:
+            continue
+        if date_part in tracked_idx:
+            tracker[tracked_idx[date_part]] = track
+            tag = '重算'
+        else:
+            tracker.append(track)
+            tracked_idx[date_part] = len(tracker) - 1
+            tag = '新结算'
+        changed = True
+        print(f"[验证] {date_part} ({tag}): TOP10命中 {track['top10_hits']}/10 "
+              f"TOP10收益 {track['top10_return']:+.1f}% 总命中 {track['hit_rate']}%")
+
+    if not changed:
+        print("[验证] 本次无可结算结果")
+        return
+    tracker.sort(key=lambda t: t.get('date', ''))
     with open(TRACK_FILE, 'w') as f:
         json.dump(tracker, f, indent=2, default=str)
-
-    print(f"\n===== 2日验证: {date_part} → {date_part}+2 =====")
-    print(f"TOP10命中(>5%): {top10_hits}/10  TOP20: {top20_hits}/20  总命中: {hits}/{len(results)} ({track['hit_rate']}%)")
-    print(f"TOP10 2日收益: {top10_ret:+.1f}%  TOP20: {top20_ret:+.1f}%  总: {total_ret:+.1f}%")
+    print(f"[验证] tracker 已更新: {len(targets)} 天 (累计 {len(tracker)} 天)")
 
     # 上传COS
     try:
@@ -1704,15 +1736,12 @@ def verify_yesterday(klines_all=None):
         )
         cos = CosS3Client(config)
         bucket = os.environ.get('COS_BUCKET', '')
-        # 上传跟踪文件
         cos.put_object(Bucket=bucket, Key='klines/predictions/prediction_tracker.json',
                        Body=json.dumps(tracker, indent=2).encode('utf-8'), ContentType='application/json')
-        # 上传当日预测
-        cos.put_object(Bucket=bucket, Key=f'klines/predictions/pred_{date_part}.json',
-                       Body=json.dumps(pred, default=str).encode('utf-8'), ContentType='application/json')
         print("[COS] 验证数据已上传")
     except Exception as e:
         print(f"[COS] 上传失败: {e}")
+
 
 def review_errors():
     """复盘最近一条已验证的预测，分析TOP10错在哪里"""
