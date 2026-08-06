@@ -240,6 +240,8 @@ def section_health():
                 lines.append(f"  LONG:  IC={_f(last.get('ic_long'))} AUC={last.get('auc_long')} | SHORT: IC={_f(last.get('ic_short'))} AUC={last.get('auc_short')}")
                 s5 = last.get('short5_avg_ret', 0)
                 lines.append(f"  实际: LONG TOP1 {last.get('top1_long')} {last.get('top1_long_ret', 0):+.1f}% | 空前5均 {s5:+.1f}%{' (空头盈利✅)' if s5 < 0 else ' (空头亏损⚠️)'}")
+                if last.get('note'):
+                    lines.append(f"  ⚠️ 注: {last['note'][:80]}")
                 if len(clean) > 1:
                     lines.append('  干净期批作业: 日期   IC_L   IC_S   TOP1L   空前5')
                     for d in clean[-7:]:

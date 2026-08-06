@@ -29,6 +29,8 @@ REPORT = os.path.join(BASE, 'data', 'drift_report.json')
 os.makedirs(SNAP_DIR, exist_ok=True)
 os.makedirs(os.path.join(BASE, 'logs'), exist_ok=True)
 
+MACRO_PATH = os.path.join(BASE, 'data', 'macro_assets.json')
+
 # 受监控的外部数据文件 (生产训练依赖, 含采集器写入 + 数据源同步)
 MONITORED = [
     '/home/myuser/blockchair_data/btc_chain.csv',
@@ -112,6 +114,24 @@ def latest_date(path):
     return None
 
 
+
+def macro_meta(path):
+    """macro_assets.json 结构化指纹: 资产清单 + 核心内容MD5
+    核心内容 = 每资产去掉最新2天(美股收盘T+1才定稿)和最旧3天(滚动窗口正常淘汰)"""
+    try:
+        d = json.load(open(path)).get('data', {})
+        meta, core = {}, {}
+        for name, dd in d.items():
+            ks = sorted(dd.keys())
+            meta[name] = {'days': len(ks), 'first': ks[0] if ks else None, 'last': ks[-1] if ks else None}
+            mid = ks[3:-2] if len(ks) > 6 else ks
+            core[name] = {k: (dd[k].get('close'), dd[k].get('ret_1d')) for k in mid}
+        core_md5 = hashlib.md5(json.dumps(core, sort_keys=True).encode()).hexdigest()
+        return {'assets': meta, 'core_md5': core_md5}
+    except Exception as e:
+        return {'error': str(e)[:80]}
+
+
 def snapshot():
     snap = {'date': datetime.date.today().isoformat(), 'files': {}}
     for p in MONITORED:
@@ -119,12 +139,15 @@ def snapshot():
             snap['files'][p] = {'exists': False}
             continue
         try:
-            snap['files'][p] = {
+            entry = {
                 'exists': True,
                 'md5': md5_file(p),
                 'rows': file_rows(p),
                 'latest': latest_date(p),
             }
+            if p == MACRO_PATH:
+                entry['macro'] = macro_meta(p)
+            snap['files'][p] = entry
         except Exception as e:
             snap['files'][p] = {'exists': True, 'error': str(e)[:80]}
     return snap
@@ -222,6 +245,26 @@ def run_check():
             continue
         if old.get('md5') == new.get('md5'):
             items.append({'file': name, 'status': 'OK', 'detail': '未变'})
+            continue
+        # macro_assets.json: 整表重取型文件, 行数启发式无效, 走结构化对比 (8/6 新增)
+        if p == MACRO_PATH and old.get('macro') and new.get('macro'):
+            om, nm = old['macro'], new['macro']
+            if 'error' in om or 'error' in nm:
+                items.append({'file': name, 'status': 'INFO', 'detail': 'macro元数据解析失败, 跳过'})
+                continue
+            oa, na = om.get('assets', {}), nm.get('assets', {})
+            gone = sorted(set(oa) - set(na))
+            back = sorted(set(na) - set(oa))
+            if gone:
+                items.append({'file': name, 'status': 'ALERT', 'detail': f'资产消失: {gone} (采集器拉取失败?)'})
+                alerts.append(f'{name}: 资产消失 {gone}! 生产特征将全零, 立即检查采集器')
+            elif om.get('core_md5') != nm.get('core_md5'):
+                items.append({'file': name, 'status': 'ALERT', 'detail': '核心内容MD5变 = 上游修订历史值(除最新2/最旧3边缘)'})
+                alerts.append(f'{name}: 历史修订(上游数据源改动已定稿的历史值)')
+            elif back:
+                items.append({'file': name, 'status': 'INFO', 'detail': f'资产恢复: {back}'})
+            else:
+                items.append({'file': name, 'status': 'OK', 'detail': f'每日滚动正常({len(na)}资产)'})
             continue
         # MD5 变了: 判断追加 vs 修订
         old_rows, new_rows = old.get('rows', -1), new.get('rows', -1)

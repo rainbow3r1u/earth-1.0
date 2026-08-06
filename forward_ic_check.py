@@ -172,6 +172,8 @@ def evaluate_date(d_str, kx):
         'top1_short': top1_short[0], 'top1_short_ret': round(sym_ret[top1_short[0]] * 100, 2),
         'short5_avg_ret': round(float(np.mean([sym_ret[s] for s, _ in short5])) * 100, 2),
     }
+    if pred.get('note'):
+        res['note'] = pred['note'][:120]
 
 def main():
     hist = load_history()
