@@ -116,18 +116,16 @@ def latest_date(path):
 
 
 def macro_meta(path):
-    """macro_assets.json 结构化指纹: 资产清单 + 核心内容MD5
-    核心内容 = 每资产去掉最新2天(美股收盘T+1才定稿)和最旧3天(滚动窗口正常淘汰)"""
+    """macro_assets.json 结构化指纹: 资产清单 + 全量日期→收盘价映射
+    (8/7修正: 旧版滚动窗口MD5每天集合必变→必然误报; 现存储逐日值, 比对时取交集)"""
     try:
         d = json.load(open(path)).get('data', {})
-        meta, core = {}, {}
+        meta, closes = {}, {}
         for name, dd in d.items():
             ks = sorted(dd.keys())
             meta[name] = {'days': len(ks), 'first': ks[0] if ks else None, 'last': ks[-1] if ks else None}
-            mid = ks[3:-2] if len(ks) > 6 else ks
-            core[name] = {k: (dd[k].get('close'), dd[k].get('ret_1d')) for k in mid}
-        core_md5 = hashlib.md5(json.dumps(core, sort_keys=True).encode()).hexdigest()
-        return {'assets': meta, 'core_md5': core_md5}
+            closes[name] = {k: dd[k].get('close') for k in ks}
+        return {'assets': meta, 'closes': closes}
     except Exception as e:
         return {'error': str(e)[:80]}
 
@@ -249,8 +247,8 @@ def run_check():
         # macro_assets.json: 整表重取型文件, 行数启发式无效, 走结构化对比 (8/6 新增)
         if p == MACRO_PATH and old.get('macro') and new.get('macro'):
             om, nm = old['macro'], new['macro']
-            if 'error' in om or 'error' in nm:
-                items.append({'file': name, 'status': 'INFO', 'detail': 'macro元数据解析失败, 跳过'})
+            if 'error' in om or 'error' in nm or 'closes' not in nm:
+                items.append({'file': name, 'status': 'INFO', 'detail': 'macro指纹格式升级中, 本次跳过'})
                 continue
             oa, na = om.get('assets', {}), nm.get('assets', {})
             gone = sorted(set(oa) - set(na))
@@ -258,9 +256,20 @@ def run_check():
             if gone:
                 items.append({'file': name, 'status': 'ALERT', 'detail': f'资产消失: {gone} (采集器拉取失败?)'})
                 alerts.append(f'{name}: 资产消失 {gone}! 生产特征将全零, 立即检查采集器')
-            elif om.get('core_md5') != nm.get('core_md5'):
-                items.append({'file': name, 'status': 'ALERT', 'detail': '核心内容MD5变 = 上游修订历史值(除最新2/最旧3边缘)'})
-                alerts.append(f'{name}: 历史修订(上游数据源改动已定稿的历史值)')
+                continue
+            # 交集比对: 新旧文件共有日期逐日比close, 剔除新文件最新2天(美股未定稿)
+            oc, nc = om.get('closes', {}), nm.get('closes', {})
+            diffs = []
+            for a in sorted(set(oc) & set(nc)):
+                skip = set(sorted(nc[a])[-2:])
+                for dte in sorted(set(oc[a]) & set(nc[a])):
+                    if dte in skip:
+                        continue
+                    if oc[a][dte] != nc[a][dte]:
+                        diffs.append(f'{a} {dte}: {oc[a][dte]}→{nc[a][dte]}')
+            if diffs:
+                items.append({'file': name, 'status': 'ALERT', 'detail': f'历史修订{len(diffs)}处: ' + '; '.join(diffs[:3])})
+                alerts.append(f'{name}: 历史修订{len(diffs)}处(上游改动已定稿值): ' + '; '.join(diffs[:2]))
             elif back:
                 items.append({'file': name, 'status': 'INFO', 'detail': f'资产恢复: {back}'})
             else:

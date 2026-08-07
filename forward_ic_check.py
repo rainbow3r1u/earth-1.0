@@ -221,10 +221,14 @@ def main():
     clean = [d for d in hist['days'] if not d['dirty']]
     if len(clean) >= 3:
         last5 = clean[-5:]
-        ml = np.mean([abs(d['ic_long']) for d in last5 if d['ic_long'] is not None])
-        ms = np.mean([abs(d['ic_short']) for d in last5 if d['ic_short'] is not None])
-        verdict = '✅信号活着' if min(ml, ms) >= 0.10 else ('⚠️转弱' if min(ml, ms) >= 0.05 else '❌疑似失效')
-        log(f'干净期近{len(last5)}日 |IC|均值: LONG={ml:.3f} SHORT={ms:.3f} → {verdict}')
+        al = np.mean([d['auc_long'] for d in last5 if d.get('auc_long') is not None])
+        ash = np.mean([d['auc_short'] for d in last5 if d.get('auc_short') is not None])
+        ml = np.mean([d['ic_long'] for d in last5 if d['ic_long'] is not None])
+        ms = np.mean([d['ic_short'] for d in last5 if d['ic_short'] is not None])
+        m = min(al, ash)
+        verdict = '✅信号活着' if m >= 0.60 else ('⚠️转弱' if m >= 0.55 else '❌疑似失效')
+        note = f' ⚠️IC方向异常(L={ml:+.2f}/S={ms:+.2f}), 头部选币质量需盯' if (ml < 0 or ms > 0) else ''
+        log(f'干净期近{len(last5)}日 AUC均值: L={al:.3f}/S={ash:.3f}, IC: L={ml:+.3f}/S={ms:+.3f} → {verdict}{note}')
 
 if __name__ == '__main__':
     main()

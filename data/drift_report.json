@@ -1,0 +1,82 @@
+{
+ "date": "2026-08-07",
+ "status": "OK",
+ "file_check": [
+  {
+   "file": "btc_chain.csv",
+   "status": "OK",
+   "detail": "未变"
+  },
+  {
+   "file": "btc_dominance.json",
+   "status": "OK",
+   "detail": "未变"
+  },
+  {
+   "file": "btc_mcap.json",
+   "status": "OK",
+   "detail": "未变"
+  },
+  {
+   "file": "protocol_map.json",
+   "status": "OK",
+   "detail": "未变"
+  },
+  {
+   "file": "btc_chain_tvl.json",
+   "status": "OK",
+   "detail": "未变"
+  },
+  {
+   "file": "hashrate_history.json",
+   "status": "OK",
+   "detail": "未变"
+  },
+  {
+   "file": "btc_coinbase_premium_gap.json",
+   "status": "OK",
+   "detail": "未变"
+  },
+  {
+   "file": "btc_coinbase_premium_index.json",
+   "status": "OK",
+   "detail": "未变"
+  },
+  {
+   "file": "btc_korea_premium_index.json",
+   "status": "OK",
+   "detail": "未变"
+  },
+  {
+   "file": "stablecoin_exchange_netflow.json",
+   "status": "OK",
+   "detail": "未变"
+  },
+  {
+   "file": "fear_greed_history.json",
+   "status": "OK",
+   "detail": "未变"
+  },
+  {
+   "file": "macro_assets.json",
+   "status": "OK",
+   "detail": "未变"
+  },
+  {
+   "file": "etf_flow.json",
+   "status": "OK",
+   "detail": "未变"
+  },
+  {
+   "file": "liq_daily.json",
+   "status": "OK",
+   "detail": "未变"
+  }
+ ],
+ "replay": {
+  "status": "OK",
+  "checked": 3,
+  "detail": "3探针一致(样本日 2026-08-07)"
+ },
+ "alerts": []
+}

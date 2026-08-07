@@ -248,10 +248,15 @@ def section_health():
                         lines.append(f"    {d['date'][5:]}  {_f(d.get('ic_long'))} {_f(d.get('ic_short'))} {d.get('top1_long_ret', 0):+6.1f}% {d.get('short5_avg_ret', 0):+6.1f}%")
                 if len(clean) >= 3:
                     l5 = clean[-5:]
-                    ml = sum(abs(d['ic_long']) for d in l5 if d.get('ic_long') is not None) / max(1, sum(1 for d in l5 if d.get('ic_long') is not None))
-                    ms = sum(abs(d['ic_short']) for d in l5 if d.get('ic_short') is not None) / max(1, sum(1 for d in l5 if d.get('ic_short') is not None))
-                    verdict = '✅信号活着' if min(ml, ms) >= 0.10 else ('⚠️转弱' if min(ml, ms) >= 0.05 else '❌疑似失效(熔断线候选)')
-                    lines.append(f"  判定(近{len(l5)}日|IC|均值 L={ml:.2f}/S={ms:.2f}, 阈值0.10/0.05): {verdict}")
+                    def _avg(key):
+                        vs = [d[key] for d in l5 if d.get(key) is not None]
+                        return sum(vs)/len(vs) if vs else None
+                    al, ash = _avg('auc_long'), _avg('auc_short')
+                    ml, ms = _avg('ic_long'), _avg('ic_short')
+                    m = min(al or 0, ash or 0)
+                    verdict = '✅信号活着' if m >= 0.60 else ('⚠️转弱' if m >= 0.55 else '❌疑似失效(熔断线候选)')
+                    note = f' ⚠️IC方向异常(L={ml:+.2f}/S={ms:+.2f})' if ((ml is not None and ml < 0) or (ms is not None and ms > 0)) else ''
+                    lines.append(f"  判定(近{len(l5)}日AUC均值 L={al:.2f}/S={ash:.2f}, 阈值0.60): {verdict}{note}")
                 else:
                     lines.append(f"  判定: 干净期样本累积中({len(clean)}/3天, ≥3天出判定)")
                 if dirty:
