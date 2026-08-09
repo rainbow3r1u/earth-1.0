@@ -1,5 +1,5 @@
 {
- "updated": "2026-08-07T08:50:02.373544",
+ "updated": "2026-08-09T08:50:02.310357",
  "days": [
   {
    "date": "2026-07-28",
@@ -144,6 +144,42 @@
    "top1_short": "KOMAUSDT",
    "top1_short_ret": -24.92,
    "short5_avg_ret": -11.5
+  },
+  {
+   "date": "2026-08-05",
+   "dirty": false,
+   "n_sym": 506,
+   "n_liq": 506,
+   "ic_long": 0.2091,
+   "ic_short": 0.1368,
+   "auc_long": 0.7102,
+   "auc_short": 0.7412,
+   "ic_long_liq": 0.2091,
+   "ic_short_liq": 0.1368,
+   "top1_long": "ERAUSDT",
+   "top1_long_prob": 87.1,
+   "top1_long_ret": 13.09,
+   "top1_short": "CYSUSDT",
+   "top1_short_ret": 67.64,
+   "short5_avg_ret": 18.38
+  },
+  {
+   "date": "2026-08-06",
+   "dirty": false,
+   "n_sym": 503,
+   "n_liq": 503,
+   "ic_long": 0.0767,
+   "ic_short": 0.0874,
+   "auc_long": 0.6256,
+   "auc_short": 0.8077,
+   "ic_long_liq": 0.0767,
+   "ic_short_liq": 0.0874,
+   "top1_long": "BROCCOLIF3BUSDT",
+   "top1_long_prob": 87.3,
+   "top1_long_ret": 20.0,
+   "top1_short": "HEIUSDT",
+   "top1_short_ret": -28.26,
+   "short5_avg_ret": -17.0
   }
  ]
 }
