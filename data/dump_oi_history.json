@@ -1,0 +1,1830 @@
+{
+ "records": [
+  {
+   "date": "2026-07-02",
+   "sym": "TOWNSUSDT",
+   "oi_circ_pct": 28.68
+  },
+  {
+   "date": "2026-07-02",
+   "sym": "TRUTHUSDT",
+   "oi_circ_pct": 8.24
+  },
+  {
+   "date": "2026-07-02",
+   "sym": "CAPUSDT",
+   "oi_circ_pct": 5.81
+  },
+  {
+   "date": "2026-07-03",
+   "sym": "ARKUSDT",
+   "oi_circ_pct": 4.67
+  },
+  {
+   "date": "2026-07-03",
+   "sym": "BASEDUSDT",
+   "oi_circ_pct": 29.55
+  },
+  {
+   "date": "2026-07-03",
+   "sym": "BASUSDT",
+   "oi_circ_pct": 8.71
+  },
+  {
+   "date": "2026-07-03",
+   "sym": "COOKIEUSDT",
+   "oi_circ_pct": 19.21
+  },
+  {
+   "date": "2026-07-03",
+   "sym": "EDGEUSDT",
+   "oi_circ_pct": 3.12
+  },
+  {
+   "date": "2026-07-03",
+   "sym": "FIDAUSDT",
+   "oi_circ_pct": 8.19
+  },
+  {
+   "date": "2026-07-03",
+   "sym": "FLUIDUSDT",
+   "oi_circ_pct": 1.39
+  },
+  {
+   "date": "2026-07-03",
+   "sym": "NMRUSDT",
+   "oi_circ_pct": 3.4
+  },
+  {
+   "date": "2026-07-03",
+   "sym": "TACUSDT",
+   "oi_circ_pct": 7.25
+  },
+  {
+   "date": "2026-07-03",
+   "sym": "VELVETUSDT",
+   "oi_circ_pct": 4.97
+  },
+  {
+   "date": "2026-07-03",
+   "sym": "VICUSDT",
+   "oi_circ_pct": 22.48
+  },
+  {
+   "date": "2026-07-03",
+   "sym": "ZBTUSDT",
+   "oi_circ_pct": 24.7
+  },
+  {
+   "date": "2026-07-03",
+   "sym": "REUSDT",
+   "oi_circ_pct": 14.19
+  },
+  {
+   "date": "2026-07-04",
+   "sym": "BIRBUSDT",
+   "oi_circ_pct": 16.59
+  },
+  {
+   "date": "2026-07-04",
+   "sym": "DEEPUSDT",
+   "oi_circ_pct": 3.32
+  },
+  {
+   "date": "2026-07-04",
+   "sym": "FLOCKUSDT",
+   "oi_circ_pct": 4.59
+  },
+  {
+   "date": "2026-07-04",
+   "sym": "HAEDALUSDT",
+   "oi_circ_pct": 40.74
+  },
+  {
+   "date": "2026-07-04",
+   "sym": "INUSDT",
+   "oi_circ_pct": 27.68
+  },
+  {
+   "date": "2026-07-04",
+   "sym": "LISTAUSDT",
+   "oi_circ_pct": 6.48
+  },
+  {
+   "date": "2026-07-04",
+   "sym": "MAGICUSDT",
+   "oi_circ_pct": 10.24
+  },
+  {
+   "date": "2026-07-04",
+   "sym": "MEUSDT",
+   "oi_circ_pct": 7.29
+  },
+  {
+   "date": "2026-07-04",
+   "sym": "SPACEUSDT",
+   "oi_circ_pct": 5.1
+  },
+  {
+   "date": "2026-07-04",
+   "sym": "TAUSDT",
+   "oi_circ_pct": 81.81
+  },
+  {
+   "date": "2026-07-04",
+   "sym": "SLXUSDT",
+   "oi_circ_pct": 9.75
+  },
+  {
+   "date": "2026-07-05",
+   "sym": "BASUSDT",
+   "oi_circ_pct": 6.73
+  },
+  {
+   "date": "2026-07-05",
+   "sym": "BIRBUSDT",
+   "oi_circ_pct": 12.89
+  },
+  {
+   "date": "2026-07-05",
+   "sym": "BREVUSDT",
+   "oi_circ_pct": 13.14
+  },
+  {
+   "date": "2026-07-05",
+   "sym": "GASUSDT",
+   "oi_circ_pct": 1.97
+  },
+  {
+   "date": "2026-07-05",
+   "sym": "GALAUSDT",
+   "oi_circ_pct": 4.37
+  },
+  {
+   "date": "2026-07-05",
+   "sym": "INUSDT",
+   "oi_circ_pct": 24.73
+  },
+  {
+   "date": "2026-07-05",
+   "sym": "LABUSDT",
+   "oi_circ_pct": 1.44
+  },
+  {
+   "date": "2026-07-05",
+   "sym": "MAGMAUSDT",
+   "oi_circ_pct": 12.04
+  },
+  {
+   "date": "2026-07-05",
+   "sym": "MANAUSDT",
+   "oi_circ_pct": 2.39
+  },
+  {
+   "date": "2026-07-05",
+   "sym": "RIFUSDT",
+   "oi_circ_pct": 3.82
+  },
+  {
+   "date": "2026-07-05",
+   "sym": "SCRTUSDT",
+   "oi_circ_pct": 7.0
+  },
+  {
+   "date": "2026-07-05",
+   "sym": "SLPUSDT",
+   "oi_circ_pct": 4.74
+  },
+  {
+   "date": "2026-07-05",
+   "sym": "TACUSDT",
+   "oi_circ_pct": 5.97
+  },
+  {
+   "date": "2026-07-05",
+   "sym": "TAIKOUSDT",
+   "oi_circ_pct": 20.42
+  },
+  {
+   "date": "2026-07-05",
+   "sym": "THEUSDT",
+   "oi_circ_pct": 30.27
+  },
+  {
+   "date": "2026-07-05",
+   "sym": "VELVETUSDT",
+   "oi_circ_pct": 4.25
+  },
+  {
+   "date": "2026-07-05",
+   "sym": "WETUSDT",
+   "oi_circ_pct": 6.68
+  },
+  {
+   "date": "2026-07-06",
+   "sym": "ARPAUSDT",
+   "oi_circ_pct": 18.79
+  },
+  {
+   "date": "2026-07-06",
+   "sym": "BASUSDT",
+   "oi_circ_pct": 5.69
+  },
+  {
+   "date": "2026-07-06",
+   "sym": "DOGSUSDT",
+   "oi_circ_pct": 10.65
+  },
+  {
+   "date": "2026-07-06",
+   "sym": "FLUIDUSDT",
+   "oi_circ_pct": 1.24
+  },
+  {
+   "date": "2026-07-06",
+   "sym": "GUNUSDT",
+   "oi_circ_pct": 12.28
+  },
+  {
+   "date": "2026-07-06",
+   "sym": "OGNUSDT",
+   "oi_circ_pct": 14.87
+  },
+  {
+   "date": "2026-07-06",
+   "sym": "PIXELUSDT",
+   "oi_circ_pct": 38.67
+  },
+  {
+   "date": "2026-07-06",
+   "sym": "ZKPUSDT",
+   "oi_circ_pct": 29.67
+  },
+  {
+   "date": "2026-07-07",
+   "sym": "BIRBUSDT",
+   "oi_circ_pct": 11.5
+  },
+  {
+   "date": "2026-07-07",
+   "sym": "DOGSUSDT",
+   "oi_circ_pct": 9.26
+  },
+  {
+   "date": "2026-07-07",
+   "sym": "GIGGLEUSDT",
+   "oi_circ_pct": 26.79
+  },
+  {
+   "date": "2026-07-07",
+   "sym": "HMSTRUSDT",
+   "oi_circ_pct": 38.06
+  },
+  {
+   "date": "2026-07-07",
+   "sym": "HOTUSDT",
+   "oi_circ_pct": 3.9
+  },
+  {
+   "date": "2026-07-07",
+   "sym": "LABUSDT",
+   "oi_circ_pct": 1.13
+  },
+  {
+   "date": "2026-07-07",
+   "sym": "MANAUSDT",
+   "oi_circ_pct": 2.3
+  },
+  {
+   "date": "2026-07-07",
+   "sym": "MIRAUSDT",
+   "oi_circ_pct": 20.58
+  },
+  {
+   "date": "2026-07-07",
+   "sym": "OGNUSDT",
+   "oi_circ_pct": 10.63
+  },
+  {
+   "date": "2026-07-07",
+   "sym": "ONGUSDT",
+   "oi_circ_pct": 5.59
+  },
+  {
+   "date": "2026-07-07",
+   "sym": "RESOLVUSDT",
+   "oi_circ_pct": 22.77
+  },
+  {
+   "date": "2026-07-07",
+   "sym": "RPLUSDT",
+   "oi_circ_pct": 5.77
+  },
+  {
+   "date": "2026-07-07",
+   "sym": "SANDUSDT",
+   "oi_circ_pct": 3.38
+  },
+  {
+   "date": "2026-07-07",
+   "sym": "TLMUSDT",
+   "oi_circ_pct": 39.39
+  },
+  {
+   "date": "2026-07-07",
+   "sym": "TRBUSDT",
+   "oi_circ_pct": 10.87
+  },
+  {
+   "date": "2026-07-07",
+   "sym": "TURBOUSDT",
+   "oi_circ_pct": 2.95
+  },
+  {
+   "date": "2026-07-07",
+   "sym": "XTZUSDT",
+   "oi_circ_pct": 0.97
+  },
+  {
+   "date": "2026-07-07",
+   "sym": "ARXUSDT",
+   "oi_circ_pct": 0.31
+  },
+  {
+   "date": "2026-07-08",
+   "sym": "4USDT",
+   "oi_circ_pct": 36.59
+  },
+  {
+   "date": "2026-07-08",
+   "sym": "ARPAUSDT",
+   "oi_circ_pct": 15.14
+  },
+  {
+   "date": "2026-07-08",
+   "sym": "BELUSDT",
+   "oi_circ_pct": 34.83
+  },
+  {
+   "date": "2026-07-08",
+   "sym": "BIRBUSDT",
+   "oi_circ_pct": 10.18
+  },
+  {
+   "date": "2026-07-08",
+   "sym": "CATIUSDT",
+   "oi_circ_pct": 5.96
+  },
+  {
+   "date": "2026-07-08",
+   "sym": "CHILLGUYUSDT",
+   "oi_circ_pct": 12.35
+  },
+  {
+   "date": "2026-07-08",
+   "sym": "GASUSDT",
+   "oi_circ_pct": 1.74
+  },
+  {
+   "date": "2026-07-08",
+   "sym": "HEIUSDT",
+   "oi_circ_pct": 34.74
+  },
+  {
+   "date": "2026-07-08",
+   "sym": "HOTUSDT",
+   "oi_circ_pct": 3.26
+  },
+  {
+   "date": "2026-07-08",
+   "sym": "IDUSDT",
+   "oi_circ_pct": 25.63
+  },
+  {
+   "date": "2026-07-08",
+   "sym": "MIRAUSDT",
+   "oi_circ_pct": 18.12
+  },
+  {
+   "date": "2026-07-08",
+   "sym": "OGNUSDT",
+   "oi_circ_pct": 9.18
+  },
+  {
+   "date": "2026-07-08",
+   "sym": "ONGUSDT",
+   "oi_circ_pct": 5.02
+  },
+  {
+   "date": "2026-07-08",
+   "sym": "POWRUSDT",
+   "oi_circ_pct": 3.4
+  },
+  {
+   "date": "2026-07-08",
+   "sym": "SXTUSDT",
+   "oi_circ_pct": 3.57
+  },
+  {
+   "date": "2026-07-08",
+   "sym": "TLMUSDT",
+   "oi_circ_pct": 32.75
+  },
+  {
+   "date": "2026-07-08",
+   "sym": "TRIAUSDT",
+   "oi_circ_pct": 11.25
+  },
+  {
+   "date": "2026-07-08",
+   "sym": "USUSDT",
+   "oi_circ_pct": 16.68
+  },
+  {
+   "date": "2026-07-08",
+   "sym": "VANRYUSDT",
+   "oi_circ_pct": 48.77
+  },
+  {
+   "date": "2026-07-08",
+   "sym": "YFIUSDT",
+   "oi_circ_pct": 5.77
+  },
+  {
+   "date": "2026-07-08",
+   "sym": "ZKPUSDT",
+   "oi_circ_pct": 25.35
+  },
+  {
+   "date": "2026-07-08",
+   "sym": "CAPUSDT",
+   "oi_circ_pct": 8.99
+  },
+  {
+   "date": "2026-07-09",
+   "sym": "AGLDUSDT",
+   "oi_circ_pct": 20.5
+  },
+  {
+   "date": "2026-07-09",
+   "sym": "BANANAUSDT",
+   "oi_circ_pct": 12.26
+  },
+  {
+   "date": "2026-07-09",
+   "sym": "BELUSDT",
+   "oi_circ_pct": 30.14
+  },
+  {
+   "date": "2026-07-09",
+   "sym": "BLURUSDT",
+   "oi_circ_pct": 8.58
+  },
+  {
+   "date": "2026-07-09",
+   "sym": "CVCUSDT",
+   "oi_circ_pct": 3.24
+  },
+  {
+   "date": "2026-07-09",
+   "sym": "EPICUSDT",
+   "oi_circ_pct": 45.22
+  },
+  {
+   "date": "2026-07-09",
+   "sym": "GPSUSDT",
+   "oi_circ_pct": 5.89
+  },
+  {
+   "date": "2026-07-09",
+   "sym": "GRASSUSDT",
+   "oi_circ_pct": 2.84
+  },
+  {
+   "date": "2026-07-09",
+   "sym": "HOTUSDT",
+   "oi_circ_pct": 2.9
+  },
+  {
+   "date": "2026-07-09",
+   "sym": "INUSDT",
+   "oi_circ_pct": 20.92
+  },
+  {
+   "date": "2026-07-09",
+   "sym": "LUNA2USDT",
+   "oi_circ_pct": 3.55
+  },
+  {
+   "date": "2026-07-09",
+   "sym": "LYNUSDT",
+   "oi_circ_pct": 58.74
+  },
+  {
+   "date": "2026-07-09",
+   "sym": "ROBOUSDT",
+   "oi_circ_pct": 12.78
+  },
+  {
+   "date": "2026-07-09",
+   "sym": "SAHARAUSDT",
+   "oi_circ_pct": 14.93
+  },
+  {
+   "date": "2026-07-09",
+   "sym": "THEUSDT",
+   "oi_circ_pct": 21.45
+  },
+  {
+   "date": "2026-07-09",
+   "sym": "TLMUSDT",
+   "oi_circ_pct": 25.06
+  },
+  {
+   "date": "2026-07-09",
+   "sym": "USTCUSDT",
+   "oi_circ_pct": 2.87
+  },
+  {
+   "date": "2026-07-09",
+   "sym": "WETUSDT",
+   "oi_circ_pct": 6.9
+  },
+  {
+   "date": "2026-07-10",
+   "sym": "HOMEUSDT",
+   "oi_circ_pct": 6.79
+  },
+  {
+   "date": "2026-07-10",
+   "sym": "KMNOUSDT",
+   "oi_circ_pct": 1.53
+  },
+  {
+   "date": "2026-07-10",
+   "sym": "OGNUSDT",
+   "oi_circ_pct": 16.28
+  },
+  {
+   "date": "2026-07-11",
+   "sym": "BASEDUSDT",
+   "oi_circ_pct": 25.93
+  },
+  {
+   "date": "2026-07-11",
+   "sym": "EDGEUSDT",
+   "oi_circ_pct": 3.91
+  },
+  {
+   "date": "2026-07-11",
+   "sym": "MAVUSDT",
+   "oi_circ_pct": 10.12
+  },
+  {
+   "date": "2026-07-11",
+   "sym": "TACUSDT",
+   "oi_circ_pct": 29.88
+  },
+  {
+   "date": "2026-07-11",
+   "sym": "THEUSDT",
+   "oi_circ_pct": 35.53
+  },
+  {
+   "date": "2026-07-11",
+   "sym": "USUSDT",
+   "oi_circ_pct": 18.59
+  },
+  {
+   "date": "2026-07-12",
+   "sym": "BELUSDT",
+   "oi_circ_pct": 28.96
+  },
+  {
+   "date": "2026-07-12",
+   "sym": "KSMUSDT",
+   "oi_circ_pct": 2.11
+  },
+  {
+   "date": "2026-07-12",
+   "sym": "MMTUSDT",
+   "oi_circ_pct": 18.17
+  },
+  {
+   "date": "2026-07-12",
+   "sym": "OGNUSDT",
+   "oi_circ_pct": 13.12
+  },
+  {
+   "date": "2026-07-12",
+   "sym": "PROMPTUSDT",
+   "oi_circ_pct": 14.39
+  },
+  {
+   "date": "2026-07-12",
+   "sym": "RAREUSDT",
+   "oi_circ_pct": 13.93
+  },
+  {
+   "date": "2026-07-12",
+   "sym": "RLCUSDT",
+   "oi_circ_pct": 4.23
+  },
+  {
+   "date": "2026-07-12",
+   "sym": "SKLUSDT",
+   "oi_circ_pct": 18.12
+  },
+  {
+   "date": "2026-07-12",
+   "sym": "SLPUSDT",
+   "oi_circ_pct": 3.82
+  },
+  {
+   "date": "2026-07-12",
+   "sym": "SPELLUSDT",
+   "oi_circ_pct": 13.78
+  },
+  {
+   "date": "2026-07-13",
+   "sym": "1MBABYDOGEUSDT",
+   "oi_circ_pct": 0.0
+  },
+  {
+   "date": "2026-07-13",
+   "sym": "CHRUSDT",
+   "oi_circ_pct": 8.92
+  },
+  {
+   "date": "2026-07-13",
+   "sym": "CVCUSDT",
+   "oi_circ_pct": 2.9
+  },
+  {
+   "date": "2026-07-13",
+   "sym": "EPICUSDT",
+   "oi_circ_pct": 38.86
+  },
+  {
+   "date": "2026-07-13",
+   "sym": "HMSTRUSDT",
+   "oi_circ_pct": 29.23
+  },
+  {
+   "date": "2026-07-13",
+   "sym": "MOODENGUSDT",
+   "oi_circ_pct": 4.36
+  },
+  {
+   "date": "2026-07-13",
+   "sym": "PARTIUSDT",
+   "oi_circ_pct": 73.73
+  },
+  {
+   "date": "2026-07-13",
+   "sym": "SCRTUSDT",
+   "oi_circ_pct": 7.99
+  },
+  {
+   "date": "2026-07-13",
+   "sym": "SKLUSDT",
+   "oi_circ_pct": 15.52
+  },
+  {
+   "date": "2026-07-13",
+   "sym": "SXTUSDT",
+   "oi_circ_pct": 9.7
+  },
+  {
+   "date": "2026-07-13",
+   "sym": "TUTUSDT",
+   "oi_circ_pct": 27.21
+  },
+  {
+   "date": "2026-07-13",
+   "sym": "VIRTUALUSDT",
+   "oi_circ_pct": 3.34
+  },
+  {
+   "date": "2026-07-14",
+   "sym": "1MBABYDOGEUSDT",
+   "oi_circ_pct": 0.0
+  },
+  {
+   "date": "2026-07-14",
+   "sym": "CARVUSDT",
+   "oi_circ_pct": 4.32
+  },
+  {
+   "date": "2026-07-14",
+   "sym": "CHRUSDT",
+   "oi_circ_pct": 7.94
+  },
+  {
+   "date": "2026-07-14",
+   "sym": "CLOUSDT",
+   "oi_circ_pct": 25.59
+  },
+  {
+   "date": "2026-07-14",
+   "sym": "EPICUSDT",
+   "oi_circ_pct": 34.89
+  },
+  {
+   "date": "2026-07-14",
+   "sym": "FHEUSDT",
+   "oi_circ_pct": 51.71
+  },
+  {
+   "date": "2026-07-14",
+   "sym": "HMSTRUSDT",
+   "oi_circ_pct": 26.29
+  },
+  {
+   "date": "2026-07-14",
+   "sym": "HOTUSDT",
+   "oi_circ_pct": 2.93
+  },
+  {
+   "date": "2026-07-14",
+   "sym": "LUMIAUSDT",
+   "oi_circ_pct": 23.22
+  },
+  {
+   "date": "2026-07-14",
+   "sym": "OGNUSDT",
+   "oi_circ_pct": 15.21
+  },
+  {
+   "date": "2026-07-14",
+   "sym": "SKLUSDT",
+   "oi_circ_pct": 13.81
+  },
+  {
+   "date": "2026-07-14",
+   "sym": "SXTUSDT",
+   "oi_circ_pct": 7.98
+  },
+  {
+   "date": "2026-07-14",
+   "sym": "THETAUSDT",
+   "oi_circ_pct": 1.42
+  },
+  {
+   "date": "2026-07-14",
+   "sym": "TLMUSDT",
+   "oi_circ_pct": 25.44
+  },
+  {
+   "date": "2026-07-14",
+   "sym": "TUSDT",
+   "oi_circ_pct": 15.28
+  },
+  {
+   "date": "2026-07-14",
+   "sym": "VANRYUSDT",
+   "oi_circ_pct": 36.11
+  },
+  {
+   "date": "2026-07-15",
+   "sym": "1000XECUSDT",
+   "oi_circ_pct": 0.0
+  },
+  {
+   "date": "2026-07-15",
+   "sym": "ALLOUSDT",
+   "oi_circ_pct": 23.84
+  },
+  {
+   "date": "2026-07-15",
+   "sym": "HOTUSDT",
+   "oi_circ_pct": 2.64
+  },
+  {
+   "date": "2026-07-15",
+   "sym": "TUSDT",
+   "oi_circ_pct": 12.33
+  },
+  {
+   "date": "2026-07-15",
+   "sym": "ZENUSDT",
+   "oi_circ_pct": 5.41
+  },
+  {
+   "date": "2026-07-15",
+   "sym": "BILLUSDT",
+   "oi_circ_pct": 6.39
+  },
+  {
+   "date": "2026-07-16",
+   "sym": "BSBUSDT",
+   "oi_circ_pct": 27.74
+  },
+  {
+   "date": "2026-07-16",
+   "sym": "BSVUSDT",
+   "oi_circ_pct": 0.46
+  },
+  {
+   "date": "2026-07-16",
+   "sym": "EGLDUSDT",
+   "oi_circ_pct": 3.15
+  },
+  {
+   "date": "2026-07-16",
+   "sym": "EVAAUSDT",
+   "oi_circ_pct": 192.61
+  },
+  {
+   "date": "2026-07-16",
+   "sym": "LINEAUSDT",
+   "oi_circ_pct": 4.57
+  },
+  {
+   "date": "2026-07-16",
+   "sym": "MUBARAKUSDT",
+   "oi_circ_pct": 15.14
+  },
+  {
+   "date": "2026-07-16",
+   "sym": "OGNUSDT",
+   "oi_circ_pct": 12.73
+  },
+  {
+   "date": "2026-07-16",
+   "sym": "SANTOSUSDT",
+   "oi_circ_pct": 14.6
+  },
+  {
+   "date": "2026-07-16",
+   "sym": "SXTUSDT",
+   "oi_circ_pct": 8.46
+  },
+  {
+   "date": "2026-07-16",
+   "sym": "TRIAUSDT",
+   "oi_circ_pct": 21.64
+  },
+  {
+   "date": "2026-07-16",
+   "sym": "TUSDT",
+   "oi_circ_pct": 10.33
+  },
+  {
+   "date": "2026-07-16",
+   "sym": "OUSDT",
+   "oi_circ_pct": 3.68
+  },
+  {
+   "date": "2026-07-17",
+   "sym": "HOLOUSDT",
+   "oi_circ_pct": 1.54
+  },
+  {
+   "date": "2026-07-17",
+   "sym": "IDUSDT",
+   "oi_circ_pct": 22.16
+  },
+  {
+   "date": "2026-07-17",
+   "sym": "SKLUSDT",
+   "oi_circ_pct": 13.79
+  },
+  {
+   "date": "2026-07-17",
+   "sym": "SXTUSDT",
+   "oi_circ_pct": 7.62
+  },
+  {
+   "date": "2026-07-17",
+   "sym": "TOWNSUSDT",
+   "oi_circ_pct": 30.16
+  },
+  {
+   "date": "2026-07-17",
+   "sym": "ZAMAUSDT",
+   "oi_circ_pct": 7.02
+  },
+  {
+   "date": "2026-07-18",
+   "sym": "CARVUSDT",
+   "oi_circ_pct": 4.03
+  },
+  {
+   "date": "2026-07-18",
+   "sym": "DEXEUSDT",
+   "oi_circ_pct": 1.85
+  },
+  {
+   "date": "2026-07-18",
+   "sym": "ESPORTSUSDT",
+   "oi_circ_pct": 290.19
+  },
+  {
+   "date": "2026-07-18",
+   "sym": "EVAAUSDT",
+   "oi_circ_pct": 157.47
+  },
+  {
+   "date": "2026-07-18",
+   "sym": "FLOCKUSDT",
+   "oi_circ_pct": 10.07
+  },
+  {
+   "date": "2026-07-18",
+   "sym": "IOSTUSDT",
+   "oi_circ_pct": 4.74
+  },
+  {
+   "date": "2026-07-18",
+   "sym": "LITUSDT",
+   "oi_circ_pct": 6.58
+  },
+  {
+   "date": "2026-07-18",
+   "sym": "MANTRAUSDT",
+   "oi_circ_pct": 6.77
+  },
+  {
+   "date": "2026-07-18",
+   "sym": "TACUSDT",
+   "oi_circ_pct": 22.3
+  },
+  {
+   "date": "2026-07-18",
+   "sym": "THETAUSDT",
+   "oi_circ_pct": 1.33
+  },
+  {
+   "date": "2026-07-19",
+   "sym": "BANANAUSDT",
+   "oi_circ_pct": 8.66
+  },
+  {
+   "date": "2026-07-19",
+   "sym": "DEXEUSDT",
+   "oi_circ_pct": 1.64
+  },
+  {
+   "date": "2026-07-19",
+   "sym": "ESPORTSUSDT",
+   "oi_circ_pct": 192.76
+  },
+  {
+   "date": "2026-07-19",
+   "sym": "FLOCKUSDT",
+   "oi_circ_pct": 9.0
+  },
+  {
+   "date": "2026-07-19",
+   "sym": "HOTUSDT",
+   "oi_circ_pct": 2.18
+  },
+  {
+   "date": "2026-07-19",
+   "sym": "STARUSDT",
+   "oi_circ_pct": 7.71
+  },
+  {
+   "date": "2026-07-20",
+   "sym": "1000XECUSDT",
+   "oi_circ_pct": 0.0
+  },
+  {
+   "date": "2026-07-20",
+   "sym": "GUSDT",
+   "oi_circ_pct": 11.47
+  },
+  {
+   "date": "2026-07-20",
+   "sym": "HOMEUSDT",
+   "oi_circ_pct": 24.97
+  },
+  {
+   "date": "2026-07-20",
+   "sym": "IDOLUSDT",
+   "oi_circ_pct": 14.19
+  },
+  {
+   "date": "2026-07-20",
+   "sym": "JASMYUSDT",
+   "oi_circ_pct": 1.19
+  },
+  {
+   "date": "2026-07-20",
+   "sym": "SPELLUSDT",
+   "oi_circ_pct": 10.19
+  },
+  {
+   "date": "2026-07-20",
+   "sym": "TOSHIUSDT",
+   "oi_circ_pct": 2.66
+  },
+  {
+   "date": "2026-07-20",
+   "sym": "TRADOORUSDT",
+   "oi_circ_pct": 56.94
+  },
+  {
+   "date": "2026-07-21",
+   "sym": "MEWUSDT",
+   "oi_circ_pct": 2.49
+  },
+  {
+   "date": "2026-07-21",
+   "sym": "MUBARAKUSDT",
+   "oi_circ_pct": 13.37
+  },
+  {
+   "date": "2026-07-21",
+   "sym": "SKLUSDT",
+   "oi_circ_pct": 12.83
+  },
+  {
+   "date": "2026-07-21",
+   "sym": "TOSHIUSDT",
+   "oi_circ_pct": 2.24
+  },
+  {
+   "date": "2026-07-21",
+   "sym": "YBUSDT",
+   "oi_circ_pct": 9.51
+  },
+  {
+   "date": "2026-07-22",
+   "sym": "ACEUSDT",
+   "oi_circ_pct": 47.21
+  },
+  {
+   "date": "2026-07-22",
+   "sym": "ALICEUSDT",
+   "oi_circ_pct": 16.9
+  },
+  {
+   "date": "2026-07-22",
+   "sym": "AVAUSDT",
+   "oi_circ_pct": 6.65
+  },
+  {
+   "date": "2026-07-22",
+   "sym": "AZTECUSDT",
+   "oi_circ_pct": 3.51
+  },
+  {
+   "date": "2026-07-22",
+   "sym": "ESPORTSUSDT",
+   "oi_circ_pct": 336.52
+  },
+  {
+   "date": "2026-07-22",
+   "sym": "FLOCKUSDT",
+   "oi_circ_pct": 6.92
+  },
+  {
+   "date": "2026-07-22",
+   "sym": "TOSHIUSDT",
+   "oi_circ_pct": 2.0
+  },
+  {
+   "date": "2026-07-22",
+   "sym": "XANUSDT",
+   "oi_circ_pct": 5.97
+  },
+  {
+   "date": "2026-07-22",
+   "sym": "STARUSDT",
+   "oi_circ_pct": 5.47
+  },
+  {
+   "date": "2026-07-23",
+   "sym": "ERAUSDT",
+   "oi_circ_pct": 38.58
+  },
+  {
+   "date": "2026-07-23",
+   "sym": "ONEUSDT",
+   "oi_circ_pct": 14.96
+  },
+  {
+   "date": "2026-07-24",
+   "sym": "AKEUSDT",
+   "oi_circ_pct": 109.37
+  },
+  {
+   "date": "2026-07-24",
+   "sym": "DOODUSDT",
+   "oi_circ_pct": 7.75
+  },
+  {
+   "date": "2026-07-24",
+   "sym": "MANTRAUSDT",
+   "oi_circ_pct": 4.63
+  },
+  {
+   "date": "2026-07-24",
+   "sym": "MIRAUSDT",
+   "oi_circ_pct": 25.52
+  },
+  {
+   "date": "2026-07-24",
+   "sym": "ONEUSDT",
+   "oi_circ_pct": 12.03
+  },
+  {
+   "date": "2026-07-24",
+   "sym": "REUSDT",
+   "oi_circ_pct": 16.88
+  },
+  {
+   "date": "2026-07-25",
+   "sym": "AKEUSDT",
+   "oi_circ_pct": 63.13
+  },
+  {
+   "date": "2026-07-25",
+   "sym": "DEXEUSDT",
+   "oi_circ_pct": 5.69
+  },
+  {
+   "date": "2026-07-25",
+   "sym": "KAITOUSDT",
+   "oi_circ_pct": 24.7
+  },
+  {
+   "date": "2026-07-25",
+   "sym": "ONEUSDT",
+   "oi_circ_pct": 10.49
+  },
+  {
+   "date": "2026-07-25",
+   "sym": "RIFUSDT",
+   "oi_circ_pct": 6.73
+  },
+  {
+   "date": "2026-07-25",
+   "sym": "SXTUSDT",
+   "oi_circ_pct": 7.26
+  },
+  {
+   "date": "2026-07-25",
+   "sym": "TUSDT",
+   "oi_circ_pct": 7.39
+  },
+  {
+   "date": "2026-07-25",
+   "sym": "VELVETUSDT",
+   "oi_circ_pct": 2.7
+  },
+  {
+   "date": "2026-07-25",
+   "sym": "ZAMAUSDT",
+   "oi_circ_pct": 9.55
+  },
+  {
+   "date": "2026-07-25",
+   "sym": "ZKCUSDT",
+   "oi_circ_pct": 13.85
+  },
+  {
+   "date": "2026-07-26",
+   "sym": "ACEUSDT",
+   "oi_circ_pct": 43.66
+  },
+  {
+   "date": "2026-07-26",
+   "sym": "API3USDT",
+   "oi_circ_pct": 6.8
+  },
+  {
+   "date": "2026-07-26",
+   "sym": "ESPORTSUSDT",
+   "oi_circ_pct": 277.84
+  },
+  {
+   "date": "2026-07-26",
+   "sym": "VANAUSDT",
+   "oi_circ_pct": 6.3
+  },
+  {
+   "date": "2026-07-26",
+   "sym": "CAPUSDT",
+   "oi_circ_pct": 9.53
+  },
+  {
+   "date": "2026-07-27",
+   "sym": "CHILLGUYUSDT",
+   "oi_circ_pct": 15.51
+  },
+  {
+   "date": "2026-07-27",
+   "sym": "LISTAUSDT",
+   "oi_circ_pct": 8.24
+  },
+  {
+   "date": "2026-07-27",
+   "sym": "PROMUSDT",
+   "oi_circ_pct": 8.14
+  },
+  {
+   "date": "2026-07-27",
+   "sym": "VVVUSDT",
+   "oi_circ_pct": 1.97
+  },
+  {
+   "date": "2026-07-28",
+   "sym": "AKEUSDT",
+   "oi_circ_pct": 33.54
+  },
+  {
+   "date": "2026-07-28",
+   "sym": "BANKUSDT",
+   "oi_circ_pct": 27.58
+  },
+  {
+   "date": "2026-07-28",
+   "sym": "CHILLGUYUSDT",
+   "oi_circ_pct": 13.31
+  },
+  {
+   "date": "2026-07-28",
+   "sym": "CROSSUSDT",
+   "oi_circ_pct": 2.85
+  },
+  {
+   "date": "2026-07-28",
+   "sym": "DIAUSDT",
+   "oi_circ_pct": 16.24
+  },
+  {
+   "date": "2026-07-28",
+   "sym": "DOODUSDT",
+   "oi_circ_pct": 7.96
+  },
+  {
+   "date": "2026-07-28",
+   "sym": "EULUSDT",
+   "oi_circ_pct": 22.99
+  },
+  {
+   "date": "2026-07-28",
+   "sym": "HOTUSDT",
+   "oi_circ_pct": 1.97
+  },
+  {
+   "date": "2026-07-28",
+   "sym": "JASMYUSDT",
+   "oi_circ_pct": 0.84
+  },
+  {
+   "date": "2026-07-28",
+   "sym": "LAUSDT",
+   "oi_circ_pct": 45.17
+  },
+  {
+   "date": "2026-07-28",
+   "sym": "LQTYUSDT",
+   "oi_circ_pct": 6.0
+  },
+  {
+   "date": "2026-07-28",
+   "sym": "MIRAUSDT",
+   "oi_circ_pct": 21.29
+  },
+  {
+   "date": "2026-07-28",
+   "sym": "PIEVERSEUSDT",
+   "oi_circ_pct": 4.44
+  },
+  {
+   "date": "2026-07-28",
+   "sym": "QTUMUSDT",
+   "oi_circ_pct": 2.27
+  },
+  {
+   "date": "2026-07-28",
+   "sym": "UBUSDT",
+   "oi_circ_pct": 2.62
+  },
+  {
+   "date": "2026-07-28",
+   "sym": "VVVUSDT",
+   "oi_circ_pct": 1.74
+  },
+  {
+   "date": "2026-07-28",
+   "sym": "YGGUSDT",
+   "oi_circ_pct": 9.16
+  },
+  {
+   "date": "2026-07-29",
+   "sym": "1000XECUSDT",
+   "oi_circ_pct": 0.0
+  },
+  {
+   "date": "2026-07-29",
+   "sym": "DEXEUSDT",
+   "oi_circ_pct": 6.21
+  },
+  {
+   "date": "2026-07-29",
+   "sym": "EULUSDT",
+   "oi_circ_pct": 19.87
+  },
+  {
+   "date": "2026-07-29",
+   "sym": "NILUSDT",
+   "oi_circ_pct": 13.05
+  },
+  {
+   "date": "2026-07-29",
+   "sym": "SSVUSDT",
+   "oi_circ_pct": 3.93
+  },
+  {
+   "date": "2026-07-29",
+   "sym": "ZKCUSDT",
+   "oi_circ_pct": 12.07
+  },
+  {
+   "date": "2026-07-30",
+   "sym": "1000CHEEMSUSDT",
+   "oi_circ_pct": 0.0
+  },
+  {
+   "date": "2026-07-30",
+   "sym": "BIRBUSDT",
+   "oi_circ_pct": 8.19
+  },
+  {
+   "date": "2026-07-30",
+   "sym": "BTRUSDT",
+   "oi_circ_pct": 29.9
+  },
+  {
+   "date": "2026-07-30",
+   "sym": "LQTYUSDT",
+   "oi_circ_pct": 5.19
+  },
+  {
+   "date": "2026-07-30",
+   "sym": "ONUSDT",
+   "oi_circ_pct": 43.4
+  },
+  {
+   "date": "2026-07-30",
+   "sym": "SOONUSDT",
+   "oi_circ_pct": 14.74
+  },
+  {
+   "date": "2026-07-30",
+   "sym": "VANRYUSDT",
+   "oi_circ_pct": 36.26
+  },
+  {
+   "date": "2026-07-31",
+   "sym": "HOLOUSDT",
+   "oi_circ_pct": 1.87
+  },
+  {
+   "date": "2026-07-31",
+   "sym": "KAITOUSDT",
+   "oi_circ_pct": 19.11
+  },
+  {
+   "date": "2026-07-31",
+   "sym": "ONUSDT",
+   "oi_circ_pct": 36.59
+  },
+  {
+   "date": "2026-07-31",
+   "sym": "UAIUSDT",
+   "oi_circ_pct": 9.32
+  },
+  {
+   "date": "2026-07-31",
+   "sym": "ZAMAUSDT",
+   "oi_circ_pct": 8.16
+  },
+  {
+   "date": "2026-08-01",
+   "sym": "COTIUSDT",
+   "oi_circ_pct": 22.5
+  },
+  {
+   "date": "2026-08-01",
+   "sym": "HOLOUSDT",
+   "oi_circ_pct": 1.66
+  },
+  {
+   "date": "2026-08-01",
+   "sym": "KOMAUSDT",
+   "oi_circ_pct": 111.86
+  },
+  {
+   "date": "2026-08-01",
+   "sym": "MMTUSDT",
+   "oi_circ_pct": 25.01
+  },
+  {
+   "date": "2026-08-01",
+   "sym": "MIRAUSDT",
+   "oi_circ_pct": 19.39
+  },
+  {
+   "date": "2026-08-01",
+   "sym": "ROBOUSDT",
+   "oi_circ_pct": 14.57
+  },
+  {
+   "date": "2026-08-02",
+   "sym": "DIAUSDT",
+   "oi_circ_pct": 15.69
+  },
+  {
+   "date": "2026-08-02",
+   "sym": "GWEIUSDT",
+   "oi_circ_pct": 10.39
+  },
+  {
+   "date": "2026-08-02",
+   "sym": "IDOLUSDT",
+   "oi_circ_pct": 22.15
+  },
+  {
+   "date": "2026-08-02",
+   "sym": "KOMAUSDT",
+   "oi_circ_pct": 88.77
+  },
+  {
+   "date": "2026-08-02",
+   "sym": "MUBARAKUSDT",
+   "oi_circ_pct": 17.02
+  },
+  {
+   "date": "2026-08-02",
+   "sym": "UMAUSDT",
+   "oi_circ_pct": 4.06
+  },
+  {
+   "date": "2026-08-02",
+   "sym": "CAPUSDT",
+   "oi_circ_pct": 12.58
+  },
+  {
+   "date": "2026-08-03",
+   "sym": "1000SATSUSDT",
+   "oi_circ_pct": 0.01
+  },
+  {
+   "date": "2026-08-03",
+   "sym": "AEVOUSDT",
+   "oi_circ_pct": 11.6
+  },
+  {
+   "date": "2026-08-03",
+   "sym": "AKEUSDT",
+   "oi_circ_pct": 30.07
+  },
+  {
+   "date": "2026-08-03",
+   "sym": "ELSAUSDT",
+   "oi_circ_pct": 14.04
+  },
+  {
+   "date": "2026-08-03",
+   "sym": "EULUSDT",
+   "oi_circ_pct": 17.91
+  },
+  {
+   "date": "2026-08-03",
+   "sym": "PROMUSDT",
+   "oi_circ_pct": 6.8
+  },
+  {
+   "date": "2026-08-04",
+   "sym": "1000XECUSDT",
+   "oi_circ_pct": 0.0
+  },
+  {
+   "date": "2026-08-04",
+   "sym": "BLESSUSDT",
+   "oi_circ_pct": 49.93
+  },
+  {
+   "date": "2026-08-04",
+   "sym": "HYPERUSDT",
+   "oi_circ_pct": 14.04
+  },
+  {
+   "date": "2026-08-04",
+   "sym": "OGNUSDT",
+   "oi_circ_pct": 8.17
+  },
+  {
+   "date": "2026-08-04",
+   "sym": "UAIUSDT",
+   "oi_circ_pct": 10.07
+  },
+  {
+   "date": "2026-08-04",
+   "sym": "VANRYUSDT",
+   "oi_circ_pct": 32.86
+  },
+  {
+   "date": "2026-08-04",
+   "sym": "STARUSDT",
+   "oi_circ_pct": 13.73
+  },
+  {
+   "date": "2026-08-05",
+   "sym": "ACXUSDT",
+   "oi_circ_pct": 6.75
+  },
+  {
+   "date": "2026-08-05",
+   "sym": "BANKUSDT",
+   "oi_circ_pct": 81.04
+  },
+  {
+   "date": "2026-08-05",
+   "sym": "ELSAUSDT",
+   "oi_circ_pct": 12.24
+  },
+  {
+   "date": "2026-08-05",
+   "sym": "LSKUSDT",
+   "oi_circ_pct": 5.28
+  },
+  {
+   "date": "2026-08-05",
+   "sym": "UBUSDT",
+   "oi_circ_pct": 3.39
+  },
+  {
+   "date": "2026-08-05",
+   "sym": "VANRYUSDT",
+   "oi_circ_pct": 25.49
+  },
+  {
+   "date": "2026-08-05",
+   "sym": "WAXPUSDT",
+   "oi_circ_pct": 9.64
+  },
+  {
+   "date": "2026-08-06",
+   "sym": "ACXUSDT",
+   "oi_circ_pct": 5.53
+  },
+  {
+   "date": "2026-08-06",
+   "sym": "BRETTUSDT",
+   "oi_circ_pct": 1.87
+  },
+  {
+   "date": "2026-08-06",
+   "sym": "C98USDT",
+   "oi_circ_pct": 7.54
+  },
+  {
+   "date": "2026-08-06",
+   "sym": "CYSUSDT",
+   "oi_circ_pct": 17.07
+  },
+  {
+   "date": "2026-08-06",
+   "sym": "EPICUSDT",
+   "oi_circ_pct": 29.71
+  },
+  {
+   "date": "2026-08-06",
+   "sym": "MITOUSDT",
+   "oi_circ_pct": 33.99
+  },
+  {
+   "date": "2026-08-06",
+   "sym": "NILUSDT",
+   "oi_circ_pct": 12.17
+  },
+  {
+   "date": "2026-08-06",
+   "sym": "SYNUSDT",
+   "oi_circ_pct": 25.19
+  },
+  {
+   "date": "2026-08-06",
+   "sym": "VICUSDT",
+   "oi_circ_pct": 48.16
+  },
+  {
+   "date": "2026-08-06",
+   "sym": "ZORAUSDT",
+   "oi_circ_pct": 4.35
+  },
+  {
+   "date": "2026-08-07",
+   "sym": "1000XECUSDT",
+   "oi_circ_pct": 0.0
+  },
+  {
+   "date": "2026-08-07",
+   "sym": "BLESSUSDT",
+   "oi_circ_pct": 46.73
+  },
+  {
+   "date": "2026-08-07",
+   "sym": "BSVUSDT",
+   "oi_circ_pct": 0.44
+  },
+  {
+   "date": "2026-08-07",
+   "sym": "BULLAUSDT",
+   "oi_circ_pct": 55.31
+  },
+  {
+   "date": "2026-08-07",
+   "sym": "COTIUSDT",
+   "oi_circ_pct": 18.74
+  },
+  {
+   "date": "2026-08-07",
+   "sym": "HEIUSDT",
+   "oi_circ_pct": 64.42
+  },
+  {
+   "date": "2026-08-07",
+   "sym": "HYPERUSDT",
+   "oi_circ_pct": 12.43
+  },
+  {
+   "date": "2026-08-07",
+   "sym": "ICNTUSDT",
+   "oi_circ_pct": 2.75
+  },
+  {
+   "date": "2026-08-07",
+   "sym": "SYNUSDT",
+   "oi_circ_pct": 21.55
+  },
+  {
+   "date": "2026-08-07",
+   "sym": "WAXPUSDT",
+   "oi_circ_pct": 7.93
+  },
+  {
+   "date": "2026-08-08",
+   "sym": "BIRBUSDT",
+   "oi_circ_pct": 10.61
+  },
+  {
+   "date": "2026-08-08",
+   "sym": "BLESSUSDT",
+   "oi_circ_pct": 40.84
+  },
+  {
+   "date": "2026-08-08",
+   "sym": "DIAUSDT",
+   "oi_circ_pct": 11.05
+  },
+  {
+   "date": "2026-08-08",
+   "sym": "ESPUSDT",
+   "oi_circ_pct": 11.4
+  },
+  {
+   "date": "2026-08-08",
+   "sym": "HEIUSDT",
+   "oi_circ_pct": 50.25
+  },
+  {
+   "date": "2026-08-08",
+   "sym": "ZBTUSDT",
+   "oi_circ_pct": 26.13
+  },
+  {
+   "date": "2026-08-09",
+   "sym": "C98USDT",
+   "oi_circ_pct": 14.3
+  },
+  {
+   "date": "2026-08-09",
+   "sym": "CYSUSDT",
+   "oi_circ_pct": 11.93
+  },
+  {
+   "date": "2026-08-09",
+   "sym": "GWEIUSDT",
+   "oi_circ_pct": 10.26
+  },
+  {
+   "date": "2026-08-09",
+   "sym": "HOTUSDT",
+   "oi_circ_pct": 2.07
+  },
+  {
+   "date": "2026-08-09",
+   "sym": "KMNOUSDT",
+   "oi_circ_pct": 2.48
+  },
+  {
+   "date": "2026-08-09",
+   "sym": "MAVUSDT",
+   "oi_circ_pct": 11.66
+  },
+  {
+   "date": "2026-08-09",
+   "sym": "SKRUSDT",
+   "oi_circ_pct": 2.79
+  },
+  {
+   "date": "2026-08-09",
+   "sym": "SKYAIUSDT",
+   "oi_circ_pct": 14.29
+  },
+  {
+   "date": "2026-08-09",
+   "sym": "TAKEUSDT",
+   "oi_circ_pct": 28.3
+  },
+  {
+   "date": "2026-08-10",
+   "sym": "1000CATUSDT",
+   "oi_circ_pct": 0.02
+  },
+  {
+   "date": "2026-08-10",
+   "sym": "1000SATSUSDT",
+   "oi_circ_pct": 0.01
+  },
+  {
+   "date": "2026-08-10",
+   "sym": "ACEUSDT",
+   "oi_circ_pct": 59.91
+  },
+  {
+   "date": "2026-08-10",
+   "sym": "BICOUSDT",
+   "oi_circ_pct": 32.44
+  },
+  {
+   "date": "2026-08-10",
+   "sym": "C98USDT",
+   "oi_circ_pct": 12.23
+  },
+  {
+   "date": "2026-08-10",
+   "sym": "CTSIUSDT",
+   "oi_circ_pct": 11.29
+  },
+  {
+   "date": "2026-08-10",
+   "sym": "CYSUSDT",
+   "oi_circ_pct": 10.43
+  },
+  {
+   "date": "2026-08-10",
+   "sym": "HEIUSDT",
+   "oi_circ_pct": 45.21
+  },
+  {
+   "date": "2026-08-10",
+   "sym": "KAITOUSDT",
+   "oi_circ_pct": 18.44
+  },
+  {
+   "date": "2026-08-10",
+   "sym": "PHAUSDT",
+   "oi_circ_pct": 7.07
+  },
+  {
+   "date": "2026-08-10",
+   "sym": "TUTUSDT",
+   "oi_circ_pct": 36.87
+  },
+  {
+   "date": "2026-08-10",
+   "sym": "WAXPUSDT",
+   "oi_circ_pct": 6.26
+  },
+  {
+   "date": "2026-08-10",
+   "sym": "ZBTUSDT",
+   "oi_circ_pct": 23.47
+  },
+  {
+   "date": "2026-08-10",
+   "sym": "ZKPUSDT",
+   "oi_circ_pct": 30.71
+  },
+  {
+   "date": "2026-08-11",
+   "sym": "KAIAUSDT",
+   "oi_circ_pct": 0.85
+  },
+  {
+   "date": "2026-08-11",
+   "sym": "MEMEUSDT",
+   "oi_circ_pct": 3.65
+  }
+ ],
+ "avg_pct": 22.5
+}

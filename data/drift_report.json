@@ -1,21 +1,21 @@
 {
- "date": "2026-08-07",
- "status": "OK",
+ "date": "2026-08-11",
+ "status": "ALERT",
  "file_check": [
   {
    "file": "btc_chain.csv",
    "status": "OK",
-   "detail": "未变"
+   "detail": "追加 1411 行 (130977→132388)"
   },
   {
    "file": "btc_dominance.json",
    "status": "OK",
-   "detail": "未变"
+   "detail": "追加 1 行 (449→450)"
   },
   {
    "file": "btc_mcap.json",
    "status": "OK",
-   "detail": "未变"
+   "detail": "追加 1 行 (452→453)"
   },
   {
    "file": "protocol_map.json",
@@ -25,58 +25,60 @@
   {
    "file": "btc_chain_tvl.json",
    "status": "OK",
-   "detail": "未变"
+   "detail": "追加 1 行 (1969→1970)"
   },
   {
    "file": "hashrate_history.json",
    "status": "OK",
-   "detail": "未变"
+   "detail": "追加 1 行 (1724→1725)"
   },
   {
    "file": "btc_coinbase_premium_gap.json",
    "status": "OK",
-   "detail": "未变"
+   "detail": "追加 1 行 (1345→1346)"
   },
   {
    "file": "btc_coinbase_premium_index.json",
    "status": "OK",
-   "detail": "未变"
+   "detail": "追加 1 行 (1345→1346)"
   },
   {
    "file": "btc_korea_premium_index.json",
    "status": "OK",
-   "detail": "未变"
+   "detail": "追加 1 行 (1345→1346)"
   },
   {
    "file": "stablecoin_exchange_netflow.json",
    "status": "OK",
-   "detail": "未变"
+   "detail": "追加 1 行 (1346→1347)"
   },
   {
    "file": "fear_greed_history.json",
    "status": "OK",
-   "detail": "未变"
+   "detail": "追加 1 行 (446→447)"
   },
   {
    "file": "macro_assets.json",
    "status": "OK",
-   "detail": "未变"
+   "detail": "每日滚动正常(3资产)"
   },
   {
    "file": "etf_flow.json",
-   "status": "OK",
-   "detail": "未变"
+   "status": "ALERT",
+   "detail": "行数不变但MD5变 = 历史行被修订!"
   },
   {
    "file": "liq_daily.json",
    "status": "OK",
-   "detail": "未变"
+   "detail": "追加 1 行 (63→64)"
   }
  ],
  "replay": {
   "status": "OK",
   "checked": 3,
-  "detail": "3探针一致(样本日 2026-08-07)"
+  "detail": "3探针一致(样本日 2026-08-11)"
  },
- "alerts": []
+ "alerts": [
+  "etf_flow.json: 历史修订(行数45不变)"
+ ]
 }
