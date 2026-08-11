@@ -110,12 +110,15 @@ def _format_trade_summary():
     for k in ('long', 'short', 'other'):
         if decisions.get(k):
             out.append(decisions[k])
-    # 6) 交易动作(只取最后一次)
-    for l in reversed(lines):
+    # 6) 交易动作(2026-08-10 修: 多笔开仓全部列出, 不再只取最后一行)
+    #    顺序: 按日志时间正序收集所有开仓/跳过/空仓动作行
+    actions = []
+    for l in lines:
         c = clean(l)
         if c.startswith('开仓:') or c.startswith('跳过交易') or c.startswith('本金不足') or c.startswith('空仓') or c.startswith('无有效信号'):
-            out.append(f'⚙️ {c}')
-            break
+            actions.append(f'⚙️ {c}')
+    if actions:
+        out.extend(actions[:10])  # 上限10笔防刷屏(单日最多20笔多仓, 10个已足够)
     # 7) 兜底: 关键词行(过滤原始 PERM 英文长行)
     if len(out) <= 2:
         keywords = ['PERM-CAND', '做多概率', '做空概率', '止盈', '止损']
@@ -159,6 +162,39 @@ def section_verify():
         return '\n'.join(lines)
     except Exception as e:
         return f'(验证数据读取失败: {e})'
+
+
+def section_long_top10():
+    """LONG TOP10 列表 + 成交额(2026-08-08 用户新增)"""
+    try:
+        import glob
+        preds = sorted(glob.glob(f'{BASE}/data/pred_2026-*.json'))
+        if not preds:
+            return '(无预测文件)'
+        pred = json.load(open(preds[-1]))
+        top10 = pred.get('top10_long', [])
+        if not top10:
+            return '(今日无 LONG TOP10)'
+        # K线缓存成交额(最后1根 q = 24h 成交额 U)
+        kl = json.load(open('/home/myuser/backtester/data_cache/notusdt_1d_full.json'))['klines']
+        lines = [f"=== LONG TOP10 ({pred.get('date', '')[:10]}) ===",
+                 f"{'#':>2} {'币种':<16} {'概率':>6} {'24h成交额':>10}"]
+        for i, item in enumerate(top10[:10], 1):
+            sym = item['symbol']
+            p = float(item['prob'])
+            p = p / 100 if p > 1 else p
+            q = 0.0
+            kls = kl.get(sym, [])
+            if len(kls) >= 2:
+                q = float(kls[-2].get('q', 0))   # 昨日完整成交额(最后1根是当日未收盘)
+            if q >= 1e8:
+                qs = f'{q/1e8:.2f}亿'
+            else:
+                qs = f'{q/1e6:.0f}M'
+            lines.append(f'{i:>2} {sym:<16} {p*100:5.1f}% {qs:>10}')
+        return '\n'.join(lines)
+    except Exception as e:
+        return f'(LONG TOP10 读取失败: {e})'
 
 
 def section_momentum():
@@ -291,6 +327,8 @@ def main():
 {section_forward()}
 <b>3. 2日验证命中率</b>
 <pre {pre_style}>{section_verify()}</pre>
+<b>3.5 LONG TOP10 列表 + 成交额</b>
+<pre {pre_style}>{section_long_top10()}</pre>
 <b>4. 强势股续涨 + 每日资金榜</b>
 <pre {pre_style}>{section_momentum()}</pre>
 <b>5. 系统健康</b>

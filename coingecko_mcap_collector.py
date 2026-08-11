@@ -13,7 +13,8 @@ OUT_DIR = '/home/myuser/coingecko_data/mcap'
 LATEST = '/home/myuser/coingecko_data/mcap_latest.json'
 KLINES = '/home/myuser/backtester/data_cache/notusdt_1d_full.json'
 OVERRIDES = {
-    '龙虾': None, '币安人生': None, '我踏马来了': None,
+    '龙虾': 'lobster-2',  # 8/11 修复: CoinGecko lobster-2 (symbol=龙虾)
+    '币安人生': None, '我踏马来了': None,
     'BTC': 'bitcoin', 'ETH': 'ethereum', 'SOL': 'solana', 'XRP': 'ripple',
     'DOGE': 'dogecoin', 'PEPE': 'pepe', 'SHIB': 'shiba-inu',
     # 改名/符号不一致手工映射 (7/30清洗审计)

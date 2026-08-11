@@ -124,7 +124,7 @@ _DEFAULTS = {
     'PROB_THRESHOLD': 60.0, 'LEVERAGE': 2,
      'TOP_N_SYMBOLS': 150, 'MIN_VOLUME_24H': 500000, 'TRAIN_DAYS': 180,
      'TRADING_ENABLED': True, 'DAILY_REPORT_EMAIL': True, 'LONG_MOM_FILTER': True,
-     'SOUP_ON': True,
+     'SOUP_ON': True, 'ALLOW_SHORT': True,
 }
 try:
     with open(SHARED_CONFIG) as _cf:
@@ -547,6 +547,11 @@ def check_and_close(state):
         if amt == 0:
             continue
         side = 'LONG' if amt > 0 else 'SHORT'
+        # 2026-08-11: 系统只管理 LONG 仓位 — SHORT 仓位不纳入 48h/止损管理
+        # (与 ALLOW_SHORT=false 配套: 不再开 SHORT 新仓, 存量 SHORT 由交易所 Algo 单兜底, 用户手动处理)
+        if side == 'SHORT':
+            log(f'[SKIP-SHORT] {symbol} SHORT 仓位不纳入系统管理 (仅交易所Algo单兜底)')
+            continue
         entry = float(p.get('entryPrice', 0) or 0)
         if entry <= 0:
             log(f'[WARN] {p["symbol"]} entryPrice异常={p.get("entryPrice")}, 跳过')
@@ -1623,7 +1628,7 @@ def main():
         log(f'LONG动量过滤拦截: {best_long[0]} 未达(连涨≥2天+20日位置>0.7), 转SHORT流程')
         best_long = None  # 置空防止TOP1候选循环旁路闸门
         long_wins = False
-    if not long_wins:
+    if not long_wins and ALLOW_SHORT:
         short_picks = [(s, p * 100) for s, p, r in top10_short if p * 100 >= short_thresh]
         if short_picks:
             opened = _open_short_multi(short_picks, state, wallet, available, active)
@@ -1631,6 +1636,11 @@ def main():
             return
 
     # 概率高的优先, 被阈值挡了则尝试另一个方向, 都不行则空仓
+    # 2026-08-09 ALLOW_SHORT 开关: 8/10 后只保留 LONG 开仓权利 (前向数据+1m回溯双源证实 SHORT 止损位不可控)
+    if not ALLOW_SHORT:
+        best_short = None
+        short_prob = 0
+        log('[开关] ALLOW_SHORT=false, 禁止 SHORT 开仓, 仅保留 LONG')
     if long_prob >= short_prob:
         candidates = [('LONG', long_prob, long_thresh, best_long), ('SHORT', short_prob, short_thresh, best_short)]
     else:
@@ -2240,7 +2250,7 @@ def _build_verify_summary(tracker):
         return f'{name} 总体: 命中 {h}/{n} ({h/n*100:.0f}%)  收益 {pnl:+.1f}%'
 
     lines = [
-        f"\n\n=== 2日验证 ({last['date']}) ===",
+        f"\n\n=== 2日验证 ({last['date']}) [日线口径: open[T]入场/扫T~T+2/先损后盈; 与1m前向结算有细微差异, 评审以1m口径为准] ===",
         _agg('LONG'),
         _agg('SHORT'),
     ]
