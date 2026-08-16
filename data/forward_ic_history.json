@@ -1,5 +1,5 @@
 {
- "updated": "2026-08-14T08:50:01.951632",
+ "updated": "2026-08-15T08:50:02.157785",
  "days": [
   {
    "date": "2026-07-28",
@@ -270,6 +270,24 @@
    "top1_short": "龙虾USDT",
    "top1_short_ret": -32.69,
    "short5_avg_ret": -28.72
+  },
+  {
+   "date": "2026-08-12",
+   "dirty": false,
+   "n_sym": 505,
+   "n_liq": 505,
+   "ic_long": 0.0255,
+   "ic_short": 0.0163,
+   "auc_long": 0.7217,
+   "auc_short": 0.6738,
+   "ic_long_liq": 0.0255,
+   "ic_short_liq": 0.0163,
+   "top1_long": "COTIUSDT",
+   "top1_long_prob": 82.7,
+   "top1_long_ret": 6.81,
+   "top1_short": "BTRUSDT",
+   "top1_short_ret": -3.6,
+   "short5_avg_ret": -17.96
   }
  ]
 }
