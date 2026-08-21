@@ -71,6 +71,12 @@ CHECKS = [
         "start": "/usr/bin/python3 /home/myuser/websocket_new/collect_tvl.py > /tmp/tvl_cron.log 2>&1 &",
     },
     {
+        # 2026-08-19: 快照cron 07:10 CST若失败, 次日~08:10发现当日文件缺失(>25h)自动补跑
+        "name": "宇宙快照(每天)",
+        "check": "file_age", "path": "/home/myuser/websocket_new/data/universe/%F.json", "max_age": 90000,
+        "start": "/usr/bin/python3 /home/myuser/websocket_new/daily_universe_snapshot.py >> /home/myuser/websocket_new/logs/universe.log 2>&1 &",
+    },
+    {
         "name": "auto_dual_trade(每天)",
         "check": "crash_file", "path": "/tmp/auto_dual_trade_crash.json", "alert_window": 90000,
         # start 只做告警记录，不重跑交易脚本（交易脚本由 cron 调度）
@@ -86,6 +92,13 @@ CHECKS = [
         "name": "MCP服务",
         "check": "process", "pattern": "mcp_server.py",
         "start": "cd /home/myuser/websocket_new && screen -dmS mcp python3 -u mcp_server.py",
+    },
+    {
+        # 2026-08-19: DSH(DEEPSEEK HARNESS) web端, nginx 8443→3080; 进程死了自动拉起
+        # --trusted-host: /api信任围栏白名单(不带端口=匹配任意端口), 否则经nginx访问报403
+        "name": "DSH Web(3080)",
+        "check": "process", "pattern": "dsh web",
+        "start": "setsid nohup /home/myuser/.npm-global/bin/dsh web --trusted-host 43.133.253.208 --trusted-host 10.8.0.16 --trusted-host VM-0-16-ubuntu --trusted-host localhost.localdomain >> /tmp/dsh_web.log 2>&1 < /dev/null &",
     },
 ]
 
@@ -111,8 +124,9 @@ def check_process(pattern):
         return False
 
 def check_file_age(path, max_age):
-    """检查文件是否存在且最近修改时间在max_age秒内"""
+    """检查文件是否存在且最近修改时间在max_age秒内 (path支持strftime模板, 如 %F=当日北京日期)"""
     try:
+        path = time.strftime(path)
         mtime = os.path.getmtime(path)
         return (time.time() - mtime) < max_age
     except Exception:
@@ -180,11 +194,65 @@ def _save_restart_count(counts):
     except Exception:
         pass
 
+def _stop_dsh():
+    """通过3080端口精确找到DSH进程并停止（pkill -f会误杀命令行含该串的wrapper）"""
+    try:
+        out = subprocess.run("ss -ltnp 2>/dev/null | grep ':3080 '", shell=True,
+                             capture_output=True, text=True).stdout
+        m = re.search(r'pid=(\d+)', out)
+        if not m:
+            return True  # 本来就没在跑
+        os.kill(int(m.group(1)), 15)
+        for _ in range(20):
+            time.sleep(0.5)
+            if not check_port(3080):
+                return True
+        return False
+    except Exception:
+        return False
+
+def dsh_session_maintenance():
+    """每天04:00-04:59自动体检DSH会话日志，发现超阈值会话则停服→瘦身→重启。
+    预防流式碎片堆积导致的历史加载30秒超时（'The user aborted a request'）。"""
+    if int(time.strftime('%H')) != 4:
+        return
+    marker = '/tmp/guardian_dsh_slim_done_' + time.strftime('%Y%m%d')
+    if os.path.exists(marker):
+        return
+    tool = '/home/myuser/websocket_new/dsh_session_slim.mjs'
+    try:
+        # 1.体检：无超阈值会话则打标记收工
+        r = subprocess.run(['/usr/bin/node', tool, 'check'], capture_output=True, text=True, timeout=300)
+        if r.returncode == 0:
+            open(marker, 'w').close()
+            return
+        ts = time.strftime('%m-%d %H:%M')
+        print(f"[{ts}] DSH会话超阈值，开始凌晨维护: {r.stdout.strip()}")
+        # 2.停DSH（瘦身期间不能有写入，否则seq错乱）
+        if not _stop_dsh():
+            print(f"  ⚠️ DSH停止失败，本轮跳过瘦身")
+            return
+        # 3.瘦身
+        r2 = subprocess.run(['/usr/bin/node', tool, 'slim'], capture_output=True, text=True, timeout=600)
+        print((r2.stdout or r2.stderr).strip())
+        # 4.重启DSH（复用CHECKS里的启动命令，保证--trusted-host白名单一致）
+        dsh_svc = next(s for s in CHECKS if s["name"] == "DSH Web(3080)")
+        subprocess.run(ENV_PREFIX + dsh_svc["start"], shell=True)
+        time.sleep(2)
+        if check_port(3080):
+            open(marker, 'w').close()
+            print(f"[{time.strftime('%m-%d %H:%M')}] DSH维护完成，服务已恢复")
+        else:
+            print(f"  ⚠️ DSH维护后未检测到服务，等待下轮拉起")
+    except Exception as e:
+        print(f"  ⚠️ DSH会话维护异常: {e}")
+
 def main():
     log_file = "/tmp/guardian.log"
     restart_count = _load_restart_count()
     status = []
     restarted_any = False
+    dsh_session_maintenance()
     for svc in CHECKS:
         check_type = svc["check"]
         if check_type == "port":
