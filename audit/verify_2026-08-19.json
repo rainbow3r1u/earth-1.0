@@ -1,0 +1,11 @@
+{
+ "ts": "2026-08-19T00:25:06.506816+00:00",
+ "snapshot": "2026-08-19T00:04:01.729186+00:00",
+ "npz_rows": 94263,
+ "npz_col0": 0.9787999987602234,
+ "expected_A_presnap": 0.9787665268932905,
+ "expected_B_postsnap": 0.9787665268932905,
+ "klines_md5_pre": "ca4fdb48e88a6b0ae6b5953d65f3cfbc",
+ "klines_md5_post": "858c61035a2d95a07db6b9cb5da4cffc",
+ "verdict": "MATCH_C_币安API版 → npz 与 API 实时 K 线一致 (偏差非 K 线来源, 查其他环节)"
+}
