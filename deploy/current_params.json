@@ -30,7 +30,7 @@
     "TOP_N_SYMBOLS": 150,
     "MIN_VOLUME_24H": 500000,
     "TRAIN_DAYS": 180,
-    "TRADING_ENABLED": true,
+    "TRADING_ENABLED": false,
     "DAILY_REPORT_EMAIL": false,
     "LONG_MOM_FILTER": false,
     "SOUP_ON": true,
