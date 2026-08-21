@@ -413,6 +413,37 @@ def section_health():
     return '\n'.join(parts)
 
 
+def section_github_sync():
+    """读取交易系统每日 GitHub 同步状态，写入晨报。"""
+    try:
+        status_path = '/home/myuser/websocket_new/logs/trading_system_sync_status.json'
+        if not os.path.exists(status_path):
+            return '[GitHub同步] ⚠️ 今日暂无同步状态(脚本未运行?)'
+        st = json.load(open(status_path, encoding='utf-8'))
+        d = st.get('date', '?')
+        status = st.get('status', 'UNKNOWN')
+        changed = st.get('changed', 0)
+        removed = st.get('removed', 0)
+        files = st.get('files', []) or []
+        if status == 'NO_CHANGE':
+            head = f'[GitHub同步] ✅ {d} 无变化，所有交易系统文件已与 GitHub 一致'
+        elif status == 'CHANGED':
+            head = f'[GitHub同步] 🔄 {d} 检测到 {changed} 个文件变化，已自动上传 GitHub'
+        else:
+            head = f'[GitHub同步] ⚠️ {d} 状态异常: {status}'
+        lines = [head]
+        if files:
+            lines.append('变化文件:')
+            for f in files[:20]:
+                lines.append('  ' + f)
+            if len(files) > 20:
+                lines.append(f'  ... 共 {len(files)} 个')
+        lines.append(f'删除/移除: {removed}')
+        return '\n'.join(lines)
+    except Exception as e:
+        return f'[GitHub同步] ⚠️ 读取失败: {e}'
+
+
 def main():
     today = datetime.date.today().isoformat()
     # 文本节转 pre; 第2节(前向结算)为 HTML 表格
@@ -441,7 +472,9 @@ def main():
 <b>4. 强势股续涨 + 每日资金榜</b> {tag_none}
 <pre {pre_style}>{section_momentum()}</pre>
 <b>5. 系统健康</b> {tag_none}
-<pre {pre_style}>{section_health()}</pre>"""
+<pre {pre_style}>{section_health()}</pre>
+<b>6. GitHub 同步</b> {tag_none}
+<pre {pre_style}>{section_github_sync()}</pre>"""
     send_email(f'晨报总览 {today}', '', body_html=body_html)
     print('digest sent')
 
