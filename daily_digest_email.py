@@ -130,14 +130,26 @@ def _format_trade_summary():
 
 
 def section_forward():
-    """前向结算(修正口径 1m): 7/28 起 TOP1, 输出 HTML 表格(黑体/窄列, 邮件富文本)"""
+    """前向结算(修正口径 1m): 7/28 起 TOP1, 只显示已满48h的日期, 与3.6/3.7统一口径."""
     try:
         import glob
+        from datetime import datetime, timedelta, timezone
         sys.path.insert(0, os.path.join(BASE, 'audit'))
         import forward_settle as fs
-        days = sorted(glob.glob(os.path.join(fs.PRED_DIR, 'pred_*.json')))
-        days = [os.path.basename(f).replace('pred_', '').replace('.json', '') for f in days
-                if os.path.basename(f) >= 'pred_2026-07-28.json']
+        files = sorted(glob.glob(os.path.join(fs.PRED_DIR, 'pred_*.json')))
+        now = datetime.now(timezone.utc)
+        days = []
+        for f in files:
+            ds = os.path.basename(f).replace('pred_', '').replace('.json', '')
+            if ds < '2026-07-28':
+                continue
+            try:
+                maturity = datetime.strptime(ds, '%Y-%m-%d').replace(tzinfo=timezone.utc) + timedelta(days=2, minutes=21)
+            except Exception:
+                continue
+            if maturity <= now:
+                days.append(ds)
+        days.sort()
         results = fs.settle_days(days)
         return fs.tables_html(results)
     except Exception as e:
@@ -153,15 +165,30 @@ def section_trade():
 
 
 def section_verify():
+    """TOP10全开 近7天趋势 (48h 1m口径, 与3.6/3.7一致)."""
     try:
-        import auto_dual_trade as adt
-        tracker = json.load(open(f'{BASE}/data/prediction_tracker.json'))
-        out = adt._build_verify_summary(tracker)
-        # 过滤 adt import 时泄漏的"配置加载"噪音行
-        lines = [l for l in str(out).split('\n') if '配置: 从' not in l]
+        sys.path.insert(0, os.path.join(BASE, 'audit'))
+        import top10_forward as tf
+        cache = tf.load_cache()
+        if not cache:
+            return '(暂无已结算数据)'
+        days = sorted(cache)
+        recent = days[-7:]
+        lines = [f"\n=== 近{len(recent)}天趋势 · TOP10全开 (48h 1m) ==="]
+        for ds in recent:
+            r = cache[ds]
+            pnls = [t['pnl'] for t in (r.get('long', []) + r.get('short', []))
+                    if t.get('pnl') is not None]
+            if not pnls:
+                continue
+            lines.append(f"  {ds}: {len(pnls)}笔 日均 {sum(pnls)/len(pnls):+.2f}% 合计 {sum(pnls):+.1f}%")
+        recent_cache = {ds: cache[ds] for ds in recent if ds in cache}
+        a = tf.agg(recent_cache)
+        lines.append(f"  {len(recent_cache)}天汇总(48h等权复利): "
+                     f"多空 {a['ALL']['cum']:+.1f}% | LONG {a['LONG']['cum']:+.1f}% | SHORT {a['SHORT']['cum']:+.1f}%")
         return '\n'.join(lines)
     except Exception as e:
-        return f'(验证数据读取失败: {e})'
+        return f'(48h近7天趋势生成失败: {e})'
 
 
 def section_long_top10():
@@ -195,6 +222,77 @@ def section_long_top10():
         return '\n'.join(lines)
     except Exception as e:
         return f'(LONG TOP10 读取失败: {e})'
+
+
+def section_top10_forward():
+    """TOP10全开前向结算(8/3起, 1m口径): 多空全开/LONG全开/SHORT全开累计收益"""
+    try:
+        sys.path.insert(0, os.path.join(BASE, 'audit'))
+        import top10_forward as tf
+        cache = tf.update()  # 增量结算(历史已缓存, 只补新到期的天)
+        a = tf.agg(cache)
+        cell = "style='padding:2px 8px;border:1px solid #ccc;font-size:12px;'"
+        hd = "style='padding:2px 8px;border:1px solid #ccc;font-size:12px;background:#f0f0f0;'"
+        rows = []
+        for name, key in (('多空TOP10全开', 'ALL'), ('LONG TOP10全开', 'LONG'),
+                          ('SHORT TOP10全开', 'SHORT')):
+            g = a[key]
+            color = '#0a0' if g['cum'] >= 0 else '#c00'
+            avg_cell = (cell[:-2] + f";color:{color};'")  # 合并颜色进style
+            rows.append(f"<tr><td {cell}><b>{name}</b></td>"
+                        f"<td {cell}><b style='color:{color}'>{g['cum']:+.1f}%</b></td>"
+                        f"<td {avg_cell}>{g['avg']:+.2f}%</td>"
+                        f"<td {cell}>{g['settled']}</td>"
+                        f"<td {cell}>{g['tp']}/{g['sl']}/{g['exp']}</td>"
+                        f"<td {cell}>{g['days']}</td></tr>")
+        return ("<table style='border-collapse:collapse;'>"
+                f"<tr><th {hd}>组合</th><th {hd}>累计收益(复利)</th><th {hd}>笔均</th>"
+                f"<th {hd}>笔数</th><th {hd}>TP/SL/48h</th><th {hd}>天数</th></tr>"
+                + ''.join(rows) + "</table>"
+                "<div style='font-size:10px;color:#666;'>口径: 08:21开仓, 1m结算, "
+                "SL-5%/TP+10%/48h到期, 逐日等权复利; 毛收益未扣约0.2%/笔成本</div>")
+    except Exception as e:
+        return f'<p style="color:#c00">(TOP10前向结算生成失败: {e})</p>'
+
+
+def section_top10_forward_u():
+    """多空TOP10全开 逐日U盈亏: 固定名义300U/笔(保证金30U×10x), 不复利"""
+    try:
+        sys.path.insert(0, os.path.join(BASE, 'audit'))
+        import top10_forward as tf
+        cache = tf.load_cache()
+        if not cache:
+            return '<p style="color:#666">(暂无已结算数据)</p>'
+        NOTIONAL, COST = 300.0, 0.002  # 名义300U/笔, 成本0.2%/笔(手续费+滑点)
+        cell = "style='padding:2px 8px;border:1px solid #ccc;font-size:12px;'"
+        hd = "style='padding:2px 8px;border:1px solid #ccc;font-size:12px;background:#f0f0f0;'"
+        rows = []
+        cum = 0.0
+        tot_n = 0
+        for ds in sorted(cache):
+            r = cache[ds]
+            pnls = ([t['pnl'] for t in r['long'] if t.get('pnl') is not None] +
+                    [t['pnl'] for t in r['short'] if t.get('pnl') is not None])
+            if not pnls:
+                continue
+            day = NOTIONAL * sum(pnls) / 100 - len(pnls) * NOTIONAL * COST
+            cum += day
+            tot_n += len(pnls)
+            c1 = '#0a0' if day >= 0 else '#c00'
+            c2 = '#0a0' if cum >= 0 else '#c00'
+            rows.append(f"<tr><td {cell}>{ds}</td>"
+                        f"<td {cell}><b style='color:{c1}'>{day:+.1f}</b></td>"
+                        f"<td {cell}><b style='color:{c2}'>{cum:+.1f}</b></td></tr>")
+        c2 = '#0a0' if cum >= 0 else '#c00'
+        rows.append(f"<tr><td {hd}><b>合计 {tot_n}笔</b></td><td {cell}></td>"
+                    f"<td {cell}><b style='color:{c2}'>{cum:+.1f}U</b></td></tr>")
+        return ("<table style='border-collapse:collapse;'>"
+                f"<tr><th {hd}>日期</th><th {hd}>当日净盈亏(U)</th><th {hd}>累计(U)</th></tr>"
+                + ''.join(rows) + "</table>"
+                "<div style='font-size:10px;color:#666;'>固定名义300U/笔(保证金30U×10x杠杆), "
+                "成本0.2%/笔(手续费+滑点), 不复利; 峰值40笔同时持仓占用保证金1200U</div>")
+    except Exception as e:
+        return f'<p style="color:#c00">(每日U盈亏生成失败: {e})</p>'
 
 
 def section_momentum():
@@ -272,7 +370,7 @@ def section_health():
                 tag = '幽灵期' if last.get('dirty') else '干净期'
                 def _f(v, w=6):
                     return f'{v:+.2f}'.rjust(w) if isinstance(v, (int, float)) else '  N/A '
-                lines = [f"[前向批作业] 最新: {last['date']} [{tag}] n={last['n_sym']}币 (预测日→2日后兑现K线对答案)"]
+                lines = [f"[前向批作业] 最新: {last['date']} [{tag}] n={last['n_sym']}币 (72h日线口径IC/AUC，仅辅助排序质量，非48h结算)"]
                 lines.append(f"  LONG:  IC={_f(last.get('ic_long'))} AUC={last.get('auc_long')} | SHORT: IC={_f(last.get('ic_short'))} AUC={last.get('auc_short')}")
                 s5 = last.get('short5_avg_ret', 0)
                 lines.append(f"  实际: LONG TOP1 {last.get('top1_long')} {last.get('top1_long_ret', 0):+.1f}% | 空前5均 {s5:+.1f}%{' (空头盈利✅)' if s5 < 0 else ' (空头亏损⚠️)'}")
@@ -320,18 +418,29 @@ def main():
     # 文本节转 pre; 第2节(前向结算)为 HTML 表格
     pre_style = ("style=\"white-space:pre-wrap;font-size:11px;"
                  "font-family:'SimHei','Microsoft YaHei','PingFang SC',Consolas,monospace;line-height:1.5;\"")
+    # 口径标签: 绿=48h逻辑(与生产执行一致), 橙=72h逻辑(老日线口径, 仅参考)
+    tag_style = ("font-size:11px;padding:1px 6px;border-radius:3px;"
+                 "font-family:'SimHei','Microsoft YaHei';")
+    tag48_exec = f"<span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>实盘执行规则: SL-5%/TP+10%/48h到期, 08:21开仓</span>"
+    tag48 = f"<span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>48h逻辑 · 1m口径 · 08:21开仓 · SL-5%/TP+10%/48h到期</span>"
+    tag72 = f"<span style='{tag_style}background:#fff3e0;color:#e65100;'>72h逻辑 · 日线口径(老) · open[T]入场 · 扫T~T+2三根日线 · 与实盘口径不同仅参考</span>"
+    tag_none = f"<span style='{tag_style}background:#eee;color:#666;'>无结算口径</span>"
     body_html = f"""<h2 style="margin:0 0 8px;">晨报总览 {today}</h2>
-<b>1. 交易摘要</b>
+<b>1. 交易摘要</b> {tag48_exec}
 <pre {pre_style}>{section_trade()}</pre>
-<b>2. 前向结算 TOP1 (1m修正口径)</b>
+<b>2. 前向结算 TOP1 (1m修正口径)</b> {tag48}
 {section_forward()}
-<b>3. 2日验证命中率</b>
+<b>3. TOP10全开近7天趋势 (48h 1m口径)</b> {tag48}
 <pre {pre_style}>{section_verify()}</pre>
-<b>3.5 LONG TOP10 列表 + 成交额</b>
+<b>3.5 LONG TOP10 列表 + 成交额</b> <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>今日预测 → 08:21已开仓(48h逻辑), 结算见3.6</span>
 <pre {pre_style}>{section_long_top10()}</pre>
-<b>4. 强势股续涨 + 每日资金榜</b>
+<b>3.6 TOP10全开前向结算 (8/3起)</b> {tag48}
+{section_top10_forward()}
+<b>3.7 多空TOP10全开 每日U盈亏 (固定名义300U/笔)</b> {tag48}
+{section_top10_forward_u()}
+<b>4. 强势股续涨 + 每日资金榜</b> {tag_none}
 <pre {pre_style}>{section_momentum()}</pre>
-<b>5. 系统健康</b>
+<b>5. 系统健康</b> {tag_none}
 <pre {pre_style}>{section_health()}</pre>"""
     send_email(f'晨报总览 {today}', '', body_html=body_html)
     print('digest sent')
