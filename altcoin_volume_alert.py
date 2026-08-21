@@ -6,8 +6,9 @@
 - 排除 = CoinGecko 市值排名前 50 / 前 100 (coingecko_data/mcap_latest.json, 6:10 每日更新)
 - 上涨判定 = 今日(最近完整日)成交额 > 前5日均值 × 阈值(默认 1.20 = +20%), 或 > 前20日均值 × 1.15
 - 运行时机: 每日 09:05 (日 K 已于 UTC 00:00 收盘, 数据完整)
+- 8/16 加文件锁: 防 cron 双进程重复发邮件 (8/15 曾双跑双发)
 """
-import os, sys, json, smtplib
+import fcntl, os, sys, json, smtplib, requests
 import datetime as dt
 from datetime import datetime, timezone, timedelta
 from collections import defaultdict
@@ -73,6 +74,16 @@ def load_day_quote():
             day_kl[r['t']][sym] = {'o': r['o'], 'c': r['c'], 'v': r['v'], 'q': r['q'], 'h': r['h'], 'l': r['l']}
     return day_q, day_kl
 
+# ============ 合约乘数 (8/13: 币安 openInterest 单位=合约张数, 乘数币1张=1000/100万币) ============
+def contract_multiplier(sym):
+    """从 symbol 前缀解析合约乘数: 1000XECUSDT→1000, 1000000BOBUSDT→1000000, 普通币→1"""
+    import re as _re
+    base = sym[:-4] if sym.endswith('USDT') else sym
+    m = _re.match(r'^(1000000|10000|1000|100)([A-Z0-9]{2,})', base)
+    if m and not m.group(2).isdigit():
+        return int(m.group(1))
+    return 1
+
 def calc_cost_and_dump(sym, oi_data, day_kl, valid_days, circ_map):
     """增量成本价 + 出货判定 (2026-08-10 加)
 
@@ -87,10 +98,10 @@ def calc_cost_and_dump(sym, oi_data, day_kl, valid_days, circ_map):
         if not recs or len(recs) < 10:
             return None
         ks = sorted(int(k) for k in recs.keys())
-        # OI 按天对齐 (秒级 ts → 对应 K线日)
+        # OI 按天对齐 (8/13 修复: 快照 ts=X 00:00 的内容 = X-1 日收盘持仓 → 键减一天)
         oi_by_day = {}
         for k in ks:
-            d_utc = dt.datetime.fromtimestamp(k, tz=dt.timezone.utc).strftime('%Y-%m-%d')
+            d_utc = (dt.datetime.fromtimestamp(k, tz=dt.timezone.utc) - dt.timedelta(days=1)).strftime('%Y-%m-%d')
             oi_by_day[d_utc] = float(recs[str(k)])
         # 只取 valid_days 覆盖范围内的日线 (8/11 回滚: 全程累计增仓成本, 不用20天窗口)
         cost_acc = 0.0
@@ -142,12 +153,12 @@ def calc_cost_and_dump(sym, oi_data, day_kl, valid_days, circ_map):
         except Exception:
             pass
         profit = (cur_price / avg_cost - 1) * 100
-        # 出货判定 (8/11 改: 纯OI行为, 不受浮盈估算影响)
-        # ① OI 显著下降: ΔOI < 0 且 |ΔOI| ≥ 前日 OI 的 10%
-        # ③ OI 从近期峰值回落: 当日 OI < 近5日峰值 × 0.90
-        # ④ 价格未同步暴涨: 当日涨幅 < 20% (排除空头被轧平仓: OI降+价格猛拉=空头买回)
-        # 早期迹象 ⚡: 仅条件① (OI 先撤 = 提前预警窗口; 历史47%出货 OI 领先价格)
-        # 注: 原"价格>成本"条件已移除 — 成本是估算, 状态判定只依赖精确数据 (8/11 用户拍板)
+        # 出货判定 (8/12 改: 以 TUT 为模板 — 先堆积后派发)
+        # TUT 模板: 8/9 OI 暴增+63%堆积 → 8/10 OI 骤降-31%出货
+        # 出货中 = ① 当天 OI 降 ≥30% (TUT -31%) + ② 近10日 OI 曾暴增 ≥50% (证明有货可出)
+        #          + ③ 价格未同步暴涨 <20% (排除空头被轧)
+        # 早期迹象 = ①' 当天 OI 降 ≥10% + ② 近10日曾暴增 ≥30% (OI 先撤, 有堆积前提)
+        # 注: HMSTR/INX 等从无暴增的震荡币不会触发 (8/12 用户验证修正)
         last_d_str = dt.datetime.fromtimestamp(last_ts/1000, tz=dt.timezone.utc).strftime('%Y-%m-%d')
         prev_d_str = dt.datetime.fromtimestamp(valid_days[-2]/1000, tz=dt.timezone.utc).strftime('%Y-%m-%d')
         last_oi = oi_by_day.get(last_d_str)
@@ -155,22 +166,31 @@ def calc_cost_and_dump(sym, oi_data, day_kl, valid_days, circ_map):
         dumping = False
         early = False
         if last_oi is not None and prev_oi_v is not None and prev_oi_v > 0:
-            # 条件①
-            c1 = last_oi < prev_oi_v and (prev_oi_v - last_oi) / prev_oi_v >= 0.10
-            # 条件③: 近5日 OI 峰值 (含当日)
-            peak5 = max(oi_by_day.get(dt.datetime.fromtimestamp(ts/1000, tz=dt.timezone.utc).strftime('%Y-%m-%d'), 0)
-                        for ts in valid_days[-5:])
-            c3 = peak5 > 0 and last_oi < peak5 * 0.90
-            # 条件④: 当日涨幅 (收盘 vs 开盘)
+            # ① 当天降幅
+            drop = (prev_oi_v - last_oi) / prev_oi_v
+            c1_big = drop >= 0.30    # 出货级: 降≥30%
+            c1_sml = drop >= 0.10    # 早期级: 降≥10%
+            # ② 近10日 OI 峰值 vs 10日前 (堆积证明)
+            oi_10d_ago = None
+            for ts in valid_days[-10:]:
+                d_str = dt.datetime.fromtimestamp(ts/1000, tz=dt.timezone.utc).strftime('%Y-%m-%d')
+                if d_str in oi_by_day:
+                    oi_10d_ago = oi_by_day[d_str]
+                    break
+            peak10 = max(oi_by_day.get(dt.datetime.fromtimestamp(ts/1000, tz=dt.timezone.utc).strftime('%Y-%m-%d'), 0)
+                         for ts in valid_days[-10:])
+            has_stack_big = oi_10d_ago and oi_10d_ago > 0 and peak10 / oi_10d_ago >= 1.50   # 暴增≥50%
+            has_stack_sml = oi_10d_ago and oi_10d_ago > 0 and peak10 / oi_10d_ago >= 1.30   # 增≥30%
+            # ③ 当日涨幅 (排除空头被轧)
             day_chg = (last_kl['c'] / last_kl['o'] - 1) * 100 if last_kl['o'] > 0 else 0
-            c4 = day_chg < 20
-            if c1:
-                early = True  # 早期迹象: OI 先撤 (纯OI行为)
-            if c1 and c3 and c4:
+            c3 = day_chg < 20
+            if c1_sml and has_stack_sml:
+                early = True  # 早期迹象: 有堆积+OI开始撤
+            if c1_big and has_stack_big and c3:
                 dumping = True
         circ = circ_map.get(sym, 0)
-        # 当前 OI 占流通% (出货基准用, 2026-08-10 加)
-        oi_circ_pct = (last_oi / circ * 100) if (last_oi is not None and circ > 0) else None
+        # 当前 OI 占流通% (出货基准用, 2026-08-10 加; 8/12: circ<1万=CoinGecko数据错误按缺失)
+        oi_circ_pct = (last_oi * contract_multiplier(sym) / circ * 100) if (last_oi is not None and circ >= 10000) else None
         return {
             'vol': vol_acc, 'cost': avg_cost, 'price': cur_price,
             'profit': profit, 'dumping': dumping, 'early': early,
@@ -258,17 +278,37 @@ def record_dump_and_scan(conc_syms, day_kl, valid_days, oi_data, circ_map, lates
                 c_new = kl_sym[-1]['c']
                 if c_old > 0 and (c_new / c_old - 1) < -0.50:
                     continue  # 近20日跌超50% = 已崩盘, 排除
+            # 8/12 拉盘过滤: 10日内从最低收盘后的最大涨幅 ≥30% 才保留 (用户 8/12 改: 30天→10天, 聚焦近期拉升)
+            # (LYN/BANK 等 OI 高但盘整的币剔除 — 用户验证: 盘整无出货逻辑)
+            kl30 = [day_kl[ts].get(sym) for ts in valid_days[-10:] if sym in day_kl.get(ts, {})]
+            if len(kl30) >= 8:
+                closes = [k['c'] for k in kl30]
+                lo_c = min(closes)
+                if lo_c > 0:
+                    lo_idx = closes.index(lo_c)
+                    hi_after = max(closes[lo_idx:])
+                    trend = (hi_after / lo_c - 1) * 100
+                    if trend < 30:
+                        continue  # 10日收盘趋势涨幅<30% = 盘整, 无出货风险, 排除
+                    # 8/12 追加: 当前价 ≥ 10日最高收盘×60% 才保留 (BLUAI 拉完已砸的剔除)
+                    # BLUAI 案例: 8/8拉+172% → 8/11砸-59% 回原点, 现价/最高=41% = 出货已完成, 非风险
+                    cur_price = closes[-1]
+                    if hi_after > 0 and cur_price / hi_after < 0.60:
+                        continue
             ks = sorted(int(k) for k in recs.keys())
             # 找 ≤ 最新完整日的 OI
             cur_oi = None
-            t_cur_s = last_ts // 1000
+            t_cur_s = last_ts // 1000 + 86400  # 8/13: OI快照ts=X的内容=X-1日收盘, +1天对齐
             for k in ks:
                 if k <= t_cur_s:
                     cur_oi = float(recs[str(k)])
             circ = circ_map.get(sym, 0)
             if cur_oi is None or circ <= 0:
                 continue
-            pct = cur_oi / circ * 100
+            # 8/12: 流通量 < 1万枚 视为 CoinGecko 数据错误 (如 PUMPBTC circ=650 枚 → 2623万%假象), 跳过
+            if circ < 10000:
+                continue
+            pct = cur_oi * contract_multiplier(sym) / circ * 100
             # 8/11 修复: 不再过滤 >100% — OI 可真实超过流通盘(高杠杆堆积, 如 GUA 321%)
             # 真正要防的是 circ 缺失(0)或 OI 异常小, 已在上面 circ<=0 拦截
             # 出货/早期状态 (复用成本分析, 计算量可控: 全市场~500币 × OI历史~93条)
@@ -320,14 +360,15 @@ def short_top10_dump_analysis(day_kl, valid_days, oi_data, circ_map, latest_str)
         else:
             sym, prob = it[0], float(it[1])
         recs = oi_data.get(sym)
-        # OI 日变化 + 占流通
+        # OI 日变化 + 占流通 (8/13 修复: oi3_txt 提前初始化, 防新币 OI 记录不足时 NameError)
         oi_chg_txt = '—'
+        oi3_txt = '—'
         oi_pct_txt = '—'
         state_txt = '—'
         profit_txt = '—'
         if isinstance(recs, dict) and recs:
             ks = sorted(int(k) for k in recs.keys())
-            t_cur = valid_days[-1] // 1000
+            t_cur = valid_days[-1] // 1000 + 86400  # 8/13: 快照+1天对齐
             prev_oi = cur_oi = oi_3d = None
             for k in ks:
                 if k <= t_cur - 3 * 86400:
@@ -342,8 +383,8 @@ def short_top10_dump_analysis(day_kl, valid_days, oi_data, circ_map, latest_str)
                 # 近3日累计变化 (2026-08-11 加: 捕捉慢性出货, 如 SKYAI 单日-9.5% 但3日-27%)
                 oi3_txt = f'{(cur_oi/oi_3d-1)*100:+.1f}%' if oi_3d else '—'
                 circ = circ_map.get(sym, 0)
-                if circ > 0:
-                    oi_pct_txt = f'{cur_oi/circ*100:.1f}%'
+                if circ >= 10000:  # 8/12: circ<1万=数据错误, 不显示占比
+                    oi_pct_txt = f'{cur_oi*contract_multiplier(sym)/circ*100:.1f}%'
                 cd = calc_cost_and_dump(sym, {sym: recs}, day_kl, valid_days, circ_map)
                 if cd:
                     profit_txt = f'{cd["profit"]:+.0f}%'
@@ -354,7 +395,17 @@ def short_top10_dump_analysis(day_kl, valid_days, oi_data, circ_map, latest_str)
                     elif cd.get('early'):
                         state_txt = '⚡早期'
                     elif chg > 0:
-                        state_txt = '堆积中'
+                        # 8/15: 堆积分位 — 现价 vs 15日均价 (验证: 15日优于30日, 高位堆积7日中位-6.1% vs 低位+0.8%, 高低差-6.85% n=14353)
+                        kls = [day_kl[t].get(sym) for t in valid_days if sym in day_kl.get(t, {})]
+                        kls = [k for k in kls if k]
+                        if len(kls) >= 15:
+                            avg15 = sum(k['c'] for k in kls[-15:]) / 15
+                            if kls[-1]['c'] > avg15:
+                                state_txt = '▲堆积·高位'
+                            else:
+                                state_txt = '▼堆积·低位'
+                        else:
+                            state_txt = '堆积中'
                     else:
                         state_txt = '观望'
         rows.append((sym, prob, oi_chg_txt, oi3_txt, oi_pct_txt, state_txt, profit_txt))
@@ -371,7 +422,265 @@ def load_mcap_top(n):
         log(f'[警告] 市值加载失败({e}), 该口径跳过')
         return None
 
+# ============ DEX 链上数据 (2026-08-15 加: CMC Dex API, 免费key可用) ============
+# 预警币 → 链上24h买卖方向 (真实钱包交易, 比合约主动买卖更接近真实方向)
+DEX_ADDR_CACHE = os.path.join(BASE, 'data', 'dex_address_map.json')
+CMC_KEY = os.environ.get('CMC_API_KEY', '')
+
+def _load_addr_cache():
+    try:
+        return json.load(open(DEX_ADDR_CACHE))
+    except Exception:
+        return {}
+
+def _save_addr_cache(c):
+    try:
+        os.makedirs(os.path.dirname(DEX_ADDR_CACHE), exist_ok=True)
+        json.dump(c, open(DEX_ADDR_CACHE, 'w'))
+    except Exception as e:
+        log(f'[DEX] 地址缓存保存失败: {e}')
+
+def _dex_search_addr(sym):
+    """symbol → (platform, address); CMC dex/search
+    先试去 USDT 后缀的 base (如 GUAUSDT→GUA, 与 CoinGecko 一致), 搜不到再用原符号"""
+    import requests as _rq
+    try:
+        base = sym[:-4] if sym.endswith('USDT') else sym
+        queries = (base, sym) if base != sym else (base,)
+        for q in queries:
+            r = _rq.get('https://pro-api.coinmarketcap.com/v1/dex/search',
+                        params={'q': q}, headers={'X-CMC_PRO_API_KEY': CMC_KEY}, timeout=12)
+            d = r.json().get('data', {})
+            tks = d.get('tks', [])
+            if not tks:
+                continue
+            # 优先符号精确匹配 (s 全等 base), 否则 ssc 最高
+            best = None
+            for t in tks:
+                if (t.get('s') or '').upper() == q.upper():
+                    best = t
+                    break
+            if best is None:
+                best = tks[0]
+            addr = best.get('addr')
+            if not addr:
+                continue
+            plat = (best.get('plt') or '').lower()
+            # 平台名规范化 (token 端点要求简名)
+            if 'bep20' in plat or plat == 'bsc' or 'bnb' in plat:
+                plat = 'bsc'
+            elif 'erc20' in plat or plat == 'ethereum' or plat == 'eth':
+                plat = 'ethereum'
+            elif plat in ('solana', 'sol'):
+                plat = 'solana'
+            else:
+                plat = plat.split()[0]
+            return plat, addr
+        return None
+    except Exception as e:
+        log(f'[DEX] search {sym} 失败: {e}')
+        return None
+
+def get_dex_chain_stats(syms):
+    """预警币 → {sym: (买USD, 卖USD, 买家数, 卖家数)}; 拿不到返回 None
+    symbol→地址 结果缓存到 data/dex_address_map.json, 之后每天直查 token 端点"""
+    if not CMC_KEY or not syms:
+        return {}
+    import requests as _rq
+    import time as _t
+    addr_cache = _load_addr_cache()
+    result = {}
+    for sym in sorted(syms):
+        try:
+            key = addr_cache.get(sym)
+            if not key or not key.get('address'):
+                found = _dex_search_addr(sym)
+                if not found:
+                    result[sym] = None
+                    continue
+                plat, addr = found
+                addr_cache[sym] = {'platform': plat, 'address': addr}
+                _save_addr_cache(addr_cache)
+                _t.sleep(0.3)
+            else:
+                plat, addr = key['platform'], key['address']
+            r = _rq.get('https://pro-api.coinmarketcap.com/v1/dex/token',
+                        params={'platform': plat, 'address': addr},
+                        headers={'X-CMC_PRO_API_KEY': CMC_KEY}, timeout=12)
+            data = r.json().get('data')
+            if not data:
+                result[sym] = None
+                continue
+            sts = {s.get('tp'): s for s in (data.get('sts') or [])}
+            s24 = sts.get('24h')
+            if not s24:
+                result[sym] = None
+                continue
+            result[sym] = (float(s24.get('bvu') or 0), float(s24.get('svu') or 0),
+                           s24.get('but'), s24.get('sut'))
+        except Exception as e:
+            log(f'[DEX] {sym} 链上数据失败: {e}')
+            result[sym] = None
+        _t.sleep(0.25)
+    return result
+
+# ============ 1U 波动榜 (2026-08-15 加: 当日振幅TOP10 + 1000U冲击成本=盘口薄度) ============
+def vol_impact_rows(day_kl, latest, topn=10):
+    """返回 [(sym, 振幅%, 1U多最大%, 1U空最大%, 冲击成本%|None)]
+    振幅 = 当日 (high-low)/open (事后最大波动);
+    1U多最大 = high/low-1 (最低点买1U最高点卖); 1U空最大 = 1-low/high;
+    冲击成本 = 按卖一档往上累计吃 1000U 的名义均价 vs 中间价 (盘口越薄数值越大)
+    """
+    import requests as _rq
+    import time as _t
+    rows = []
+    for sym, k in day_kl.get(latest, {}).items():
+        o, h, l = k.get('o', 0), k.get('h', 0), k.get('l', 0)
+        if o <= 0 or l <= 0:
+            continue
+        amp = (h - l) / o
+        rows.append((amp, sym, h, l))
+    rows.sort(reverse=True)
+    out = []
+    for amp, sym, h, l in rows[:topn]:
+        impact = None
+        try:
+            r = _rq.get('https://fapi.binance.com/fapi/v1/depth',
+                        params={'symbol': sym, 'limit': 20}, timeout=5)
+            if r.status_code == 200:
+                d = r.json()
+                asks = d.get('asks', [])
+                bids = d.get('bids', [])
+                if asks and bids:
+                    mid = (float(asks[0][0]) + float(bids[0][0])) / 2
+                    if mid > 0:
+                        remaining_u = 1000.0  # 剩余美元
+                        qty_total = 0.0       # 累计吃掉的币数
+                        cost = 0.0
+                        for p, q in asks:
+                            p = float(p); q = float(q)
+                            notional = p * q
+                            if notional >= remaining_u:
+                                qty_total += remaining_u / p
+                                cost += remaining_u
+                                remaining_u = 0
+                                break
+                            qty_total += q
+                            cost += notional
+                            remaining_u -= notional
+                        if remaining_u < 1000.0:
+                            avg_price = cost / qty_total
+                            impact = (avg_price - mid) / mid * 100
+        except Exception:
+            pass
+        _t.sleep(0.1)
+        out.append((sym, amp, h/l - 1, 1 - l/h, impact))
+    return out
+
+# ============ OI 快照前置补采 (8/14: 快照北京8:00生成, 采集6:00拿不到, 邮件9:05运行前补拉) ============
+def fetch_today_oi_snapshot():
+    """补拉"今天 UTC 00:00"的 OI 快照(=昨日收盘持仓), 防止邮件 OI 变化=0
+    只在缺今天快照时拉, 限速 12 req/s"""
+    import requests as _rq
+    try:
+        cache = json.load(open(OI))
+    except Exception:
+        return 0
+    target = int(datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).timestamp())
+    need = [s for s, recs in cache.items() if isinstance(recs, dict) and str(target) not in recs]
+    if not need:
+        return 0
+    updated = 0
+    for sym in need:
+        try:
+            r = _rq.get('https://fapi.binance.com/futures/data/openInterestHist',
+                        params={'symbol': sym, 'period': '1d', 'limit': 3}, timeout=6)
+            if r.status_code == 200:
+                for o in r.json():
+                    ts = int(o['timestamp']) // 1000
+                    if ts == target:
+                        cache[sym][str(ts)] = float(o['sumOpenInterest'])
+                        updated += 1
+                        break
+        except Exception:
+            pass
+        import time as _t
+        _t.sleep(0.08)
+    if updated:
+        try:
+            json.dump(cache, open(OI, 'w'))
+        except Exception as e:
+            log(f'[警告] OI 快照补采保存失败: {e}')
+    log(f'OI 快照补采: {updated}/{len(need)} 币 (今天00:00快照)')
+    return updated
+
+def fetch_global_mcap():
+    """CoinGecko 免费接口: 全市场总市值 / BTC占比 / ETH占比."""
+    try:
+        r = requests.get('https://api.coingecko.com/api/v3/global', timeout=15)
+        if r.status_code != 200:
+            return None
+        d = r.json().get('data', {})
+        return {
+            'total_mcap': (d.get('total_market_cap') or {}).get('usd'),
+            'btc_dom': (d.get('market_cap_percentage') or {}).get('btc'),
+            'eth_dom': (d.get('market_cap_percentage') or {}).get('eth'),
+        }
+    except Exception as e:
+        log(f'[CoinGecko] 全市场市值获取失败: {e}')
+        return None
+
+
+def fetch_altcoin_ranks(limit=10):
+    """CoinGecko 免费接口: 市值排名, 排除 BTC 和稳定币, 返回前 limit 个山寨."""
+    try:
+        r = requests.get('https://api.coingecko.com/api/v3/coins/markets',
+                         params={'vs_currency': 'usd', 'order': 'market_cap_desc',
+                                 'per_page': '30', 'page': '1', 'sparkline': 'false'},
+                         timeout=15)
+        if r.status_code != 200:
+            return None
+        exclude = {'usdt','usdc','dai','tusd','fdusd','busd','usdp','usds',
+                   'pyusd','usde','eurt','aeur','usd1','usdd'}
+        rows = []
+        for c in r.json():
+            sym = (c.get('symbol') or '').lower()
+            if sym == 'btc' or sym in exclude:
+                continue
+            rows.append({
+                'symbol': c.get('symbol', '').upper(),
+                'name': c.get('name', ''),
+                'mcap': c.get('market_cap'),
+                'chg': c.get('price_change_percentage_24h'),
+            })
+            if len(rows) >= limit:
+                break
+        return rows
+    except Exception as e:
+        log(f'[CoinGecko] 山寨市值排名获取失败: {e}')
+        return None
+
+
 def main():
+    # 8/16: 文件锁, 防 cron 双进程 (8/15 双跑双发过)
+    lock_f = open('/tmp/altcoin_volume_alert.lock', 'w')
+    try:
+        fcntl.flock(lock_f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        log('[锁] 已有实例在运行, 本次跳过')
+        return
+    try:
+        _main_locked()
+    finally:
+        fcntl.flock(lock_f, fcntl.LOCK_UN)
+        lock_f.close()
+
+def _main_locked():
+    # 8/14: 邮件运行前先补采今天 OI 快照 (解决 OI变化=0 的时间差问题)
+    try:
+        fetch_today_oi_snapshot()
+    except Exception as e:
+        log(f'[警告] OI 快照补采失败: {e}')
     conc = []  # 增量TOP名单 (出货基准扫描用; 增量计算失败时为 [] 不扫描)
     day_q, day_kl = load_day_quote()
     days = sorted(day_q)
@@ -483,8 +792,8 @@ def main():
             if len(ks) < 2:
                 return None
             # 目标: 找 ≤ 昨日 和 ≤ 今日 的 OI 快照 (K线毫秒 → OI秒)
-            t_prev_s = days_ts[-2] // 1000
-            t_cur_s = days_ts[-1] // 1000
+            t_prev_s = days_ts[-2] // 1000 + 86400  # 8/13: 快照+1天对齐 (8/11收盘=8/12快照)
+            t_cur_s = days_ts[-1] // 1000 + 86400  # 8/13: 快照+1天对齐
             prev_oi = cur_oi = None
             for k in ks:
                 if k <= t_prev_s:
@@ -495,18 +804,18 @@ def main():
                 return None
             chg = float(cur_oi) - float(prev_oi)
             circ = circ_map.get(sym, 0)
-            pct = chg / circ * 100 if circ else 0
+            pct = chg * contract_multiplier(sym) / circ * 100 if circ else 0
             return chg, pct
 
         for dv, sym in conc[:3]:
-            pct_net = dv / net * 100 if net > 0 else 0   # 占净增量%
+            pct_net = (dv / net * 100) if net > 0 else None   # 占净增量% (净增≤0时无意义, 显示—)
             pct_pos = dv / total_pos * 100 if total_pos > 0 else 0  # 占正增量合计%
             pct_tot = dv / total_cur_ex50 * 100 if total_cur_ex50 else 0  # 占今日总量%
             oi_info = oi_change(sym, valid_days)
             oi_txt = '—'
             if oi_info:
                 chg, pct = oi_info
-                oi_txt = f'{chg/1e8:+.2f}亿 ({pct:+.0f}%)'
+                oi_txt = f'{chg/1e4:+,.0f}万张 ({pct:+.2f}%)'  # 8/13: 单位=合约张数(非币枚数), 万张更准确
             # 成本价 + 出货判定 (2026-08-10 加)
             cd = calc_cost_and_dump(sym, oi_data, day_kl, valid_days, circ_map)
             cost_txt = '—'
@@ -516,7 +825,7 @@ def main():
                     cost_txt += ' ⚠️出货'
             conc_rows.append(
                 f'<tr>{td_l % sym}{td % f"{dv/1e8:.2f}"}'
-                f'{td % f"{pct_net:.0f}%"}{td % f"{pct_pos:.0f}%"}{td % f"{pct_tot:.0f}%"}'
+                f'{td % (f"{pct_net:.0f}%" if pct_net is not None else "—")}{td % f"{pct_pos:.0f}%"}{td % f"{pct_tot:.0f}%"}'
                 f'{td % oi_txt}{td % cost_txt}</tr>'
             )
         # 汇总行: 正增量合计 / 减量合计 / 净增量
@@ -537,6 +846,26 @@ def main():
         )
     except Exception as e:
         log(f'[警告] 增量集中度计算失败: {e}')
+
+    # 1U 波动榜 (2026-08-15 加: 振幅TOP10 + 盘口薄度)
+    vol_rows_html = []
+    try:
+        vol_rows = vol_impact_rows(day_kl, latest)
+        for sym, amp, gl, gs, impact in vol_rows:
+            if impact is not None:
+                imp_txt = f'<span style="color:#c00;font-weight:bold">{impact:.2f}%</span>' if impact >= 2 else f'{impact:.2f}%'
+            else:
+                imp_txt = '—'
+            vol_rows_html.append(
+                f'<tr>{td_l % sym}{td % f"{amp*100:.1f}%"}{td % f"{gl*100:+.1f}%"}{td % f"{gs*100:+.1f}%"}{td % imp_txt}</tr>'
+            )
+    except Exception as e:
+        log(f'[警告] 1U波动榜失败: {e}')
+    vol_section = f"""<h4 style="margin:4px 0;font-size:12px">🎯 1U波动榜 (昨日振幅TOP10; 1U多/空=当日低买高卖/高卖低平的极端收益; 冲击=1000U吃单推价% → 盘口薄度, ≥2%标红)</h4>
+<table style="border-collapse:collapse;margin:4px 0">
+<tr>{th % '币'}{th % '振幅'}{th % '1U多最大'}{th % '1U空最大'}{th % '盘口冲击%(薄度)'}</tr>
+{''.join(vol_rows_html) if vol_rows_html else td_l % '(无数据)'}
+</table>"""
 
     # 出货 OI 基准: 记录出货样本 + 全市场达线扫描 (2026-08-10 加)
     dump_alerts = []
@@ -566,7 +895,51 @@ def main():
     # 出货基准提醒节 (HTML) — 早期迹象独立专栏 (2026-08-10)
     dump_rows = []
     early_rows = []
+    # 8/14: 溢价指数列 (premiumIndex: 正=多头主导/负=空头主导, 补 OI 不分多空的洞)
+    premium_map = {}
+    try:
+        import requests as _rq
+        import time as _t
+        all_syms = [s for _, s, _, _ in dump_alerts[:12]] + [s for _, s, _, _ in early_alerts[:5]]
+        for s in set(all_syms):
+            try:
+                r = _rq.get('https://fapi.binance.com/fapi/v1/premiumIndex', params={'symbol': s}, timeout=5)
+                if r.status_code == 200:
+                    d = r.json()
+                    mp = float(d.get('markPrice', 0)); ip = float(d.get('indexPrice', 0))
+                    if ip > 0:
+                        premium_map[s] = (mp - ip) / ip * 100
+            except Exception:
+                pass
+            _t.sleep(0.08)
+    except Exception as e:
+        log(f'[警告] 溢价指数拉取失败: {e}')
+
+    # 8/15: DEX 链上24h买卖方向 (真实钱包交易, 比合约主动买卖更接近真实方向)
+    dex_map = {}
+    try:
+        all_syms2 = [s for _, s, _, _ in dump_alerts[:12]] + [s for _, s, _, _ in early_alerts[:5]]
+        dex_map = get_dex_chain_stats(set(all_syms2))
+        n_ok = sum(1 for v in dex_map.values() if v)
+        log(f'DEX 链上数据: {n_ok}/{len(dex_map)} 币拿到 24h 买卖统计')
+    except Exception as e:
+        log(f'[警告] DEX 链上数据拉取失败: {e}')
+
     if dump_avg is not None:
+        def dex_cell(sym):
+            d = dex_map.get(sym)
+            if not d:
+                return '—'
+            buy, sell, nb, ns = d
+            if buy == 0 and sell == 0:
+                return '—'  # 链上无活跃交易
+            net = buy - sell
+            color = '#0a0' if net >= 0 else '#c00'
+            sign = '+' if net >= 0 else ''
+            nb_s = nb if nb is not None else '?'
+            ns_s = ns if ns is not None else '?'
+            return f'<span style="color:{color}">净{sign}{net/1e4:.1f}万</span> ({nb_s}/{ns_s})'
+
         # ① 出货确认 (4条件, 深红) + 高风险 (P75达线, 浅红) — 合并表
         # 🅢 = 该币在今日 SHORT Top10 中 (2026-08-11 加, 一眼看出模型看空的币哪些在出货)
         for kind, sym, pct, avg in dump_alerts[:12]:
@@ -577,25 +950,27 @@ def main():
                 label = '⚠️高风险'
                 style = 'background:#fdecea'
             tag = ' 🅢' if sym in short_syms else ''
+            prem = premium_map.get(sym)
+            prem_txt = f'{prem:+.2f}%' if prem is not None else '—'
             dump_rows.append(
                 f'<tr style="{style}">{td_l % f"{label} {sym}{tag}"}'
-                f'{td % f"{pct:.1f}%"}{td % f"{avg:.1f}%"}</tr>'
+                f'{td % f"{pct:.1f}%"}{td % f"{avg:.1f}%"}{td % prem_txt}{td % dex_cell(sym)}</tr>'
             )
         # ② 早期迹象 (OI先撤, 黄色) — 独立专栏
         for kind, sym, pct, avg in early_alerts[:10]:
             tag = ' 🅢' if sym in short_syms else ''
             early_rows.append(
                 f'<tr style="background:#fff3cd">{td_l % sym}'
-                f'{td % f"{pct:.1f}%"}{td % "OI已撤,价格未崩"}</tr>'
+                f'{td % f"{pct:.1f}%"}{td % "OI已撤,价格未崩"}{td % dex_cell(sym)}</tr>'
             )
-        dump_section = f"""<h4 style="margin:4px 0;font-size:12px">⚠️ OI 出货预警 (P75={dump_avg:.1f}%, n={dump_n}次出货)</h4>
+        dump_section = f"""<h4 style="margin:4px 0;font-size:12px">⚠️ OI 出货预警 (P75={dump_avg:.1f}%, n={dump_n}次出货; 溢价+多头/-空头; 链上=真实钱包净买卖)</h4>
 <table style="border-collapse:collapse;margin:4px 0">
-<tr>{th % '币'}{th % '当前OI占流通%'}{th % '出货基准%'}</tr>
+<tr>{th % '币'}{th % '当前OI占流通%'}{th % '出货基准%'}{th % '溢价%'}{th % '链上24h净(买家/卖家)'}</tr>
 {''.join(dump_rows) if dump_rows else td_l % '(今日无出货/高风险币)'}
 </table>
 <h4 style="margin:4px 0;font-size:12px">⚡ 早期迹象 (OI先撤, 价格未崩 — 出货前兆)</h4>
 <table style="border-collapse:collapse;margin:4px 0">
-<tr>{th % '币'}{th % '当前OI占流通%'}{th % '状态'}</tr>
+<tr>{th % '币'}{th % '当前OI占流通%'}{th % '状态'}{th % '链上24h净(买家/卖家)'}</tr>
 {''.join(early_rows) if early_rows else '<tr><td style="padding:3px 6px;border:1px solid #ddd;color:#888">(今日无早期迹象)</td></tr>'}
 </table>"""
     else:
@@ -616,23 +991,53 @@ def main():
             f'{td % f"{prob:.1f}%"}{td % oi_chg}{td % oi3}{td % oi_pct}'
             f'{td % state}{td % profit}</tr>'
         )
-    short_section = f"""<h4 style="margin:4px 0;font-size:12px">🔻 SHORT Top10 出货分析 (蓝=堆积中/黄=早期/红=出货中; 3日OI=近3日累计)</h4>
+    short_section = f"""<h4 style="margin:4px 0;font-size:12px">🔻 SHORT Top10 出货分析 (蓝=堆积▲高位/▼低位按15日均价分, 高位堆积7日跌6.1%; 黄=早期/红=出货中; 3日OI=近3日累计)</h4>
 <table style="border-collapse:collapse;margin:4px 0">
 <tr>{th % '币'}{th % 'prob'}{th % 'OI日变'}{th % '3日OI'}{th % 'OI占流通%'}{th % '状态'}{th % '浮盈'}</tr>
 {''.join(short_html_rows) if short_html_rows else td_l % '(无SHORT数据)'}
 </table>"""
 
+    # 全市场/山寨市值监控 (CoinGecko 免费接口)
+    mcap_section = ''
+    gm = fetch_global_mcap()
+    ar = fetch_altcoin_ranks()
+    if gm and gm.get('total_mcap'):
+        total = gm['total_mcap']
+        btc_dom = gm.get('btc_dom') or 0.0
+        eth_dom = gm.get('eth_dom') or 0.0
+        alt_mcap = total * (1 - btc_dom / 100) if total else 0.0
+        def _f1e12(v):
+            return f'{v/1e12:.2f}万亿' if v >= 1e12 else f'{v/1e9:.0f}亿'
+        mcap_section += f"""<h4 style="margin:4px 0;font-size:12px">🌐 全市场/山寨市值 (CoinGecko)</h4>
+<table style="border-collapse:collapse;margin:4px 0">
+<tr>{th % '总市值'}{th % 'BTC占比'}{th % 'ETH占比'}{th % '山寨总市值(近似)'}</tr>
+<tr>{td_l % _f1e12(total)}{td % f'{btc_dom:.1f}%'}{td % f'{eth_dom:.1f}%'}{td_l % _f1e12(alt_mcap)}</tr>
+</table>"""
+    if ar:
+        rank_rows = []
+        for i, c in enumerate(ar, 1):
+            chg = f"{c['chg']:+.1f}%" if c.get('chg') is not None else '—'
+            mcap_txt = f"{c['mcap']/1e9:.1f}B" if c.get('mcap') else '—'
+            rank_rows.append(f'<tr>{td_l % f"{i}. {c["symbol"]}"}{td_l % c["name"]}{td % mcap_txt}{td % chg}</tr>')
+        mcap_section += f"""<h4 style="margin:4px 0;font-size:12px">🏆 山寨市值排名 Top{len(ar)} (不含BTC/稳定币)</h4>
+<table style="border-collapse:collapse;margin:4px 0">
+<tr>{th % '币种'}{th % '名称'}{th % '市值'}{th % '24h%'}</tr>
+{''.join(rank_rows)}
+</table>"""
+
     body = f"""<html><body style="font-family:Consolas,monospace;font-size:12px;color:#333">
 <h3 style="margin:4px 0;font-size:14px">山寨成交额监控 {latest_str} (除市值TOP50/100, 亿USDT)</h3>
+{mcap_section}
 <table style="border-collapse:collapse;margin:4px 0">
 <tr>{th % '口径'}{th % '今日'}{th % '5日均'}{th % '今/5日'}{th % '20日均'}{th % '今/20日'}</tr>
 {''.join(rows)}
 </table>
 <h4 style="margin:4px 0;font-size:12px">增量集中度 (除TOP50, 今日vs昨日; 占净增/占正增/占今日; OI=净持仓变化)</h4>
 <table style="border-collapse:collapse;margin:4px 0">
-<tr>{th % '币'}{th % '增量(亿)'}{th % '占净增%'}{th % '占正增%'}{th % '占今日%'}{th % 'OI变化(占流通)'}{th % '多头成本(浮盈)'}</tr>
+<tr>{th % '币'}{th % '增量(亿)'}{th % '占净增%'}{th % '占正增%'}{th % '占今日%'}{th % 'OI变化(万张合约/占流通%)'}{th % '多头成本(浮盈)'}</tr>
 {''.join(conc_rows) if conc_rows else td_l % '(无正增量)'}
 </table>
+{vol_section}
 {dump_section}
 {short_section}
 <h4 style="margin:4px 0;font-size:12px">近7日</h4>
