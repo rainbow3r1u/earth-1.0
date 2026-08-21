@@ -53,6 +53,7 @@ def main():
                 'time': r['time'], 'price': r['price'],
                 'dir_ok': r.get('dir_ok'), 'dir_ret': round(r['dir_ret'], 2) if r.get('dir_ret') is not None else None,
                 'max_retrace': round(r['max_retrace'], 2) if r.get('max_retrace') is not None else None,
+                'max_retrace_no_sl': round(r['max_retrace_no_sl'], 2) if r.get('max_retrace_no_sl') is not None else None,
             })
         tracker[day] = {'updated': now, 'trades': trades}
         if is_all_settled(tracker[day]):
