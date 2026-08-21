@@ -36,7 +36,7 @@ for sym, rows in kl.items():
     recs = oi_raw[sym]
     if not isinstance(recs, dict) or len(recs) < 10:
         continue
-    oi_by_day = {day_str_sec(k): float(v) for k, v in recs.items()}
+    oi_by_day = {(dt.datetime.fromtimestamp(int(k), tz=dt.timezone.utc) - dt.timedelta(days=1)).strftime('%Y-%m-%d'): float(v) for k, v in recs.items()}  # 8/13: 快照减一天对齐K线
     kl_by_day = {day_str_ms(r['t']): r for r in rows}
     days = sorted(set(oi_by_day) & set(kl_by_day))
     if len(days) < 10:
@@ -57,18 +57,29 @@ for sym, rows in kl.items():
             if d_oi > 0 and r['c'] >= r['o']:
                 cost_acc += d_oi * vwap
                 vol_acc += d_oi
-            # 出货判定 (8/11 改: 纯OI行为, 与 altcoin_volume_alert 一致, 不受成本估算影响)
+            # 出货判定 (8/12 改: TUT 模板 — 先堆积后派发, 与 altcoin_volume_alert 一致)
             elif d_oi < 0 and prev_oi > 0:
-                # ① OI 降 ≥10%
-                c1 = -d_oi / prev_oi >= 0.10
-                # ③ OI < 近5日峰值×0.9
-                peak5 = max(oi_by_day.get(days[j], 0) for j in range(max(0, i-4), i+1))
-                c3 = peak5 > 0 and oi_v < peak5 * 0.90
-                # ④ 当日涨幅 < 20%
+                # ① 当天降幅
+                drop = -d_oi / prev_oi
+                # ② 近10日曾暴增 (堆积证明)
+                oi_10d_ago = oi_by_day.get(days[max(0, i-9)], 0)
+                peak10 = max(oi_by_day.get(days[j], 0) for j in range(max(0, i-9), i+1))
+                has_stack_big = oi_10d_ago > 0 and peak10 / oi_10d_ago >= 1.50
+                # ③ 当日涨幅 < 20% (排除空头被轧)
                 c4 = (r['c'] / r['o'] - 1) * 100 < 20 if r['o'] > 0 else True
-                if c1 and c3 and c4:
+                if drop >= 0.30 and has_stack_big and c4:
                     circ = circ_map.get(sym, 0)
-                    pct = oi_v / circ * 100 if circ > 0 else 0
+                    # 8/13: 补乘数 + circ下限过滤, 与 altcoin_volume_alert 一致
+                    if circ < 10000:
+                        prev_oi = oi_v
+                        continue
+                    mult = 1
+                    import re as _re
+                    base = sym[:-4] if sym.endswith('USDT') else sym
+                    _m = _re.match(r'^(1000000|10000|1000|100)([A-Z0-9]{2,})', base)
+                    if _m and not _m.group(2).isdigit():
+                        mult = int(_m.group(1))
+                    pct = oi_v * mult / circ * 100
                     if circ > 0:  # 8/11: 不再过滤 >100% (OI可真实超流通, 如GUA 321%)
                         records.append({'date': d, 'sym': sym, 'oi_circ_pct': round(pct, 2)})
                         n_dump_days += 1
