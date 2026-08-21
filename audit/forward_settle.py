@@ -41,115 +41,121 @@ def fetch_1m(sym, start_ms, end_ms):
         time.sleep(0.12)
     return out
 
+def _adverse_pct(entry, direction, bars):
+    """持仓期最大反向 %: LONG=最低价相对entry跌幅; SHORT=最高价相对entry涨幅."""
+    if not bars or entry <= 0:
+        return 0.0
+    if direction == 'SHORT':
+        return (max(float(x[2]) for x in bars) - entry) / entry * 100
+    return (entry - min(float(x[3]) for x in bars)) / entry * 100
+
+
 def settle(sym, date_str, direction, prob):
     """返回 dict: 入场/触发类型/时间/价格/结果%; 未触发 → 当前浮盈
-    附加: 方向判定(dir_ok=价格最终朝开仓方向走) + 不止损48h收益(dir_ret)"""
+    附加:
+      max_retrace      = 持仓期最大反向 (已平仓单只算到触发分钟; 未触发算到到期/当前)
+      max_retrace_no_sl= 假设不止损的 48h 全窗口最大反向 (仅供止损建议模拟)
+      dir_ok/dir_ret   = 假设不止损持有到 48h 的方向/收益 (口径 v2)
+    """
     t0 = ts_utc(*map(int, date_str.split('-')), 0, 21)
     t_end = t0 + 3 * 86400000
     k = fetch_1m(sym, t0, t_end)
     if len(k) < 3:
         return {'sym': sym, 'date': date_str, 'direction': direction, 'prob': prob,
-                'result': '无数据', 'entry': None, 'dir_ok': None, 'dir_ret': None, 'max_retrace': None}
-    # 未到期判定: 实盘 48h 到期自动平 = 入场(预测日 00:21 UTC) + 48h = 预测日 +2 天 00:21 UTC (8/2 用户纠正: 原+3天晚24h)
+                'result': '无数据', 'entry': None, 'dir_ok': None, 'dir_ret': None,
+                'max_retrace': None, 'max_retrace_no_sl': None}
     expiry_ms = t0 + 2 * 86400000
     now_ms = datetime.now(timezone.utc).timestamp() * 1000
+    entry = float(k[0][1])
+
     if now_ms < expiry_ms:
-        # 未到期但可能已触发: 逐根检查已发生的K线 (先止损后止盈, v2口径"成交即盯盘")
-        entry = float(k[0][1])
         sl_hi, sl_lo = entry * 1.05, entry * 0.95
         tp_hi, tp_lo = entry * 1.10, entry * 0.90
-        # 已发生区间的方向判定 + 最大反向深度 (进止损建议表用)
         k_sofar = [x for x in k if x[0] <= now_ms]
-        max_h = max(float(x[2]) for x in k_sofar)
-        min_l = min(float(x[3]) for x in k_sofar)
-        if direction == 'SHORT':
-            max_retrace = (max_h - entry) / entry * 100
-            dir_ok = None  # 48h未到, 方向/自然平仓收益未定(用户 8/3 定: 超48h才固定)
-            dir_ret = None
-        else:
-            max_retrace = (entry - min_l) / entry * 100
-            dir_ok = None  # 48h未到, 方向/自然平仓收益未定
-            dir_ret = None
+        max_retrace_no_sl = _adverse_pct(entry, direction, k_sofar)
+        max_retrace = max_retrace_no_sl
+        dir_ok = None
+        dir_ret = None
         for x in k_sofar:
             h, l = float(x[2]), float(x[3])
+            triggered = None
             if direction == 'SHORT':
                 if h >= sl_hi:
-                    return {'sym': sym, 'date': date_str, 'direction': direction, 'prob': prob,
-                            'entry': entry, 'result': '-5.0%', 'trigger': '止损',
-                            'time': fmt(x[0]), 'price': h, 'reason_note': 'high 打穿 +5% (未到期已触发)',
-                            'dir_ok': dir_ok, 'dir_ret': dir_ret, 'max_retrace': max_retrace}
-                if l <= tp_lo:
-                    return {'sym': sym, 'date': date_str, 'direction': direction, 'prob': prob,
-                            'entry': entry, 'result': '+10.0%', 'trigger': '止盈',
-                            'time': fmt(x[0]), 'price': l, 'reason_note': 'low 打穿 -10% (未到期已触发)',
-                            'dir_ok': dir_ok, 'dir_ret': dir_ret, 'max_retrace': max_retrace}
+                    triggered = ('止损', h, 'high 打穿 +5% (未到期已触发)')
+                elif l <= tp_lo:
+                    triggered = ('止盈', l, 'low 打穿 -10% (未到期已触发)')
             else:
                 if l <= sl_lo:
-                    return {'sym': sym, 'date': date_str, 'direction': direction, 'prob': prob,
-                            'entry': entry, 'result': '-5.0%', 'trigger': '止损',
-                            'time': fmt(x[0]), 'price': l, 'reason_note': 'low 打穿 -5% (未到期已触发)',
-                            'dir_ok': dir_ok, 'dir_ret': dir_ret, 'max_retrace': max_retrace}
-                if h >= tp_hi:
-                    return {'sym': sym, 'date': date_str, 'direction': direction, 'prob': prob,
-                            'entry': entry, 'result': '+10.0%', 'trigger': '止盈',
-                            'time': fmt(x[0]), 'price': h, 'reason_note': 'high 打穿 +10% (未到期已触发)',
-                            'dir_ok': dir_ok, 'dir_ret': dir_ret, 'max_retrace': max_retrace}
+                    triggered = ('止损', l, 'low 打穿 -5% (未到期已触发)')
+                elif h >= tp_hi:
+                    triggered = ('止盈', h, 'high 打穿 +10% (未到期已触发)')
+            if triggered:
+                trig, price, note = triggered
+                max_retrace = _adverse_pct(entry, direction, [b for b in k_sofar if b[0] <= x[0]])
+                return {'sym': sym, 'date': date_str, 'direction': direction, 'prob': prob,
+                        'entry': entry, 'result': '-5.0%' if trig == '止损' else '+10.0%',
+                        'trigger': trig, 'time': fmt(x[0]), 'price': price, 'reason_note': note,
+                        'dir_ok': dir_ok, 'dir_ret': dir_ret,
+                        'max_retrace': max_retrace, 'max_retrace_no_sl': max_retrace_no_sl}
         return {'sym': sym, 'date': date_str, 'direction': direction, 'prob': prob,
-                'entry': float(k[0][1]), 'result': '⏳未到期', 'trigger': '进行中',
+                'entry': entry, 'result': '⏳未到期', 'trigger': '进行中',
                 'time': '-', 'price': None, 'reason_note': '48h 窗口未走完, 暂未触发',
-                'dir_ok': None, 'dir_ret': None, 'max_retrace': None}
-    entry = float(k[0][1])
+                'dir_ok': None, 'dir_ret': None, 'max_retrace': None, 'max_retrace_no_sl': None}
+
     sl_hi, sl_lo = entry * 1.05, entry * 0.95
     tp_hi, tp_lo = entry * 1.10, entry * 0.90
-    # 48h 判定价: 窗口内最后一根收盘 (T+2 已过则为收盘, 未过则为当前最新)
-    cur = float(k[-1][4])
-    # 最大反向深度: 48h 窗口内价格相对入场最深反向(不设止损时的最深不利波动)
     end48 = t0 + 2 * 86400000
-    k48 = [x for x in k if x[0] <= end48] or k
-    max_h = max(float(x[2]) for x in k48)
-    min_l = min(float(x[3]) for x in k48)
+    # strict48 半开区间: [entry, expiry) — 到期那一分钟不参与触发/MAE
+    k48 = [x for x in k if x[0] < end48]
+    if not k48:
+        return {'sym': sym, 'date': date_str, 'direction': direction, 'prob': prob,
+                'entry': entry, 'result': '无数据', 'trigger': '无数据',
+                'time': '-', 'price': None, 'reason_note': '48h窗口无K线',
+                'dir_ok': None, 'dir_ret': None, 'max_retrace': None, 'max_retrace_no_sl': None}
+    exp_bar = next((x for x in k if x[0] == end48), None)
+    exit_price = float(exp_bar[1]) if exp_bar is not None else float(k48[-1][4])
+    cur = exit_price  # 到期时刻可成交价: 到期分钟 open; 缺到期分钟则取最后一根 close
+    max_retrace_no_sl = _adverse_pct(entry, direction, k48)
+    max_retrace = max_retrace_no_sl  # 未触发时为持仓全窗口; 触发时下面截断
     if direction == 'SHORT':
-        max_retrace = (max_h - entry) / entry * 100
         dir_ok = cur < entry
         dir_ret = (entry - cur) / entry * 100
     else:
-        max_retrace = (entry - min_l) / entry * 100
         dir_ok = cur > entry
         dir_ret = (cur - entry) / entry * 100
-    for x in k:
+
+    # 触发扫描只允许发生在 [entry, expiry) 内 (半开区间)
+    for x in k48:
         h, l = float(x[2]), float(x[3])
+        triggered = None
         if direction == 'SHORT':
             if h >= sl_hi:
-                return {'sym': sym, 'date': date_str, 'direction': direction, 'prob': prob,
-                        'entry': entry, 'result': '-5.0%', 'trigger': '止损',
-                        'time': fmt(x[0]), 'price': h, 'reason_note': 'high 打穿 +5%',
-                        'dir_ok': dir_ok, 'dir_ret': dir_ret, 'max_retrace': max_retrace}
-            if l <= tp_lo:
-                return {'sym': sym, 'date': date_str, 'direction': direction, 'prob': prob,
-                        'entry': entry, 'result': '+10.0%', 'trigger': '止盈',
-                        'time': fmt(x[0]), 'price': l, 'reason_note': 'low 打穿 -10%',
-                        'dir_ok': dir_ok, 'dir_ret': dir_ret, 'max_retrace': max_retrace}
+                triggered = ('止损', h, 'high 打穿 +5%')
+            elif l <= tp_lo:
+                triggered = ('止盈', l, 'low 打穿 -10%')
         else:
             if l <= sl_lo:
-                return {'sym': sym, 'date': date_str, 'direction': direction, 'prob': prob,
-                        'entry': entry, 'result': '-5.0%', 'trigger': '止损',
-                        'time': fmt(x[0]), 'price': l, 'reason_note': 'low 打穿 -5%',
-                        'dir_ok': dir_ok, 'dir_ret': dir_ret, 'max_retrace': max_retrace}
-            if h >= tp_hi:
-                return {'sym': sym, 'date': date_str, 'direction': direction, 'prob': prob,
-                        'entry': entry, 'result': '+10.0%', 'trigger': '止盈',
-                        'time': fmt(x[0]), 'price': h, 'reason_note': 'high 打穿 +10%',
-                        'dir_ok': dir_ok, 'dir_ret': dir_ret, 'max_retrace': max_retrace}
-    # 结算价 = 入场后 48h 时刻的 1m 收盘 (取 t0+48h 前最后一根)
-    end48 = t0 + 2 * 86400000
-    k48 = [x for x in k if x[0] <= end48]
-    xlast = k48[-1] if k48 else k[-1]
-    c = float(xlast[4])
+                triggered = ('止损', l, 'low 打穿 -5%')
+            elif h >= tp_hi:
+                triggered = ('止盈', h, 'high 打穿 +10%')
+        if triggered:
+            trig, price, note = triggered
+            max_retrace = _adverse_pct(entry, direction, [b for b in k48 if b[0] <= x[0]])
+            return {'sym': sym, 'date': date_str, 'direction': direction, 'prob': prob,
+                    'entry': entry, 'result': '-5.0%' if trig == '止损' else '+10.0%',
+                    'trigger': trig, 'time': fmt(x[0]), 'price': price, 'reason_note': note,
+                    'dir_ok': dir_ok, 'dir_ret': dir_ret,
+                    'max_retrace': max_retrace, 'max_retrace_no_sl': max_retrace_no_sl}
+
+    c = cur
     ret = (entry - c) / entry * 100 if direction == 'SHORT' else (c - entry) / entry * 100
+    exit_ts = exp_bar[0] if exp_bar is not None else k48[-1][0]
     return {'sym': sym, 'date': date_str, 'direction': direction, 'prob': prob,
             'entry': entry, 'result': f'{ret:+.2f}%', 'trigger': '未触发/48h平仓',
-            'time': fmt(xlast[0]), 'price': c, 'reason_note': '48h 到期未触发, 按48h收盘结算',
-            'dir_ok': dir_ok, 'dir_ret': dir_ret, 'max_retrace': max_retrace}
+            'time': fmt(exit_ts), 'price': c, 'reason_note': '48h 到期未触发, 按到期分钟open/前一分钟close结算',
+            'dir_ok': dir_ok, 'dir_ret': dir_ret,
+            'max_retrace': max_retrace, 'max_retrace_no_sl': max_retrace_no_sl}
+
 
 def get_days(args):
     days = [a for a in args if not a.startswith('-')]
@@ -207,32 +213,45 @@ def main():
         print(f"止损中方向对(扫损): {len(swept)}/{len(stops)} | 方向错: {len(stops)-len(swept)}")
 
     # ===== 止损建议 =====
-    with_retrace = [r for r in results if r.get('max_retrace') is not None and r.get('dir_ret') is not None]
+    with_retrace = [r for r in results if r.get('dir_ret') is not None]
     if with_retrace:
-        print("\n===== 止损建议 (基于最大反向深度) =====")
-        print(f"{'日期':<7}{'币':<12}{'向':<4}{'止损':<7}{'反向':<8}{'方向':<6}{'48h自然平仓'}")
+        print("\n===== 止损建议 (持仓期反向 vs 假设不止损反向) =====")
+        print(f"{'日期':<7}{'币':<12}{'向':<4}{'结果':<7}{'持仓反向':<9}{'不止损反向':<9}{'方向':<6}{'48h自然平仓'}")
         for r in with_retrace:
             d = '✅对' if r.get('dir_ok') else '❌错'
-            trig = '✅止损' if r['result'] == '-5.0%' else ('✅止盈' if r['result'] == '+10.0%' else '⏳未')
-            print(f"{r['date'][5:]:<7}{r['sym']:<12}{r['direction']:<4}{trig:<7}{r['max_retrace']:>4.1f}%  {d:<5}{r['dir_ret']:+.1f}%")
-        # 最大止损建议: 扫损单所需最小止损 = max(扫损单反向深度) + 缓冲
+            trig = '✅止损' if r['result'] == '-5.0%' else ('✅止盈' if r['result'] == '+10.0%' else '48h')
+            hold = f"{r['max_retrace']:.1f}%" if r.get('max_retrace') is not None else '-'
+            nosl = f"{r.get('max_retrace_no_sl', 0):.1f}%" if r.get('max_retrace_no_sl') is not None else '-'
+            print(f"{r['date'][5:]:<7}{r['sym']:<12}{r['direction']:<4}{trig:<7}{hold:<9}{nosl:<9}{d:<5}{r['dir_ret']:+.1f}%")
+        # 最大止损建议: 用"假设不止损"全窗口反向深度
         swept_r = [r for r in with_retrace if r.get('dir_ok') and r['result'] == '-5.0%']
         if swept_r:
-            mx = max(r['max_retrace'] for r in swept_r)
-            p90 = sorted(r['max_retrace'] for r in swept_r)[-1]  # 样本少, 用 max
-            print(f"\n📏 最大止损建议: {mx:.1f}% + 缓冲 ≈ {mx+2:.1f}% (扫损单反向最深 {mx:.2f}%, 止损放这以上基本不被扫)")
-        # 综合止损建议: 模拟不同 SL 下总收益 (SL' < 反向深度 → 被扫亏 -SL'; SL' >= 反向深度 → 持有到48h 得 dir_ret; 止盈单不受影响 +10%)
+            mx = max(r.get('max_retrace_no_sl', 0) for r in swept_r)
+            print(f"\n📏 最大止损建议: {mx:.1f}% + 缓冲 ≈ {mx+2:.1f}% (扫损单假设不止损反向最深 {mx:.2f}%)")
+        # 综合止损模拟: 用正确的路径口径
+        #  - 止盈单: 若更紧的 SL 会在止盈前被扫 -> -SL; 否则 +10%
+        #  - 止损单: 若更宽的 SL 能扛过全窗口 -> 48h 自然收益; 否则 -SL
+        #  - 未触发单: 全窗口最大反向决定 -SL 或自然收益
         print("\n📊 综合止损模拟 (SL 3%~20%, 每档总收益):")
         best_sl, best_pnl = None, -1e9
         for sl in range(3, 21):
             tot = 0.0
             for r in with_retrace:
                 if r['result'] == '+10.0%':
-                    tot += 10.0
-                elif r.get('max_retrace') is not None and sl >= r['max_retrace']:
-                    tot += r['dir_ret']
+                    if r.get('max_retrace') is not None and sl < r['max_retrace']:
+                        tot += -sl
+                    else:
+                        tot += 10.0
+                elif r['result'] == '-5.0%':
+                    if sl > 5 and r.get('max_retrace_no_sl') is not None and sl >= r['max_retrace_no_sl']:
+                        tot += r['dir_ret']
+                    else:
+                        tot += -sl
                 else:
-                    tot += -sl
+                    if r.get('max_retrace_no_sl') is not None and sl >= r['max_retrace_no_sl']:
+                        tot += r['dir_ret']
+                    else:
+                        tot += -sl
             bar = ' ◀ 最优' if tot > best_pnl else ''
             if tot > best_pnl:
                 best_pnl, best_sl = tot, sl
@@ -241,6 +260,7 @@ def main():
         n_closed = len(closed)
         cur_pnl = sum(-5 if r['result'] == '-5.0%' else (10 if r['result'] == '+10.0%' else 0) for r in results)
         print(f"\n🎯 综合止损建议: {best_sl}% ({n_closed}单已到期总收益 {best_pnl:+.1f}%; 现 5% 口径 {n_closed}单为 {cur_pnl:+.1f}%)")
+
 
 if __name__ == '__main__':
     main()
@@ -273,23 +293,25 @@ def tables_html(results):
                  f"<td style='{td}'>{dir_ret}</td></tr>")
     h.append('</table>')
     # 止损建议表
-    with_r = [r for r in results if r.get('max_retrace') is not None]
+    with_r = [r for r in results if r.get('dir_ret') is not None]
     if with_r:
-        h.append('<br><b>止损建议 (反向测算: 最大反向深度/48h自然平仓)</b><br>')
+        h.append('<br><b>止损建议 (持仓期反向=结算口径; 假设不止损反向=风险测算口径)</b><br>')
         h.append('<table style="' + style + '"><tr>')
-        for c in ['日期', '币', '方向', '止损', '最大反向', '方向对错', '48h自然平仓']:
+        for c in ['日期', '币', '方向', '结果', '持仓期最大反向', '假设不止损反向', '方向对错', '48h自然平仓']:
             h.append(f'<th style="{th}">{c}</th>')
         h.append('</tr>')
         for r in with_r:
             d = '✅对' if r.get('dir_ok') else ('❌错' if r.get('dir_ok') is not None else '⏳')
-            trig = '✅止损' if r['result'] == '-5.0%' else ('✅止盈' if r['result'] == '+10.0%' else '⏳未到')
-            # 48h未到: 自然平仓收益未定显示⏳; 超48h: 固定48h收盘不再随行情变
+            trig = '✅止损' if r['result'] == '-5.0%' else ('✅止盈' if r['result'] == '+10.0%' else '48h到期')
             ret_disp = f"{r['dir_ret']:+.1f}%" if r.get('dir_ret') is not None else '⏳未定'
+            hold = f"{r['max_retrace']:.1f}%" if r.get('max_retrace') is not None else '-'
+            nosl = f"{r.get('max_retrace_no_sl', 0):.1f}%" if r.get('max_retrace_no_sl') is not None else '-'
             h.append(f"<tr><td style='{td}'>{esc(r['date'][5:])}</td>"
                      f"<td style='{td}'>{esc(r['sym'])}</td>"
                      f"<td style='{td}'>{r['direction']}</td>"
                      f"<td style='{td}'>{trig}</td>"
-                     f"<td style='{td}'>{r['max_retrace']:.1f}%</td>"
+                     f"<td style='{td}'>{hold}</td>"
+                     f"<td style='{td}'>{nosl}</td>"
                      f"<td style='{td}'>{d}</td>"
                      f"<td style='{td}'>{ret_disp}</td></tr>")
         h.append('</table>')
