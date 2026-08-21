@@ -108,6 +108,53 @@ def main():
         else:
             unmatched.append(sym)
 
+    # 流通量手工覆盖 (8/15: CoinGecko 个别币 circ 错误, 以币安 App 为准)
+    # 流通量覆盖: CMC 优先(与币安App同源, 8/15接入) → 手工覆盖兜底
+    # CMC key 从 .env 读; 免费版 333次/天, 批量100币/请求
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
+        CMC_KEY = os.environ.get('CMC_API_KEY', '')
+    except Exception:
+        CMC_KEY = ''
+    cmc_circ = {}
+    if CMC_KEY:
+        import requests as _rq
+        try:
+            # 分批100币查 CMC (用币安 base symbol)
+            bases = [s.replace('USDT', '') for s in matched]
+            for i in range(0, len(bases), 100):
+                chunk = bases[i:i+100]
+                r = _rq.get('https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest',
+                            params={'symbol': ','.join(chunk)}, 
+                            headers={'X-CMC_PRO_API_KEY': CMC_KEY}, timeout=20)
+                d = r.json().get('data', {})
+                for sym_up, v in d.items():
+                    item = v[0]
+                    cs = item.get('circulating_supply')
+                    if cs:
+                        cmc_circ[sym_up + 'USDT'] = cs
+            n_cmc = 0
+            for sym in matched:
+                if sym in cmc_circ:
+                    old = matched[sym].get('circ')
+                    matched[sym]['circ'] = cmc_circ[sym]
+                    if old and old != cmc_circ[sym]:
+                        n_cmc += 1
+            print(f'  [CMC] 覆盖 {n_cmc}/{len(matched)} 币的流通量 (与币安App同源)')
+        except Exception as e:
+            print(f'  [CMC] 拉取失败, 继续用CoinGecko: {e}')
+
+    CIRC_OVERRIDES = {
+        'GUAUSDT': 3.14e8,   # 币安App: 3.14亿 (CoinGecko 4500万错, 用户 8/15 核实)
+        'PTBUSDT': 8.114e9,  # 币安App: 81.14亿 (CoinGecko 20.71亿错, 用户 8/15 核实)
+    }
+    for sym, circ in CIRC_OVERRIDES.items():
+        if sym in matched and matched[sym].get('circ'):
+            old = matched[sym]['circ']
+            matched[sym]['circ'] = circ
+            print(f'  [覆盖] {sym} circ: {old:,.0f} → {circ:,.0f} (币安App口径)')
+
     day = datetime.now(timezone.utc).strftime('%Y-%m-%d')
     os.makedirs(OUT_DIR, exist_ok=True)
     doc = {'date': day, 'matched': len(matched), 'unmatched_n': len(unmatched),
