@@ -208,9 +208,12 @@ def update_klines_oi():
         except Exception:
             pass
 
-    # FIX: OI更新逻辑 - 检查每个币种的最新日期，如果早于昨天则需要更新
-    yesterday_ts = int((datetime.now(timezone.utc) - timedelta(days=1)).replace(
+    # 8/13 修复: OI 新鲜度阈值 = 今天 UTC 00:00 (币安快照每日 UTC 00:00 出,
+    # 采集时(UTC 22:00)已可得当日 00:00 快照=昨日收盘持仓; 原 yesterday_ts 阈值
+    # 使缓存永远滞后一天 — 8/11 事故根因, 三层自愈同源失效)
+    today_ts = int(datetime.now(timezone.utc).replace(
         hour=0, minute=0, second=0, microsecond=0).timestamp())
+    yesterday_ts = today_ts  # 语义: 需拉到"今天00:00"快照(昨日收盘)才算新鲜
     
     def _oi_needs_update(sym):
         """检查币种OI是否需要更新（最新数据早于昨天）"""
