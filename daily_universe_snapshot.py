@@ -5,7 +5,7 @@
 cron: 每日7:10 (6:00采集完成后)
 """
 import json, os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 KLINES = '/home/myuser/backtester/data_cache/notusdt_1d_full.json'
 OUT_DIR = '/home/myuser/websocket_new/data/universe'
@@ -14,7 +14,8 @@ SECTOR_SRC = '/home/myuser/websocket_new/data/crypto_sectors.json'
 
 def main():
     k = json.load(open(KLINES))['klines']
-    day = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+    # 北京时间取日期: cron 07:10 CST = 前一天23:10 UTC, 用UTC会把快照写到前一天文件
+    day = datetime.now(timezone(timedelta(hours=8))).strftime('%Y-%m-%d')
     coins = {}
     for sym, kls in k.items():
         if len(kls) < 2:
