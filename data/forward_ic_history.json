@@ -1,5 +1,5 @@
 {
- "updated": "2026-08-21T08:50:02.678201",
+ "updated": "2026-08-22T08:50:02.600933",
  "days": [
   {
    "date": "2026-07-28",
@@ -396,6 +396,24 @@
    "top1_short": "BICOUSDT",
    "top1_short_ret": -3.81,
    "short5_avg_ret": 14.97
+  },
+  {
+   "date": "2026-08-19",
+   "dirty": false,
+   "n_sym": 494,
+   "n_liq": 494,
+   "ic_long": -0.4839,
+   "ic_short": -0.3018,
+   "auc_long": 0.2004,
+   "auc_short": 0.8627,
+   "ic_long_liq": -0.4839,
+   "ic_short_liq": -0.3018,
+   "top1_long": "BTRUSDT",
+   "top1_long_prob": 87.1,
+   "top1_long_ret": -7.0,
+   "top1_short": "ACEUSDT",
+   "top1_short_ret": 0.69,
+   "short5_avg_ret": 2.17
   }
  ]
 }
