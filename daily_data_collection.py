@@ -316,7 +316,8 @@ def main():
         # 情绪采集器是常驻守护进程(screen -S sentiment)，不需要在每日脚本中重复调度
         ('BTC市值', 'python3 collect_btc_mcap.py', BASE, 30),
         ('BTC市占率', 'python3 collect_btc_dominance.py', BASE, 30),
-        ('宏观资产', 'python3 collect_macro_assets.py', BASE, 30),
+        # 宏观采集器自身带3次重试(每次间隔20/40s), 30s会被daily_wrapper杀掉导致STALE
+        ('宏观资产', 'python3 collect_macro_assets.py', BASE, 180),
         ('TVL数据', 'python3 collect_tvl.py', BASE, 120),
         ('清算热力图', 'python3 liquidation_heatmap.py', BASE, 30),
         ('ETF资金流', 'python3 fetch_etf.py',
