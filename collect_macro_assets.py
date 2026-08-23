@@ -7,10 +7,12 @@
   现: 每 ticker 重试3次; 最终失败保留旧文件中的陈旧序列(宁陈旧不缺失);
   资产缺失时 exit 1 大声告警; 写入前校验3资产齐全。
 """
-import json, os, time, sys, subprocess
+import json, os, time, sys, subprocess, shutil
 from datetime import datetime, timezone
 
 OUT = '/tmp/macro_assets.json'
+# 训练与健康检查读取的是 data/macro_assets.json；采集成功后同步过去，避免手动补跑后仍显示 STALE
+DATA_OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'macro_assets.json')
 SYMBOLS = {
     '^GSPC': 'SP500',       # S&P 500
     'DX-Y.NYB': 'DXY',      # US Dollar Index
@@ -78,6 +80,13 @@ def fetch():
         json.dump({'updated': datetime.now(timezone.utc).isoformat(), 'data': result}, f)
     os.rename(tmp, OUT)
     print(f"\n保存: {OUT} ({os.path.getsize(OUT)/1024:.0f}KB)")
+
+    # 同步到 data/（训练与健康检查实际读取路径）
+    try:
+        shutil.copy2(OUT, DATA_OUT)
+        print(f"[Macro] 已同步到 {DATA_OUT}")
+    except Exception as e:
+        print(f"[Macro] 同步到 data/ 失败: {e}")
 
     # 上传COS
     try:
