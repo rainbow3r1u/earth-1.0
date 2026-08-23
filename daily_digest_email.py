@@ -359,7 +359,7 @@ def section_health():
         parts.append(f'(数据漂移监控读取失败: {e})')
     # 4a4. 前向批作业(8/5 新增): 公证预测对答案, 横截面IC/AUC (forward_ic_check.py)
     try:
-        ic_path = '/home/myuser/websocket_new/data/forward_ic_history.json'
+        ic_path = '/home/myuser/websocket_new/data/forward_ic_history_48h.json'
         if os.path.exists(ic_path):
             ih = json.load(open(ic_path))
             days = ih.get('days', [])
@@ -370,7 +370,7 @@ def section_health():
                 tag = '幽灵期' if last.get('dirty') else '干净期'
                 def _f(v, w=6):
                     return f'{v:+.2f}'.rjust(w) if isinstance(v, (int, float)) else '  N/A '
-                lines = [f"[前向批作业] 最新: {last['date']} [{tag}] n={last['n_sym']}币 (72h日线口径IC/AUC，仅辅助排序质量，非48h结算)"]
+                lines = [f"[前向批作业] 最新: {last['date']} [{tag}] n={last['n_sym']}币 (48h日线口径IC/AUC，仅辅助排序质量，非1m结算)"]
                 lines.append(f"  LONG:  IC={_f(last.get('ic_long'))} AUC={last.get('auc_long')} | SHORT: IC={_f(last.get('ic_short'))} AUC={last.get('auc_short')}")
                 s5 = last.get('short5_avg_ret', 0)
                 lines.append(f"  实际: LONG TOP1 {last.get('top1_long')} {last.get('top1_long_ret', 0):+.1f}% | 空前5均 {s5:+.1f}%{' (空头盈利✅)' if s5 < 0 else ' (空头亏损⚠️)'}")
