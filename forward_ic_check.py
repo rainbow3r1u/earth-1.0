@@ -2,11 +2,11 @@
 """前向批作业 (Forward IC Check) — 用兑现的K线给公证过的预测对答案
 
 每天取 N 天前的 pred_YYYY-MM-DD.json (当日8:20已git push公证, 预测先于结果, 不可篡改),
-与该币实际 2日收益 (close[T+2]/open[T]-1, 与 aligned 标签完全同口径) 对照, 计算:
+与该币实际 48h 收益 (close[T+1]/open[T]-1, 48h 日线口径) 对照, 计算:
   - 横截面 rank IC (Spearman): 概率排序 vs 实际收益排序 (LONG应为正, SHORT应为负)
   - AUC: LONG概率区分 ">+5%" 的能力 / SHORT概率区分 "<-5%" 的能力
   - 交易视角: LONG TOP1 实际收益 / SHORT 前5平均实际收益
-结果追加到 data/forward_ic_history.json, 晨报 4a4 节读取展示。
+结果追加到 data/forward_ic_history_48h.json, 晨报 4a4 节读取展示。
 
 判定 (干净期5日滚动): |IC|均值 >= 0.10 = 信号活着; 0.05~0.10 = 转弱; <0.05 = 疑似失效(熔断线候选)
 阈值是初始拍定, 待前向IC分布积累后校准。
@@ -21,7 +21,7 @@ from datetime import date, datetime, timedelta, timezone
 BASE = '/home/myuser/websocket_new'
 PRED_DIR = os.path.join(BASE, 'data')
 KLINE_CACHE = '/home/myuser/backtester/data_cache/notusdt_1d_full.json'
-HIST_PATH = os.path.join(BASE, 'data', 'forward_ic_history.json')
+HIST_PATH = os.path.join(BASE, 'data', 'forward_ic_history_48h.json')
 DIRTY_UNTIL = '2026-08-02'   # 幽灵期(列错位模型)最后一天, 之前预测仅作阴性对照
 DAY_MS = 86400_000
 MIN_SYMBOLS = 50             # 有效币种低于此数视为未兑现/未更新, 跳过
@@ -70,16 +70,16 @@ class KlineIndex:
             self.cs[sym] = np.array([r.get('c', np.nan) for r in rows], dtype=float)
             self.qs[sym] = np.array([r.get('q', np.nan) for r in rows], dtype=float)
 
-    def get(self, sym, t_open, t_close2):
-        """返回 (open[T], close[T+2]) 或 None"""
+    def get(self, sym, t_open, t_close1):
+        """返回 (open[T], close[T+1]) 或 None (48h 日线口径)"""
         ts = self.ts.get(sym)
         if ts is None or len(ts) == 0:
             return None
         i = np.searchsorted(ts, t_open)
         if i >= len(ts) or ts[i] != t_open:
             return None
-        j = np.searchsorted(ts, t_close2)
-        if j >= len(ts) or ts[j] != t_close2:
+        j = np.searchsorted(ts, t_close1)
+        if j >= len(ts) or ts[j] != t_close1:
             return None
         o, c = self.os[sym][i], self.cs[sym][j]
         if not (o > 0 and c > 0 and np.isfinite(o) and np.isfinite(c)):
@@ -121,11 +121,11 @@ def evaluate_date(d_str, kx):
 
     T = datetime.strptime(d_str, '%Y-%m-%d').date()
     t_open = int(datetime(T.year, T.month, T.day, tzinfo=timezone.utc).timestamp() * 1000)   # open[T] (UTC 00:00)
-    t_close2 = t_open + 2 * DAY_MS                                       # close[T+2]
+    t_close1 = t_open + DAY_MS                                           # close[T+1] (48h)
 
     sym_ret = {}
     for sym in {s for s, _ in all_long} | {s for s, _ in all_short}:
-        oc = kx.get(sym, t_open, t_close2)
+        oc = kx.get(sym, t_open, t_close1)
         if oc:
             sym_ret[sym] = oc[1] / oc[0] - 1.0
     if len(sym_ret) < MIN_SYMBOLS:
@@ -181,7 +181,7 @@ def main():
     log('加载K线缓存...')
     kx = KlineIndex(json.load(open(KLINE_CACHE))['klines'])
     max_t = max(ts[-1] for ts in kx.ts.values() if len(ts))
-    eval_max = datetime.fromtimestamp(max_t / 1000, tz=timezone.utc).date() - timedelta(days=3)   # T+2 须严格早于缓存最新蜡烛(最新一根可能未收盘)
+    eval_max = datetime.fromtimestamp(max_t / 1000, tz=timezone.utc).date() - timedelta(days=2)   # 48h口径: T+1收盘须已走完(最新一根可能未收盘)
 
     new_days = []
     for path in sorted(glob.glob(os.path.join(PRED_DIR, 'pred_*.json'))):
