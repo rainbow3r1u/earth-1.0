@@ -295,6 +295,59 @@ def section_top10_forward_u():
         return f'<p style="color:#c00">(每日U盈亏生成失败: {e})</p>'
 
 
+def section_hybrid():
+    """混合结构影子臂 逐日U盈亏: 3.7 同款表格样式。
+    LONG无止盈(SL5%/持有到期) + SHORT TP10%/SL5%, 08:05入场 strict48 全费用口径, 300U名义/笔."""
+    try:
+        hb_path = '/home/myuser/websocket_new/data/hybrid_tracker.json'
+        if not os.path.exists(hb_path):
+            return '<p style="color:#c00">(混合结构影子臂: 无存档, hybrid_tracker未运行?)</p>'
+        hb = json.load(open(hb_path))
+        days_h = sorted(hb.keys())
+        if not days_h:
+            return '<p style="color:#c00">(混合结构影子臂: 存档为空)</p>'
+        cell = "style='padding:2px 8px;border:1px solid #ccc;font-size:12px;'"
+        hd = "style='padding:2px 8px;border:1px solid #ccc;font-size:12px;background:#f0f0f0;'"
+        rows = []
+        cum = 0.0
+        n_days = 0
+        for d in days_h:
+            e = hb[d]
+            done = e.get('n_settled', 0) >= e.get('n_total', 99)
+            pnl = e.get('day_pnl_u', 0)
+            if done:
+                cum += pnl
+                n_days += 1
+            # 最新一天分侧(已结算部分)
+            side_u = {'LONG': 0.0, 'SHORT': 0.0}
+            side_n = {'LONG': 0, 'SHORT': 0}
+            for t in e.get('trades', []):
+                if t.get('net_u') is not None:
+                    side_u[t['direction']] += t['net_u']
+                    side_n[t['direction']] += 1
+            tag = '' if done else ' *'
+            c1 = '#0a0' if pnl >= 0 else '#c00'
+            c2 = '#0a0' if cum >= 0 else '#c00'
+            rows.append(
+                f"<tr><td {cell}>{d}{tag}</td>"
+                f"<td {cell}>L{side_n['LONG']}/{side_u['LONG']:+.0f} S{side_n['SHORT']}/{side_u['SHORT']:+.0f}</td>"
+                f"<td {cell}><b style='color:{c1}'>{pnl:+.1f}</b></td>"
+                f"<td {cell}><b style='color:{c2}'>{cum:+.1f}</b></td></tr>")
+        c2 = '#0a0' if cum >= 0 else '#c00'
+        rows.append(f"<tr><td {hd}><b>已到期 {n_days}天</b></td><td {cell}></td>"
+                    f"<td {cell}></td>"
+                    f"<td {cell}><b style='color:{c2}'>{cum:+.1f}U</b></td></tr>")
+        return ("<table style='border-collapse:collapse;'>"
+                f"<tr><th {hd}>日期</th><th {hd}>分侧(笔/U)</th>"
+                f"<th {hd}>当日净盈亏(U)</th><th {hd}>累计(U)</th></tr>"
+                + ''.join(rows) + "</table>"
+                "<div style='font-size:10px;color:#666;'>LONG无止盈(SL-5%持有到48h) + SHORT TP+10%/SL-5% | "
+                "08:05入场 strict48 1m全费用口径(taker+滑点+资金费), 300U名义/笔, 不复利; "
+                "* = 当日未全到期(当日盈亏为已结算部分)</div>")
+    except Exception as e:
+        return f'<p style="color:#c00">(混合结构影子臂生成失败: {e})</p>'
+
+
 def section_momentum():
     try:
         from daily_momentum_email import build_momentum_body_html
@@ -404,6 +457,9 @@ def section_health():
             parts.append('[前向批作业] ⚠️ 无历史(forward_ic_check未运行?)')
     except Exception as e:
         parts.append(f'(前向批作业读取失败: {e})')
+    # 4a5. 混合结构影子臂(8/24 新增): LONG无止盈+SHORT现行TP/SL, 1m全费用口径
+    # 8/24 晚: 从纯文本升级为 3.7 同款 HTML 表格(独立章节 section_hybrid), 此处不再输出
+    pass
     # 4b. 服务/接口健康报告(原 alert_monitor --report)
     try:
         from alert_monitor import generate_health_report
@@ -469,6 +525,8 @@ def main():
 {section_top10_forward()}
 <b>3.7 多空TOP10全开 每日U盈亏 (固定名义300U/笔)</b> {tag48}
 {section_top10_forward_u()}
+<b>3.8 混合结构影子臂 每日U盈亏 (LONG无止盈+SHORT现行TP/SL)</b> <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>影子验证 · 08:05开仓 · strict48 · 1m全费用 · 60天验证期至~10/23</span>
+{section_hybrid()}
 <b>4. 强势股续涨 + 每日资金榜</b> {tag_none}
 <pre {pre_style}>{section_momentum()}</pre>
 <b>5. 系统健康</b> {tag_none}
