@@ -83,6 +83,9 @@ data/dual_backtest_*.json
 data/prediction_*.json
 data/liquidity_backtest*.json
 
+# COS 删除清单(2026-08-25, 43MB×2 运维残留, 本地留档即可, 勿入 git)
+data/cos_deletion_manifests/
+
 # Old models
 data/xgb_short_model.pkl
 data/xgb_daily_model_clean.pkl
