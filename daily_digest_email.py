@@ -297,8 +297,13 @@ def section_top10_forward_u():
 
 def section_hybrid():
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     """混合结构影子臂 逐日U盈亏: 3.7 同款表格样式。
     LONG无止盈(SL5%/持有到期) + SHORT TP10%/SL5%, 08:05入场 strict48 全费用口径, 300U名义/笔."""
+=======
+    """混合结构影子臂 逐日U盈亏: 3.7 同款表格+同款哲学(只显示48h已全部到期的盖棺日)。
+    LONG无止盈(SL5%/持有到期) + SHORT TP10%/SL5%, 08:21入场 strict48 全费用口径, 300U名义/笔."""
+>>>>>>> Stashed changes
 =======
     """混合结构影子臂 逐日U盈亏: 3.7 同款表格+同款哲学(只显示48h已全部到期的盖棺日)。
     LONG无止盈(SL5%/持有到期) + SHORT TP10%/SL5%, 08:21入场 strict48 全费用口径, 300U名义/笔."""
@@ -317,6 +322,7 @@ def section_hybrid():
         cum = 0.0
         n_days = 0
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         for d in days_h:
             e = hb[d]
             done = e.get('n_settled', 0) >= e.get('n_total', 99)
@@ -331,12 +337,19 @@ def section_hybrid():
             e = hb[d]
             done = e.get('n_settled', 0) >= e.get('n_total', 99)
 >>>>>>> Stashed changes
+=======
+        pending_note = []
+        for d in days_h:
+            e = hb[d]
+            done = e.get('n_settled', 0) >= e.get('n_total', 99)
+>>>>>>> Stashed changes
             side_u = {'LONG': 0.0, 'SHORT': 0.0}
             side_n = {'LONG': 0, 'SHORT': 0}
             for t in e.get('trades', []):
                 if t.get('net_u') is not None:
                     side_u[t['direction']] += t['net_u']
                     side_n[t['direction']] += 1
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
             tag = '' if done else ' *'
             c1 = '#0a0' if pnl >= 0 else '#c00'
@@ -358,10 +371,26 @@ def section_hybrid():
             rows.append(
                 f"<tr><td {cell}>{d}</td>"
 >>>>>>> Stashed changes
+=======
+            if not done:
+                # 3.7 哲学: 未到期日不进表, 浓缩成表注一行
+                pnl_part = e.get('day_pnl_u', 0)
+                pending_note.append(f"{d[5:]} 在持{e.get('n_total',0)-e.get('n_settled',0)}笔"
+                                    f"(中途已结{e.get('n_settled',0)}笔{pnl_part:+.0f}U)")
+                continue
+            pnl = e.get('day_pnl_u', 0)
+            cum += pnl
+            n_days += 1
+            c1 = '#0a0' if pnl >= 0 else '#c00'
+            c2 = '#0a0' if cum >= 0 else '#c00'
+            rows.append(
+                f"<tr><td {cell}>{d}</td>"
+>>>>>>> Stashed changes
                 f"<td {cell}>L{side_n['LONG']}/{side_u['LONG']:+.0f} S{side_n['SHORT']}/{side_u['SHORT']:+.0f}</td>"
                 f"<td {cell}><b style='color:{c1}'>{pnl:+.1f}</b></td>"
                 f"<td {cell}><b style='color:{c2}'>{cum:+.1f}</b></td></tr>")
         c2 = '#0a0' if cum >= 0 else '#c00'
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
         rows.append(f"<tr><td {hd}><b>已到期 {n_days}天</b></td><td {cell}></td>"
                     f"<td {cell}></td>"
@@ -370,6 +399,11 @@ def section_hybrid():
         rows.append(f"<tr><td {hd}><b>合计 {n_days}天</b></td><td {cell}></td>"
                     f"<td {cell}></td>"
                     f"<td {cell}><b style='color:{c2}'>{cum:+.1f}U</b></td></tr>")
+=======
+        rows.append(f"<tr><td {hd}><b>合计 {n_days}天</b></td><td {cell}></td>"
+                    f"<td {cell}></td>"
+                    f"<td {cell}><b style='color:{c2}'>{cum:+.1f}U</b></td></tr>")
+>>>>>>> Stashed changes
         pending_html = ''
         if pending_note:
             pending_html = (f"<div style='font-size:10px;color:#888;'>未到期(不进表): "
@@ -393,20 +427,29 @@ def section_hybrid():
                                " (负=砍掉6-10更优)</div>")
         except Exception:
             pass
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         return ("<table style='border-collapse:collapse;'>"
                 f"<tr><th {hd}>日期</th><th {hd}>分侧(笔/U)</th>"
                 f"<th {hd}>当日净盈亏(U)</th><th {hd}>累计(U)</th></tr>"
                 + ''.join(rows) + "</table>"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 "<div style='font-size:10px;color:#666;'>LONG无止盈(SL-5%持有到48h) + SHORT TP+10%/SL-5% | "
                 "08:05入场 strict48 1m全费用口径(taker+滑点+资金费), 300U名义/笔, 不复利; "
                 "* = 当日未全到期(当日盈亏为已结算部分)</div>")
 =======
+=======
+>>>>>>> Stashed changes
                 + pending_html + s5_html
                 + "<div style='font-size:10px;color:#666;'>LONG无止盈(SL-5%持有到48h) + SHORT TP+10%/SL-5% | "
                 "08:21入场 strict48 1m口径(保证金30U×10x杠杆=名义300U/笔), "
                 "逐笔真实费用(taker+滑点+资金费), 不复利; 峰值40笔同时持仓占用保证金1200U</div>")
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     except Exception as e:
         return f'<p style="color:#c00">(混合结构影子臂生成失败: {e})</p>'
