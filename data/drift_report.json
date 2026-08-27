@@ -1,21 +1,21 @@
 {
- "date": "2026-08-11",
- "status": "ALERT",
+ "date": "2026-08-26",
+ "status": "OK",
  "file_check": [
   {
    "file": "btc_chain.csv",
    "status": "OK",
-   "detail": "追加 1411 行 (130977→132388)"
+   "detail": "追加 1411 行 (151937→153348)"
   },
   {
    "file": "btc_dominance.json",
    "status": "OK",
-   "detail": "追加 1 行 (449→450)"
+   "detail": "追加 1 行 (464→465)"
   },
   {
    "file": "btc_mcap.json",
    "status": "OK",
-   "detail": "追加 1 行 (452→453)"
+   "detail": "追加 1 行 (467→468)"
   },
   {
    "file": "protocol_map.json",
@@ -25,37 +25,37 @@
   {
    "file": "btc_chain_tvl.json",
    "status": "OK",
-   "detail": "追加 1 行 (1969→1970)"
+   "detail": "追加 1 行 (1984→1985)"
   },
   {
    "file": "hashrate_history.json",
    "status": "OK",
-   "detail": "追加 1 行 (1724→1725)"
+   "detail": "追加 1 行 (1739→1740)"
   },
   {
    "file": "btc_coinbase_premium_gap.json",
    "status": "OK",
-   "detail": "追加 1 行 (1345→1346)"
+   "detail": "追加 1 行 (1360→1361)"
   },
   {
    "file": "btc_coinbase_premium_index.json",
    "status": "OK",
-   "detail": "追加 1 行 (1345→1346)"
+   "detail": "追加 1 行 (1360→1361)"
   },
   {
    "file": "btc_korea_premium_index.json",
    "status": "OK",
-   "detail": "追加 1 行 (1345→1346)"
+   "detail": "追加 1 行 (1360→1361)"
   },
   {
    "file": "stablecoin_exchange_netflow.json",
    "status": "OK",
-   "detail": "追加 1 行 (1346→1347)"
+   "detail": "追加 1 行 (1361→1362)"
   },
   {
    "file": "fear_greed_history.json",
    "status": "OK",
-   "detail": "追加 1 行 (446→447)"
+   "detail": "追加 1 行 (461→462)"
   },
   {
    "file": "macro_assets.json",
@@ -64,21 +64,19 @@
   },
   {
    "file": "etf_flow.json",
-   "status": "ALERT",
-   "detail": "行数不变但MD5变 = 历史行被修订!"
+   "status": "OK",
+   "detail": "追加 1 行 (55→56)"
   },
   {
    "file": "liq_daily.json",
    "status": "OK",
-   "detail": "追加 1 行 (63→64)"
+   "detail": "追加 1 行 (78→79)"
   }
  ],
  "replay": {
   "status": "OK",
   "checked": 3,
-  "detail": "3探针一致(样本日 2026-08-11)"
+  "detail": "3探针一致(样本日 2026-08-26)"
  },
- "alerts": [
-  "etf_flow.json: 历史修订(行数45不变)"
- ]
+ "alerts": []
 }

@@ -2233,5 +2233,85 @@
     "date": "2026-08-10",
     "value": 30,
     "classification": "Fear"
+  },
+  {
+    "date": "2026-08-11",
+    "value": 29,
+    "classification": "Fear"
+  },
+  {
+    "date": "2026-08-12",
+    "value": 27,
+    "classification": "Fear"
+  },
+  {
+    "date": "2026-08-13",
+    "value": 29,
+    "classification": "Fear"
+  },
+  {
+    "date": "2026-08-14",
+    "value": 29,
+    "classification": "Fear"
+  },
+  {
+    "date": "2026-08-15",
+    "value": 34,
+    "classification": "Fear"
+  },
+  {
+    "date": "2026-08-16",
+    "value": 34,
+    "classification": "Fear"
+  },
+  {
+    "date": "2026-08-17",
+    "value": 31,
+    "classification": "Fear"
+  },
+  {
+    "date": "2026-08-18",
+    "value": 41,
+    "classification": "Fear"
+  },
+  {
+    "date": "2026-08-19",
+    "value": 46,
+    "classification": "Fear"
+  },
+  {
+    "date": "2026-08-20",
+    "value": 62,
+    "classification": "Greed"
+  },
+  {
+    "date": "2026-08-21",
+    "value": 72,
+    "classification": "Greed"
+  },
+  {
+    "date": "2026-08-22",
+    "value": 71,
+    "classification": "Greed"
+  },
+  {
+    "date": "2026-08-23",
+    "value": 66,
+    "classification": "Greed"
+  },
+  {
+    "date": "2026-08-24",
+    "value": 73,
+    "classification": "Greed"
+  },
+  {
+    "date": "2026-08-25",
+    "value": 74,
+    "classification": "Greed"
+  },
+  {
+    "date": "2026-08-26",
+    "value": 65,
+    "classification": "Greed"
   }
 ]

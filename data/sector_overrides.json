@@ -581,6 +581,66 @@
   ],
   "龙虾USDT": [
    "Meme"
+  ],
+  "1000RATSUSDT": [
+   "Meme",
+   "BTC生态"
+  ],
+  "AVAAIUSDT": [
+   "AI",
+   "AI Agent"
+  ],
+  "BMTUSDT": [
+   "Infrastructure"
+  ],
+  "BROCCOLIF3BUSDT": [
+   "Meme",
+   "BSC"
+  ],
+  "BSVUSDT": [
+   "PoW",
+   "BTC生态"
+  ],
+  "BTRUSDT": [
+   "Layer-2",
+   "Base生态"
+  ],
+  "DODOXUSDT": [
+   "DeFi",
+   "DEX"
+  ],
+  "ERAUSDT": [
+   "DeFi",
+   "Base生态"
+  ],
+  "GTCUSDT": [
+   "Infrastructure"
+  ],
+  "GUAUSDT": [
+   "Meme",
+   "BSC"
+  ],
+  "HEMIUSDT": [
+   "DeFi",
+   "BTC生态"
+  ],
+  "KGENUSDT": [
+   "Alpha"
+  ],
+  "PTBUSDT": [
+   "Alpha"
+  ],
+  "SKYAIUSDT": [
+   "AI"
+  ],
+  "SPORTFUNUSDT": [
+   "Meme",
+   "Solana"
+  ],
+  "STARUSDT": [
+   "游戏",
+   "DePIN",
+   "Solana"
   ]
  },
  "excluded": [

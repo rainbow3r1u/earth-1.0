@@ -1,9 +1,10 @@
 {
  "2026-08-03": {
-  "updated": "2026-08-24T09:46:12.687944+00:00",
-  "day_pnl_u": 199.5,
-  "n_settled": 20,
-  "n_total": 20,
+  "updated": "2026-08-26T01:25:01.864930+00:00",
+  "derived_from": "hybrid_tracker.json",
+  "day_pnl_u": 167.6,
+  "n_settled": 15,
+  "n_total": 15,
   "trades": [
    {
     "direction": "LONG",
@@ -154,64 +155,15 @@
     "time": "08-03 04:29",
     "net_u": 29.76,
     "symbol": "EDENUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 86.7,
-    "entry": 0.0049116,
-    "result": "+10.0%",
-    "trigger": "止盈",
-    "time": "08-03 05:49",
-    "net_u": 30.08,
-    "symbol": "AKEUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 86.6,
-    "entry": 0.005934,
-    "result": "+10.0%",
-    "trigger": "止盈",
-    "time": "08-04 06:43",
-    "net_u": 27.71,
-    "symbol": "MANTRAUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 84.4,
-    "entry": 1.3872,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-03 01:32",
-    "net_u": -19.98,
-    "symbol": "EULUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 83.5,
-    "entry": 0.06217,
-    "result": "+4.1%",
-    "trigger": "到期",
-    "time": "08-05 00:21",
-    "net_u": 8.97,
-    "symbol": "HYPERUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 82.9,
-    "entry": 0.055752,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-03 01:56",
-    "net_u": -14.84,
-    "symbol": "USUSDT"
    }
   ]
  },
  "2026-08-04": {
-  "updated": "2026-08-24T09:46:12.687944+00:00",
-  "day_pnl_u": 179.6,
-  "n_settled": 20,
-  "n_total": 20,
+  "updated": "2026-08-26T01:25:01.864959+00:00",
+  "derived_from": "hybrid_tracker.json",
+  "day_pnl_u": 251.7,
+  "n_settled": 15,
+  "n_total": 15,
   "trades": [
    {
     "direction": "LONG",
@@ -362,64 +314,15 @@
     "time": "08-06 00:21",
     "net_u": 13.95,
     "symbol": "EULUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 75.0,
-    "entry": 0.03618,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-04 14:57",
-    "net_u": -14.74,
-    "symbol": "TAKEUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 74.3,
-    "entry": 0.03974,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-04 01:37",
-    "net_u": -15.12,
-    "symbol": "SKYAIUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 73.0,
-    "entry": 0.01677,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-04 04:43",
-    "net_u": -15.58,
-    "symbol": "BICOUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 72.3,
-    "entry": 0.18871,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-04 04:34",
-    "net_u": -15.53,
-    "symbol": "UBUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 71.8,
-    "entry": 0.01746,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-04 09:59",
-    "net_u": -11.14,
-    "symbol": "ESPORTSUSDT"
    }
   ]
  },
  "2026-08-05": {
-  "updated": "2026-08-24T09:46:12.687944+00:00",
-  "day_pnl_u": 425.6,
-  "n_settled": 20,
-  "n_total": 20,
+  "updated": "2026-08-26T01:25:01.864967+00:00",
+  "derived_from": "hybrid_tracker.json",
+  "day_pnl_u": 455.0,
+  "n_settled": 15,
+  "n_total": 15,
   "trades": [
    {
     "direction": "LONG",
@@ -570,64 +473,15 @@
     "time": "08-05 03:49",
     "net_u": -14.98,
     "symbol": "1000RATSUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 75.2,
-    "entry": 0.0008283,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-05 03:47",
-    "net_u": -14.31,
-    "symbol": "PTBUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 74.1,
-    "entry": 1.019,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-05 02:28",
-    "net_u": -15.35,
-    "symbol": "EPICUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 73.5,
-    "entry": 0.02052,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-05 00:34",
-    "net_u": -15.46,
-    "symbol": "BICOUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 71.0,
-    "entry": 0.05312,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-05 01:13",
-    "net_u": -14.91,
-    "symbol": "SKYAIUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 70.9,
-    "entry": 0.004355,
-    "result": "+10.0%",
-    "trigger": "止盈",
-    "time": "08-05 16:26",
-    "net_u": 30.59,
-    "symbol": "AKEUSDT"
    }
   ]
  },
  "2026-08-06": {
-  "updated": "2026-08-24T09:46:12.687944+00:00",
-  "day_pnl_u": 139.4,
-  "n_settled": 20,
-  "n_total": 20,
+  "updated": "2026-08-26T01:25:01.864973+00:00",
+  "derived_from": "hybrid_tracker.json",
+  "day_pnl_u": 175.8,
+  "n_settled": 15,
+  "n_total": 15,
   "trades": [
    {
     "direction": "LONG",
@@ -778,64 +632,15 @@
     "time": "08-06 00:27",
     "net_u": -14.62,
     "symbol": "BLESSUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 78.4,
-    "entry": 0.02816,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-06 03:01",
-    "net_u": -16.41,
-    "symbol": "BICOUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 78.2,
-    "entry": 0.0009102,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-07 04:06",
-    "net_u": -14.67,
-    "symbol": "PTBUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 76.3,
-    "entry": 0.05358,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-06 02:15",
-    "net_u": -14.99,
-    "symbol": "1000RATSUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 76.2,
-    "entry": 0.8291,
-    "result": "+10.0%",
-    "trigger": "止盈",
-    "time": "08-06 00:49",
-    "net_u": 29.83,
-    "symbol": "CYSUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 72.2,
-    "entry": 0.06662,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-06 14:40",
-    "net_u": -20.16,
-    "symbol": "ERAUSDT"
    }
   ]
  },
  "2026-08-07": {
-  "updated": "2026-08-24T09:46:12.687944+00:00",
-  "day_pnl_u": 816.1,
-  "n_settled": 20,
-  "n_total": 20,
+  "updated": "2026-08-26T01:25:01.864979+00:00",
+  "derived_from": "hybrid_tracker.json",
+  "day_pnl_u": 848.0,
+  "n_settled": 15,
+  "n_total": 15,
   "trades": [
    {
     "direction": "LONG",
@@ -986,64 +791,15 @@
     "time": "08-07 01:06",
     "net_u": -15.33,
     "symbol": "BEATUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 80.3,
-    "entry": 0.01856,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-07 02:03",
-    "net_u": -14.31,
-    "symbol": "ESPORTSUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 79.6,
-    "entry": 0.19836,
-    "result": "+10.0%",
-    "trigger": "止盈",
-    "time": "08-07 02:20",
-    "net_u": 29.5,
-    "symbol": "HEIUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 79.4,
-    "entry": 0.03719,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-07 01:16",
-    "net_u": -16.55,
-    "symbol": "BICOUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 78.5,
-    "entry": 0.06624,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-07 02:01",
-    "net_u": -15.13,
-    "symbol": "TAKEUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 75.6,
-    "entry": 0.0415,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-08 13:24",
-    "net_u": -15.33,
-    "symbol": "EDENUSDT"
    }
   ]
  },
  "2026-08-08": {
-  "updated": "2026-08-24T09:46:12.687944+00:00",
-  "day_pnl_u": -148.3,
-  "n_settled": 20,
-  "n_total": 20,
+  "updated": "2026-08-26T01:25:01.864984+00:00",
+  "derived_from": "hybrid_tracker.json",
+  "day_pnl_u": -87.9,
+  "n_settled": 15,
+  "n_total": 15,
   "trades": [
    {
     "direction": "LONG",
@@ -1194,64 +950,15 @@
     "time": "08-08 08:42",
     "net_u": -15.37,
     "symbol": "BEATUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 82.5,
-    "entry": 0.0238,
-    "result": "+0.0%",
-    "trigger": "到期",
-    "time": "08-10 00:21",
-    "net_u": -0.42,
-    "symbol": "HFTUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 82.3,
-    "entry": 0.1134,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-08 03:32",
-    "net_u": -15.19,
-    "symbol": "SKYAIUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 82.0,
-    "entry": 1.1442,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-08 03:12",
-    "net_u": -15.36,
-    "symbol": "EPICUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 81.1,
-    "entry": 0.0718,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-08 07:03",
-    "net_u": -15.3,
-    "symbol": "TAKEUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 80.3,
-    "entry": 0.039,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-08 03:38",
-    "net_u": -14.14,
-    "symbol": "TUTUSDT"
    }
   ]
  },
  "2026-08-09": {
-  "updated": "2026-08-24T09:46:12.687944+00:00",
-  "day_pnl_u": -197.7,
-  "n_settled": 20,
-  "n_total": 20,
+  "updated": "2026-08-26T01:25:01.864990+00:00",
+  "derived_from": "hybrid_tracker.json",
+  "day_pnl_u": -209.9,
+  "n_settled": 15,
+  "n_total": 15,
   "trades": [
    {
     "direction": "LONG",
@@ -1402,64 +1109,15 @@
     "time": "08-09 00:24",
     "net_u": -13.67,
     "symbol": "TUTUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 84.4,
-    "entry": 0.1934,
-    "result": "+10.0%",
-    "trigger": "止盈",
-    "time": "08-09 06:13",
-    "net_u": 29.65,
-    "symbol": "HEIUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 84.2,
-    "entry": 1.944,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-09 05:53",
-    "net_u": -15.45,
-    "symbol": "PROMUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 84.0,
-    "entry": 0.021052,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-09 01:22",
-    "net_u": -13.79,
-    "symbol": "BLUAIUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 82.5,
-    "entry": 0.06356,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-09 01:29",
-    "net_u": -15.17,
-    "symbol": "TAKEUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 81.4,
-    "entry": 0.9791,
-    "result": "+10.0%",
-    "trigger": "止盈",
-    "time": "08-09 01:21",
-    "net_u": 26.93,
-    "symbol": "CYSUSDT"
    }
   ]
  },
  "2026-08-10": {
-  "updated": "2026-08-24T09:46:12.687944+00:00",
-  "day_pnl_u": 23.7,
-  "n_settled": 20,
-  "n_total": 20,
+  "updated": "2026-08-26T01:25:01.864995+00:00",
+  "derived_from": "hybrid_tracker.json",
+  "day_pnl_u": -34.5,
+  "n_settled": 15,
+  "n_total": 15,
   "trades": [
    {
     "direction": "LONG",
@@ -1610,64 +1268,15 @@
     "time": "08-10 01:20",
     "net_u": 29.4,
     "symbol": "BMTUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 88.4,
-    "entry": 1.0192,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-10 00:59",
-    "net_u": -14.89,
-    "symbol": "CYSUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 87.3,
-    "entry": 0.23267,
-    "result": "+10.0%",
-    "trigger": "止盈",
-    "time": "08-10 00:22",
-    "net_u": 30.22,
-    "symbol": "TUTUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 86.1,
-    "entry": 0.0008582,
-    "result": "+10.0%",
-    "trigger": "止盈",
-    "time": "08-10 01:55",
-    "net_u": 29.72,
-    "symbol": "BOMEUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 86.0,
-    "entry": 0.015495,
-    "result": "+10.0%",
-    "trigger": "止盈",
-    "time": "08-10 01:21",
-    "net_u": 28.2,
-    "symbol": "COOKIEUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 86.0,
-    "entry": 0.012133,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-10 04:40",
-    "net_u": -15.12,
-    "symbol": "BLESSUSDT"
    }
   ]
  },
  "2026-08-11": {
-  "updated": "2026-08-24T09:46:12.687944+00:00",
-  "day_pnl_u": -8.0,
-  "n_settled": 20,
-  "n_total": 20,
+  "updated": "2026-08-26T01:25:01.865000+00:00",
+  "derived_from": "hybrid_tracker.json",
+  "day_pnl_u": -15.9,
+  "n_settled": 15,
+  "n_total": 15,
   "trades": [
    {
     "direction": "LONG",
@@ -1818,64 +1427,15 @@
     "time": "08-11 01:00",
     "net_u": 30.01,
     "symbol": "GUAUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 83.8,
-    "entry": 0.022417,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-11 03:07",
-    "net_u": -20.94,
-    "symbol": "DODOXUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 83.6,
-    "entry": 0.02999,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-12 15:55",
-    "net_u": -14.76,
-    "symbol": "MAVIAUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 83.0,
-    "entry": 0.02299,
-    "result": "+10.0%",
-    "trigger": "止盈",
-    "time": "08-11 05:40",
-    "net_u": 29.4,
-    "symbol": "BMTUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 81.6,
-    "entry": 0.09799,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-11 00:55",
-    "net_u": -15.27,
-    "symbol": "SKYAIUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 81.0,
-    "entry": 0.02603,
-    "result": "+10.0%",
-    "trigger": "止盈",
-    "time": "08-11 18:39",
-    "net_u": 29.46,
-    "symbol": "GWEIUSDT"
    }
   ]
  },
  "2026-08-12": {
-  "updated": "2026-08-24T09:46:12.687944+00:00",
-  "day_pnl_u": -40.0,
-  "n_settled": 20,
-  "n_total": 20,
+  "updated": "2026-08-26T01:25:01.865005+00:00",
+  "derived_from": "hybrid_tracker.json",
+  "day_pnl_u": -97.8,
+  "n_settled": 15,
+  "n_total": 15,
   "trades": [
    {
     "direction": "LONG",
@@ -2026,64 +1586,15 @@
     "time": "08-12 08:36",
     "net_u": -15.28,
     "symbol": "BLESSUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 74.2,
-    "entry": 0.02391,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-12 21:39",
-    "net_u": -15.33,
-    "symbol": "GWEIUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 72.8,
-    "entry": 0.13622,
-    "result": "+10.0%",
-    "trigger": "止盈",
-    "time": "08-13 15:22",
-    "net_u": 29.72,
-    "symbol": "HEIUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 71.0,
-    "entry": 0.08146,
-    "result": "+10.0%",
-    "trigger": "止盈",
-    "time": "08-12 04:01",
-    "net_u": 29.8,
-    "symbol": "SKYAIUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 70.9,
-    "entry": 0.03831,
-    "result": "+10.0%",
-    "trigger": "止盈",
-    "time": "08-12 08:44",
-    "net_u": 29.23,
-    "symbol": "BICOUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 68.8,
-    "entry": 0.03485,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-12 02:06",
-    "net_u": -15.6,
-    "symbol": "NILUSDT"
    }
   ]
  },
  "2026-08-13": {
-  "updated": "2026-08-24T09:46:12.687944+00:00",
-  "day_pnl_u": 406.2,
-  "n_settled": 20,
-  "n_total": 20,
+  "updated": "2026-08-26T01:25:01.865010+00:00",
+  "derived_from": "hybrid_tracker.json",
+  "day_pnl_u": 445.2,
+  "n_settled": 15,
+  "n_total": 15,
   "trades": [
    {
     "direction": "LONG",
@@ -2234,64 +1745,15 @@
     "time": "08-13 00:53",
     "net_u": 29.74,
     "symbol": "BEATUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 74.5,
-    "entry": 0.012422,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-13 00:48",
-    "net_u": -43.01,
-    "symbol": "COTIUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 72.2,
-    "entry": 0.012839,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-13 06:13",
-    "net_u": -14.65,
-    "symbol": "BLUAIUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 72.1,
-    "entry": 0.011197,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-13 08:42",
-    "net_u": -14.22,
-    "symbol": "AVAAIUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 72.0,
-    "entry": 0.03385,
-    "result": "+10.0%",
-    "trigger": "止盈",
-    "time": "08-13 06:45",
-    "net_u": 25.94,
-    "symbol": "BICOUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 70.6,
-    "entry": 0.1765,
-    "result": "+2.3%",
-    "trigger": "到期",
-    "time": "08-15 00:21",
-    "net_u": 7.01,
-    "symbol": "LIGHTUSDT"
    }
   ]
  },
  "2026-08-14": {
-  "updated": "2026-08-24T09:46:12.687944+00:00",
-  "day_pnl_u": 331.0,
-  "n_settled": 20,
-  "n_total": 20,
+  "updated": "2026-08-26T01:25:01.865015+00:00",
+  "derived_from": "hybrid_tracker.json",
+  "day_pnl_u": 294.4,
+  "n_settled": 15,
+  "n_total": 15,
   "trades": [
    {
     "direction": "LONG",
@@ -2442,64 +1904,15 @@
     "time": "08-14 03:05",
     "net_u": 30.54,
     "symbol": "AVAAIUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 78.2,
-    "entry": 0.49,
-    "result": "+10.0%",
-    "trigger": "止盈",
-    "time": "08-14 00:51",
-    "net_u": 30.55,
-    "symbol": "APRUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 72.6,
-    "entry": 0.0067111,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-14 01:15",
-    "net_u": -15.74,
-    "symbol": "AKEUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 72.4,
-    "entry": 0.41404,
-    "result": "+10.0%",
-    "trigger": "止盈",
-    "time": "08-14 08:23",
-    "net_u": 30.05,
-    "symbol": "ONUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 71.7,
-    "entry": 0.27259,
-    "result": "+2.7%",
-    "trigger": "到期",
-    "time": "08-16 00:21",
-    "net_u": 7.14,
-    "symbol": "ALLOUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 71.3,
-    "entry": 0.10824,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-14 15:01",
-    "net_u": -15.32,
-    "symbol": "ACUUSDT"
    }
   ]
  },
  "2026-08-15": {
-  "updated": "2026-08-24T09:46:12.687944+00:00",
-  "day_pnl_u": 77.4,
-  "n_settled": 20,
-  "n_total": 20,
+  "updated": "2026-08-26T01:25:01.865020+00:00",
+  "derived_from": "hybrid_tracker.json",
+  "day_pnl_u": 17.4,
+  "n_settled": 15,
+  "n_total": 15,
   "trades": [
    {
     "direction": "LONG",
@@ -2650,64 +2063,15 @@
     "time": "08-15 00:30",
     "net_u": -14.72,
     "symbol": "CYSUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 77.5,
-    "entry": 0.652,
-    "result": "+10.0%",
-    "trigger": "止盈",
-    "time": "08-15 03:50",
-    "net_u": 29.8,
-    "symbol": "BEATUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 76.6,
-    "entry": 0.11267,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-15 01:01",
-    "net_u": -13.5,
-    "symbol": "HUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 74.8,
-    "entry": 0.12214,
-    "result": "+10.0%",
-    "trigger": "止盈",
-    "time": "08-15 03:49",
-    "net_u": 29.77,
-    "symbol": "ACUUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 73.5,
-    "entry": 0.15888,
-    "result": "+10.0%",
-    "trigger": "止盈",
-    "time": "08-15 06:06",
-    "net_u": 29.01,
-    "symbol": "HEIUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 72.3,
-    "entry": 0.20408,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-15 01:27",
-    "net_u": -15.08,
-    "symbol": "BRUSDT"
    }
   ]
  },
  "2026-08-16": {
-  "updated": "2026-08-24T09:46:12.687944+00:00",
-  "day_pnl_u": -68.1,
-  "n_settled": 20,
-  "n_total": 20,
+  "updated": "2026-08-26T01:25:01.865025+00:00",
+  "derived_from": "hybrid_tracker.json",
+  "day_pnl_u": 10.4,
+  "n_settled": 15,
+  "n_total": 15,
   "trades": [
    {
     "direction": "LONG",
@@ -2858,64 +2222,15 @@
     "time": "08-16 01:42",
     "net_u": -15.28,
     "symbol": "APRUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 82.4,
-    "entry": 0.15411,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-16 04:18",
-    "net_u": -14.48,
-    "symbol": "HUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 81.6,
-    "entry": 0.01479,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-16 12:56",
-    "net_u": -19.65,
-    "symbol": "BMTUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 81.5,
-    "entry": 0.014183,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-16 04:29",
-    "net_u": -15.06,
-    "symbol": "AVAAIUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 80.6,
-    "entry": 0.8505,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-16 04:15",
-    "net_u": -14.01,
-    "symbol": "VELVETUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 79.6,
-    "entry": 0.06571,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-16 08:09",
-    "net_u": -15.25,
-    "symbol": "SKYAIUSDT"
    }
   ]
  },
  "2026-08-17": {
-  "updated": "2026-08-24T09:46:12.687944+00:00",
-  "day_pnl_u": -103.1,
-  "n_settled": 20,
-  "n_total": 20,
+  "updated": "2026-08-26T01:25:01.865031+00:00",
+  "derived_from": "hybrid_tracker.json",
+  "day_pnl_u": -105.1,
+  "n_settled": 15,
+  "n_total": 15,
   "trades": [
    {
     "direction": "LONG",
@@ -3066,64 +2381,15 @@
     "time": "08-17 03:26",
     "net_u": -15.42,
     "symbol": "CYSUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 77.9,
-    "entry": 0.14239,
-    "result": "+10.0%",
-    "trigger": "止盈",
-    "time": "08-17 05:07",
-    "net_u": 30.13,
-    "symbol": "HUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 77.8,
-    "entry": 0.04205,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-18 00:38",
-    "net_u": -14.93,
-    "symbol": "GUAUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 77.7,
-    "entry": 0.12575,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-17 02:37",
-    "net_u": -15.06,
-    "symbol": "BSBUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 76.9,
-    "entry": 0.13456,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-17 02:09",
-    "net_u": -27.68,
-    "symbol": "ACEUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 74.9,
-    "entry": 0.0168,
-    "result": "+10.0%",
-    "trigger": "止盈",
-    "time": "08-17 01:46",
-    "net_u": 29.54,
-    "symbol": "PORTALUSDT"
    }
   ]
  },
  "2026-08-18": {
-  "updated": "2026-08-24T09:46:12.687944+00:00",
-  "day_pnl_u": -5.9,
-  "n_settled": 20,
-  "n_total": 20,
+  "updated": "2026-08-26T01:25:01.865036+00:00",
+  "derived_from": "hybrid_tracker.json",
+  "day_pnl_u": -64.3,
+  "n_settled": 15,
+  "n_total": 15,
   "trades": [
    {
     "direction": "LONG",
@@ -3274,64 +2540,15 @@
     "time": "08-18 03:09",
     "net_u": -15.33,
     "symbol": "APRUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 83.5,
-    "entry": 0.04734,
-    "result": "+10.0%",
-    "trigger": "止盈",
-    "time": "08-18 01:38",
-    "net_u": 29.76,
-    "symbol": "TUTUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 83.1,
-    "entry": 0.015301,
-    "result": "+10.0%",
-    "trigger": "止盈",
-    "time": "08-20 00:01",
-    "net_u": 30.36,
-    "symbol": "KOMAUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 82.1,
-    "entry": 0.0155,
-    "result": "+10.0%",
-    "trigger": "止盈",
-    "time": "08-18 11:42",
-    "net_u": 28.91,
-    "symbol": "PORTALUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 81.0,
-    "entry": 13.279,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-18 08:57",
-    "net_u": -15.32,
-    "symbol": "VVVUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 80.9,
-    "entry": 0.007602,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-18 07:27",
-    "net_u": -15.27,
-    "symbol": "BLESSUSDT"
    }
   ]
  },
  "2026-08-19": {
-  "updated": "2026-08-24T09:46:12.687944+00:00",
-  "day_pnl_u": 192.7,
-  "n_settled": 20,
-  "n_total": 20,
+  "updated": "2026-08-26T01:25:01.865041+00:00",
+  "derived_from": "hybrid_tracker.json",
+  "day_pnl_u": 128.0,
+  "n_settled": 15,
+  "n_total": 15,
   "trades": [
    {
     "direction": "LONG",
@@ -3482,64 +2699,15 @@
     "time": "08-19 06:11",
     "net_u": -15.33,
     "symbol": "CYSUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 84.6,
-    "entry": 0.2809,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-19 12:33",
-    "net_u": -14.89,
-    "symbol": "EDGEUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 83.5,
-    "entry": 0.0007146,
-    "result": "-3.0%",
-    "trigger": "到期",
-    "time": "08-21 00:21",
-    "net_u": -9.44,
-    "symbol": "ONEUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 83.4,
-    "entry": 0.4553,
-    "result": "+10.0%",
-    "trigger": "止盈",
-    "time": "08-19 11:04",
-    "net_u": 29.0,
-    "symbol": "PRLUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 82.8,
-    "entry": 0.014343,
-    "result": "+10.0%",
-    "trigger": "止盈",
-    "time": "08-20 04:01",
-    "net_u": 30.25,
-    "symbol": "KOMAUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 82.6,
-    "entry": 0.018365,
-    "result": "+10.0%",
-    "trigger": "止盈",
-    "time": "08-19 01:39",
-    "net_u": 29.72,
-    "symbol": "GPSUSDT"
    }
   ]
  },
  "2026-08-20": {
-  "updated": "2026-08-24T09:46:12.687944+00:00",
-  "day_pnl_u": 39.9,
-  "n_settled": 20,
-  "n_total": 20,
+  "updated": "2026-08-26T01:25:01.865047+00:00",
+  "derived_from": "hybrid_tracker.json",
+  "day_pnl_u": 120.9,
+  "n_settled": 15,
+  "n_total": 15,
   "trades": [
    {
     "direction": "LONG",
@@ -3690,64 +2858,15 @@
     "time": "08-20 00:54",
     "net_u": -15.32,
     "symbol": "VELVETUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 82.2,
-    "entry": 0.008861,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-20 05:16",
-    "net_u": -15.06,
-    "symbol": "HEMIUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 80.7,
-    "entry": 0.06843,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-20 02:20",
-    "net_u": -15.22,
-    "symbol": "SKYAIUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 78.3,
-    "entry": 0.0171,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-20 06:16",
-    "net_u": -17.95,
-    "symbol": "BICOUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 76.2,
-    "entry": 0.12525,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-20 13:50",
-    "net_u": -17.41,
-    "symbol": "HEIUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 72.9,
-    "entry": 0.01157,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-20 00:55",
-    "net_u": -15.33,
-    "symbol": "GPSUSDT"
    }
   ]
  },
  "2026-08-21": {
-  "updated": "2026-08-24T09:46:12.687944+00:00",
-  "day_pnl_u": 50.7,
-  "n_settled": 20,
-  "n_total": 20,
+  "updated": "2026-08-26T01:25:01.865052+00:00",
+  "derived_from": "hybrid_tracker.json",
+  "day_pnl_u": -8.8,
+  "n_settled": 15,
+  "n_total": 15,
   "trades": [
    {
     "direction": "LONG",
@@ -3898,64 +3017,15 @@
     "time": "08-21 02:02",
     "net_u": -15.06,
     "symbol": "HEMIUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 78.9,
-    "entry": 0.24149,
-    "result": "+10.0%",
-    "trigger": "止盈",
-    "time": "08-22 05:11",
-    "net_u": 29.97,
-    "symbol": "BRUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 78.5,
-    "entry": 0.019387,
-    "result": "+10.0%",
-    "trigger": "止盈",
-    "time": "08-21 01:06",
-    "net_u": 29.87,
-    "symbol": "AVAAIUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 77.0,
-    "entry": 0.1369,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-21 01:54",
-    "net_u": -14.85,
-    "symbol": "STARUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 75.4,
-    "entry": 0.13238,
-    "result": "+10.0%",
-    "trigger": "止盈",
-    "time": "08-21 15:47",
-    "net_u": 29.77,
-    "symbol": "CROSSUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 75.3,
-    "entry": 0.003831,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-21 10:44",
-    "net_u": -15.33,
-    "symbol": "PUMPUSDT"
    }
   ]
  },
  "2026-08-22": {
-  "updated": "2026-08-24T09:46:12.687944+00:00",
-  "day_pnl_u": -230.2,
-  "n_settled": 20,
-  "n_total": 20,
+  "updated": "2026-08-26T01:25:01.865058+00:00",
+  "derived_from": "hybrid_tracker.json",
+  "day_pnl_u": -142.3,
+  "n_settled": 15,
+  "n_total": 15,
   "trades": [
    {
     "direction": "LONG",
@@ -4106,64 +3176,15 @@
     "time": "08-22 00:46",
     "net_u": -16.42,
     "symbol": "BMTUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 83.9,
-    "entry": 0.02448,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-22 03:48",
-    "net_u": -16.86,
-    "symbol": "GWEIUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 83.5,
-    "entry": 0.05528,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-22 03:24",
-    "net_u": -16.28,
-    "symbol": "EDENUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 83.5,
-    "entry": 0.02791,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-22 02:42",
-    "net_u": -15.71,
-    "symbol": "MONUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 83.0,
-    "entry": 0.05154,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-22 05:18",
-    "net_u": -15.33,
-    "symbol": "RECALLUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 82.2,
-    "entry": 0.23194,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-22 02:32",
-    "net_u": -23.7,
-    "symbol": "ACEUSDT"
    }
   ]
  },
  "2026-08-23": {
-  "updated": "2026-08-25T01:20:01.636536+00:00",
-  "day_pnl_u": -54.5,
-  "n_settled": 20,
-  "n_total": 20,
+  "updated": "2026-08-26T01:25:01.865063+00:00",
+  "derived_from": "hybrid_tracker.json",
+  "day_pnl_u": -6.5,
+  "n_settled": 15,
+  "n_total": 15,
   "trades": [
    {
     "direction": "LONG",
@@ -4314,64 +3335,15 @@
     "time": "08-23 18:32",
     "net_u": -17.36,
     "symbol": "GWEIUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 85.9,
-    "entry": 5.674,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-23 13:18",
-    "net_u": -15.33,
-    "symbol": "ENSUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 85.4,
-    "entry": 0.001934,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-23 11:47",
-    "net_u": -15.33,
-    "symbol": "GALAUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 85.3,
-    "entry": 0.2033,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-24 15:59",
-    "net_u": -15.33,
-    "symbol": "APRUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 84.4,
-    "entry": 0.337,
-    "result": "-0.7%",
-    "trigger": "到期",
-    "time": "08-25 00:21",
-    "net_u": -2.38,
-    "symbol": "CRVUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 83.8,
-    "entry": 0.005445,
-    "result": "+0.2%",
-    "trigger": "到期",
-    "time": "08-25 00:21",
-    "net_u": 0.44,
-    "symbol": "1000SHIBUSDT"
    }
   ]
  },
  "2026-08-24": {
-  "updated": "2026-08-26T01:20:01.374822+00:00",
-  "day_pnl_u": 31.6,
-  "n_settled": 20,
-  "n_total": 20,
+  "updated": "2026-08-26T01:25:01.865068+00:00",
+  "derived_from": "hybrid_tracker.json",
+  "day_pnl_u": -48.9,
+  "n_settled": 15,
+  "n_total": 15,
   "trades": [
    {
     "direction": "LONG",
@@ -4522,64 +3494,15 @@
     "time": "08-24 07:31",
     "net_u": -15.33,
     "symbol": "FORMUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 88.5,
-    "entry": 0.006454,
-    "result": "+2.2%",
-    "trigger": "到期",
-    "time": "08-26 00:21",
-    "net_u": 6.31,
-    "symbol": "BIGTIMEUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 87.9,
-    "entry": 0.012655,
-    "result": "+10.0%",
-    "trigger": "止盈",
-    "time": "08-25 13:28",
-    "net_u": 29.76,
-    "symbol": "USUALUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 87.4,
-    "entry": 0.008877,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-24 08:06",
-    "net_u": -15.14,
-    "symbol": "BLESSUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 87.2,
-    "entry": 0.06462,
-    "result": "+10.0%",
-    "trigger": "止盈",
-    "time": "08-24 09:07",
-    "net_u": 29.82,
-    "symbol": "SKYAIUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 87.1,
-    "entry": 0.05801,
-    "result": "+10.0%",
-    "trigger": "止盈",
-    "time": "08-25 21:08",
-    "net_u": 29.76,
-    "symbol": "LAUSDT"
    }
   ]
  },
  "2026-08-25": {
-  "updated": "2026-08-26T01:20:01.374822+00:00",
-  "day_pnl_u": -162.4,
-  "n_settled": 16,
-  "n_total": 20,
+  "updated": "2026-08-26T01:25:01.865073+00:00",
+  "derived_from": "hybrid_tracker.json",
+  "day_pnl_u": -82.4,
+  "n_settled": 11,
+  "n_total": 15,
   "trades": [
    {
     "direction": "LONG",
@@ -4730,64 +3653,15 @@
     "time": "08-25 01:51",
     "net_u": -13.97,
     "symbol": "STARUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 84.3,
-    "entry": 0.01512,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-25 15:15",
-    "net_u": -19.09,
-    "symbol": "BMTUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 83.9,
-    "entry": 0.02803,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-25 19:18",
-    "net_u": -14.71,
-    "symbol": "SIRENUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 82.5,
-    "entry": 0.08469,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-25 03:32",
-    "net_u": -15.43,
-    "symbol": "ONGUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 82.1,
-    "entry": 0.2094,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-25 06:27",
-    "net_u": -15.42,
-    "symbol": "APRUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 81.0,
-    "entry": 3.377,
-    "result": "-5.0%",
-    "trigger": "止损",
-    "time": "08-25 14:43",
-    "net_u": -15.42,
-    "symbol": "LITUSDT"
    }
   ]
  },
  "2026-08-26": {
-  "updated": "2026-08-26T01:20:01.374822+00:00",
+  "updated": "2026-08-26T01:25:01.865077+00:00",
+  "derived_from": "hybrid_tracker.json",
   "day_pnl_u": -15.5,
   "n_settled": 1,
-  "n_total": 20,
+  "n_total": 15,
   "trades": [
    {
     "direction": "LONG",
@@ -4938,56 +3812,6 @@
     "time": "-",
     "net_u": null,
     "symbol": "MAGMAUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 85.4,
-    "entry": 0.012123,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null,
-    "symbol": "XANUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 85.1,
-    "entry": 1.879,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null,
-    "symbol": "DEXEUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 84.6,
-    "entry": 0.2329,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null,
-    "symbol": "APRUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 84.5,
-    "entry": 0.03407,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null,
-    "symbol": "BTRUSDT"
-   },
-   {
-    "direction": "SHORT",
-    "prob": 83.9,
-    "entry": 0.02885,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null,
-    "symbol": "SIRENUSDT"
    }
   ]
  }
