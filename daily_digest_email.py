@@ -489,11 +489,18 @@ def section_forward_ic():
                 vs = [d[key] for d in l5 if d.get(key) is not None]
                 return sum(vs)/len(vs) if vs else None
             al, ash = _avg('auc_long'), _avg('auc_short')
+            ml, ms = _avg('ic_long'), _avg('ic_short')
             m = min(al or 0, ash or 0)
             vc = '#0a0' if m >= 0.60 else ('#b8860b' if m >= 0.55 else '#c00')
             vv = '✅信号活着' if m >= 0.60 else ('⚠️转弱' if m >= 0.55 else '❌疑似失效')
-            verdict_html = (f"<div style='font-size:12px;margin-top:4px;'>判定(近{len(l5)}日AUC均值 "
-                            f"L={al:.2f}/S={ash:.2f}, 阈值0.60): <b style='color:{vc};'>{vv}</b></div>")
+            # IC方向异常: 期望 IC_L>0, IC_S<0 (5日均值口径, 与旧版一致)
+            ic_bad = ((ml is not None and ml < 0) or (ms is not None and ms > 0))
+            ic_note = (f" ⚠️IC方向异常(L={ml:+.2f}/S={ms:+.2f})"
+                       f"<span style='color:#666;'>(应L正S负)</span>") if ic_bad else ''
+            bg = 'background:#e8f5e9;border-left:4px solid #0a0;' if not ic_bad else 'background:#fff9c4;border-left:4px solid #b8860b;'
+            verdict_html = (f"<div style='font-size:12px;margin-top:4px;padding:4px 8px;{bg}'>"
+                            f"判定(近{len(l5)}日AUC均值 L={al:.2f}/S={ash:.2f}, 阈值0.60): "
+                            f"<b style='color:{vc};'>{vv}</b>{ic_note}</div>")
         # 预警区
         alert_html = ''
         al_last = last.get('auc_long')
