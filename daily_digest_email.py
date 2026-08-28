@@ -520,6 +520,7 @@ def section_forward_ic():
                 + ''.join(rows) + "</table>"
                 + verdict_html + alert_html
                 + "<div style='font-size:10px;color:#666;margin-top:3px;'>"
+                "口径注: 本节为48h日线口径(open[D]→close[D+2]), 与第2节/3.8节的1m结算口径不同, 仅评估排序质量非交易结算。"
                 "BTCvol = BTC 5日已实现波动(底色: 绿≤1.5%平静 / 黄1.5~2%警戒 / 红>2%高波动)。"
                 "系统吃横盘期alpha: r(vol,AUC_L)=-0.52 — 平静期双侧正常, 高波动期LONG分类力崩、SHORT独立alpha仍可, "
                 "恢复期3-5天。IC_L深红(<-0.15)为排序显著反向。</div>")
