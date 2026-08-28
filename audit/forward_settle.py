@@ -326,6 +326,24 @@ def tables_html(results):
                      f"<td style='{row_td}'>{d}</td>"
                      f"<td style='{row_td}'>{ret_disp}</td></tr>")
         h.append('</table>')
+        # 盈利汇总: 实际执行口径(TP+10/SL-5/到期=dir_ret) vs 裸奔48h自然平仓口径(全部按dir_ret)
+        n_tp = len([r for r in with_r if r['result'] == '+10.0%'])
+        n_sl = len([r for r in with_r if r['result'] == '-5.0%'])
+        n_48 = len(with_r) - n_tp - n_sl
+        exec_pnl = sum(10.0 if r['result'] == '+10.0%' else (-5.0 if r['result'] == '-5.0%' else r['dir_ret'])
+                       for r in with_r)
+        hold_pnl = sum(r['dir_ret'] for r in with_r)
+        diff = hold_pnl - exec_pnl
+        c_e = '#0a0' if exec_pnl >= 0 else '#c00'
+        c_h = '#0a0' if hold_pnl >= 0 else '#c00'
+        c_d = '#0a0' if diff >= 0 else '#c00'
+        h.append(f"<div style='font-size:11px;margin-top:4px;padding:3px 6px;background:#f5f5f5;'>"
+                 f"💰 盈利汇总(共{len(with_r)}单 = 止盈{n_tp} + 止损{n_sl} + 48h到期{n_48}): "
+                 f"① 实际执行(TP10/SL5/到期) <b style='color:{c_e};'>{exec_pnl:+.1f}%</b> | "
+                 f"② 裸奔48h自然平仓 <b style='color:{c_h};'>{hold_pnl:+.1f}%</b> | "
+                 f"差(②−①) <b style='color:{c_d};'>{diff:+.1f}%</b>"
+                 f"{' (裸奔更优 — TP/SL在杀利润)' if diff > 0 else (' (执行更优 — TP/SL在保护)' if diff < 0 else '')}"
+                 f"</div>")
         n_swept = len([r for r in with_r if r['result'] == '-5.0%' and r.get('dir_ok')])
         if n_swept:
             maes = [r.get('max_retrace_no_sl', 0) for r in with_r
