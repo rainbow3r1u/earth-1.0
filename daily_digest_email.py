@@ -433,6 +433,99 @@ def section_momentum():
         return f'<p style="color:#c00">(强势股/资金榜生成失败: {e})</p>'
 
 
+def section_forward_ic():
+    """前向批作业(公证预测对答案): HTML 表格版。
+    BTCvol 列带 regime 底色: 绿=平静(≤1.5%) / 黄=警戒(1.5-2%) / 红=高波动(>2%)。
+    依据 2026-08-28 分析: r(vol,AUC_L)=-0.52 t=-3.79, 系统吃横盘期 alpha, vol 是利润周期主时钟。"""
+    try:
+        ic_path = '/home/myuser/websocket_new/data/forward_ic_history_48h.json'
+        if not os.path.exists(ic_path):
+            return '<p style="color:#c00">[前向批作业] ⚠️ 无历史(forward_ic_check未运行?)</p>'
+        ih = json.load(open(ic_path))
+        days = ih.get('days', [])
+        clean = [d for d in days if not d.get('dirty')]
+        if not days or not clean:
+            return '<p style="color:#c00">[前向批作业] ⚠️ 暂无批作业记录</p>'
+        last = clean[-1]
+        cell = "style='padding:2px 8px;border:1px solid #ccc;font-size:12px;'"
+        hd = "style='padding:2px 8px;border:1px solid #ccc;font-size:12px;background:#f0f0f0;'"
+        # 概览行
+        def _f(v):
+            return f'{v:+.2f}' if isinstance(v, (int, float)) else 'N/A'
+        s5 = last.get('short5_avg_ret', 0)
+        head = (f"最新: {last['date']} [干净期] n={last['n_sym']}币 "
+                f"— LONG IC={_f(last.get('ic_long'))} AUC={last.get('auc_long')} | "
+                f"SHORT IC={_f(last.get('ic_short'))} AUC={last.get('auc_short')} | "
+                f"实际: LONG TOP1 {last.get('top1_long')} {last.get('top1_long_ret', 0):+.1f}% "
+                f"/ 空前5均 {s5:+.1f}%"
+                f"{' (空头盈利✅)' if s5 < 0 else ' (空头亏损⚠️)'}")
+        # 7日表
+        rows = []
+        for d in clean[-7:]:
+            v = _btc_vol_at(d['date'])
+            # regime 底色: 绿=平静 黄=警戒 红=高波动
+            if v is None:
+                vc, vt = '#eee', 'N/A'
+            elif v <= 1.5:
+                vc, vt = '#c8e6c9', f'{v:.1f} 平静'
+            elif v <= 2.0:
+                vc, vt = '#fff9c4', f'{v:.1f} 警戒'
+            else:
+                vc, vt = '#ffcdd2', f'{v:.1f} 高波动'
+            c_icl = '#c00' if (d.get('ic_long') or 0) < -0.15 else '#333'
+            rows.append(
+                f"<tr><td {cell}>{d['date'][5:]}</td>"
+                f"<td {cell} style='color:{c_icl};'>{_f(d.get('ic_long'))}</td>"
+                f"<td {cell}>{_f(d.get('ic_short'))}</td>"
+                f"<td {cell}>{d.get('top1_long_ret', 0):+.1f}%</td>"
+                f"<td {cell}>{d.get('short5_avg_ret', 0):+.1f}%</td>"
+                f"<td {cell} style='background:{vc};'><b>{vt}</b></td></tr>")
+        # 判定行
+        verdict_html = ''
+        if len(clean) >= 3:
+            l5 = clean[-5:]
+            def _avg(key):
+                vs = [d[key] for d in l5 if d.get(key) is not None]
+                return sum(vs)/len(vs) if vs else None
+            al, ash = _avg('auc_long'), _avg('auc_short')
+            m = min(al or 0, ash or 0)
+            vc = '#0a0' if m >= 0.60 else ('#b8860b' if m >= 0.55 else '#c00')
+            vv = '✅信号活着' if m >= 0.60 else ('⚠️转弱' if m >= 0.55 else '❌疑似失效')
+            verdict_html = (f"<div style='font-size:12px;margin-top:4px;'>判定(近{len(l5)}日AUC均值 "
+                            f"L={al:.2f}/S={ash:.2f}, 阈值0.60): <b style='color:{vc};'>{vv}</b></div>")
+        # 预警区
+        alert_html = ''
+        al_last = last.get('auc_long')
+        vol_at_aucday = _btc_vol_at(last['date'])
+        vol_now = _btc_vol_latest()
+        if isinstance(al_last, (int, float)) and vol_at_aucday is not None:
+            if al_last < 0.55 and vol_at_aucday <= 2.0:
+                state = ('BTC随后已放大(失效兑现期)' if (vol_now or 0) > 2.0
+                         else 'BTC至今仍平静(领先大波动风险↑)')
+                alert_html = (f"<div style='font-size:12px;margin-top:4px;padding:4px 8px;"
+                              f"background:#ffcdd2;border-left:4px solid #c00;'>"
+                              f"🚨 <b>领先预警(8/18形态)</b>: {last['date'][5:]} AUC_L={al_last:.2f}已失效"
+                              f" 而当日BTC波动仅{vol_at_aucday:.1f}%(平静) — 失效始于平静市而非已发冲击, "
+                              f"{state} (n=1先例, 关注LONG仓位)</div>")
+            elif al_last < 0.55:
+                alert_html = (f"<div style='font-size:12px;margin-top:4px;padding:4px 8px;"
+                              f"background:#fff9c4;border-left:4px solid #b8860b;'>"
+                              f"ℹ️ AUC_L={al_last:.2f}走弱 且当日BTC波动已放大({vol_at_aucday:.1f}%) — "
+                              f"冲击兑现期(历史恢复3-5天), SHORT侧通常不受损</div>")
+        return (f"<div style='font-size:12px;margin-bottom:4px;'>{head}</div>"
+                "<table style='border-collapse:collapse;'>"
+                f"<tr><th {hd}>日期</th><th {hd}>IC_L</th><th {hd}>IC_S</th>"
+                f"<th {hd}>TOP1L</th><th {hd}>空前5</th><th {hd}>BTC 5日波动</th></tr>"
+                + ''.join(rows) + "</table>"
+                + verdict_html + alert_html
+                + "<div style='font-size:10px;color:#666;margin-top:3px;'>"
+                "BTCvol = BTC 5日已实现波动(底色: 绿≤1.5%平静 / 黄1.5~2%警戒 / 红>2%高波动)。"
+                "系统吃横盘期alpha: r(vol,AUC_L)=-0.52 — 平静期双侧正常, 高波动期LONG分类力崩、SHORT独立alpha仍可, "
+                "恢复期3-5天。IC_L深红(<-0.15)为排序显著反向。</div>")
+    except Exception as e:
+        return f'<p style="color:#c00">(前向批作业读取失败: {e})</p>'
+
+
 def section_health():
     parts = []
     # 4a. 每日健康检查 4 项(原 daily_health_check.py; MD5同步检查已随观察端下线移除)
@@ -487,71 +580,8 @@ def section_health():
             parts.append('[数据漂移监控] ⚠️ 无报告(监控未运行?)')
     except Exception as e:
         parts.append(f'(数据漂移监控读取失败: {e})')
-    # 4a4. 前向批作业(8/5 新增): 公证预测对答案, 横截面IC/AUC (forward_ic_check.py)
-    try:
-        ic_path = '/home/myuser/websocket_new/data/forward_ic_history_48h.json'
-        if os.path.exists(ic_path):
-            ih = json.load(open(ic_path))
-            days = ih.get('days', [])
-            clean = [d for d in days if not d.get('dirty')]
-            dirty = [d for d in days if d.get('dirty')]
-            if days:
-                last = clean[-1] if clean else days[-1]
-                tag = '幽灵期' if last.get('dirty') else '干净期'
-                def _f(v, w=6):
-                    return f'{v:+.2f}'.rjust(w) if isinstance(v, (int, float)) else '  N/A '
-                lines = [f"[前向批作业] 最新: {last['date']} [{tag}] n={last['n_sym']}币 (48h日线口径IC/AUC，仅辅助排序质量，非1m结算)"]
-                lines.append(f"  LONG:  IC={_f(last.get('ic_long'))} AUC={last.get('auc_long')} | SHORT: IC={_f(last.get('ic_short'))} AUC={last.get('auc_short')}")
-                s5 = last.get('short5_avg_ret', 0)
-                lines.append(f"  实际: LONG TOP1 {last.get('top1_long')} {last.get('top1_long_ret', 0):+.1f}% | 空前5均 {s5:+.1f}%{' (空头盈利✅)' if s5 < 0 else ' (空头亏损⚠️)'}")
-                if last.get('note'):
-                    lines.append(f"  ⚠️ 注: {last['note'][:80]}")
-                if len(clean) > 1:
-                    lines.append('  干净期批作业: 日期   IC_L   IC_S   TOP1L   空前5  BTCvol')
-                    for d in clean[-7:]:
-                        v = _btc_vol_at(d['date'])
-                        vs = f'{v:5.1f}' if v is not None else '  N/A'
-                        lines.append(f"    {d['date'][5:]}  {_f(d.get('ic_long'))} {_f(d.get('ic_short'))} {d.get('top1_long_ret', 0):+6.1f}% {d.get('short5_avg_ret', 0):+6.1f}% {vs}")
-                if len(clean) >= 3:
-                    l5 = clean[-5:]
-                    def _avg(key):
-                        vs = [d[key] for d in l5 if d.get(key) is not None]
-                        return sum(vs)/len(vs) if vs else None
-                    al, ash = _avg('auc_long'), _avg('auc_short')
-                    ml, ms = _avg('ic_long'), _avg('ic_short')
-                    m = min(al or 0, ash or 0)
-                    verdict = '✅信号活着' if m >= 0.60 else ('⚠️转弱' if m >= 0.55 else '❌疑似失效(熔断线候选)')
-                    note = f' ⚠️IC方向异常(L={ml:+.2f}/S={ms:+.2f})' if ((ml is not None and ml < 0) or (ms is not None and ms > 0)) else ''
-                    lines.append(f"  判定(近{len(l5)}日AUC均值 L={al:.2f}/S={ash:.2f}, 阈值0.60): {verdict}{note}")
-                else:
-                    lines.append(f"  判定: 干净期样本累积中({len(clean)}/3天, ≥3天出判定)")
-                # BTC波动对照 + 领先预警 (2026-08-28 发现: AUC_L 失效(8/18)领先 BTC 大波动(8/19 +7.13%) 1 天,
-                # r(vol,AUC_L)=-0.52 t=-3.79; 判定只看AUC日当天vol — "失效始于平静市"=regime shift形态)
-                al_last = last.get('auc_long')
-                vol_at_aucday = _btc_vol_at(last['date'])
-                vol_now = _btc_vol_latest()
-                if isinstance(al_last, (int, float)) and vol_at_aucday is not None:
-                    if al_last < 0.55 and vol_at_aucday <= 2.0:
-                        vol_txt = f'最新{vol_now:.1f}%' if vol_now is not None else '最新N/A'
-                        state = ('BTC随后已放大(失效兑现期)' if (vol_now or 0) > 2.0
-                                 else 'BTC至今仍平静(领先大波动风险↑)')
-                        lines.append(f"  🚨 领先预警(8/18形态): {last['date'][5:]} AUC_L={al_last:.2f}已失效"
-                                     f" 而当日BTC波动仅{vol_at_aucday:.1f}%(平静) — 失效始于平静市而非已发冲击,"
-                                     f" {state} (n=1先例, 关注LONG仓位)")
-                    elif al_last < 0.55 and (vol_at_aucday > 2.0):
-                        lines.append(f"  ℹ️ AUC_L={al_last:.2f}走弱 且当日BTC波动已放大({vol_at_aucday:.1f}%) —"
-                                     " 冲击兑现期(历史恢复3-5天), SHORT侧通常不受损")
-                if dirty:
-                    dl = [d['ic_long'] for d in dirty if d.get('ic_long') is not None]
-                    ds = [d['ic_short'] for d in dirty if d.get('ic_short') is not None]
-                    lines.append(f"  幽灵期阴性对照({len(dirty)}天): IC_L均值{sum(dl)/len(dl):+.2f}/IC_S均值{sum(ds)/len(ds):+.2f}≈0 (错位模型无排序力, 方法有效✅)")
-                parts.append('\n'.join(lines))
-            else:
-                parts.append('[前向批作业] ⚠️ 暂无批作业记录')
-        else:
-            parts.append('[前向批作业] ⚠️ 无历史(forward_ic_check未运行?)')
-    except Exception as e:
-        parts.append(f'(前向批作业读取失败: {e})')
+    # 4a4. 前向批作业(8/5 新增): 公证预测对答案 — 已升级为独立HTML小节 section_forward_ic(2026-08-28)
+    pass
     # 4a5. 混合结构影子臂(8/24 新增): LONG无止盈+SHORT现行TP/SL, 1m全费用口径
     # 8/24 晚: 从纯文本升级为 3.7 同款 HTML 表格(独立章节 section_hybrid), 此处不再输出
     pass
@@ -626,6 +656,8 @@ def main():
 <pre {pre_style}>{section_momentum()}</pre>
 <b>5. 系统健康</b> {tag_none}
 <pre {pre_style}>{section_health()}</pre>
+<b>5.5 前向批作业 · 模型质量与BTC波动 regime</b> <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>公证预测对答案 · 48h日线口径 · D+2确认</span>
+{section_forward_ic()}
 <b>6. GitHub 同步</b> {tag_none}
 <pre {pre_style}>{section_github_sync()}</pre>"""
     send_email(f'晨报总览 {today}', '', body_html=body_html)
