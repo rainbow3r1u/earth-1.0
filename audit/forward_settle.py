@@ -312,14 +312,15 @@ def tables_html(results):
                 ext = f"{r['max_retrace_no_sl'] - mr:.1f}%"
             else:
                 ext = '-'
-            # 研究重点高亮: 止损但方向对(扫损单) — 整行黄底, MAE 数字红色加粗
+            # 研究重点高亮: 止损但方向对(扫损单) — 整行黄底, MAE 数字红色加粗; 止盈行 — 结果绿色
             swept = (r['result'] == '-5.0%' and r.get('dir_ok'))
             row_td = td + ('background:#fff3cd;' if swept else '')
             mae_td = row_td + ('color:#c00;font-weight:bold;' if swept else '')
+            trig_disp = f"<span style='color:#0a0;font-weight:bold;'>{trig}</span>" if r['result'] == '+10.0%' else trig
             h.append(f"<tr><td style='{row_td}'>{esc(r['date'][5:])}</td>"
                      f"<td style='{row_td}'>{esc(r['sym'])}</td>"
                      f"<td style='{row_td}'>{r['direction']}</td>"
-                     f"<td style='{row_td}'>{trig}</td>"
+                     f"<td style='{row_td}'>{trig_disp}</td>"
                      f"<td style='{mae_td}'>{nosl}</td>"
                      f"<td style='{row_td}'>{ext}</td>"
                      f"<td style='{row_td}'>{d}</td>"
