@@ -215,14 +215,16 @@ def main():
     # ===== 止损建议 =====
     with_retrace = [r for r in results if r.get('dir_ret') is not None]
     if with_retrace:
-        print("\n===== 止损建议 (持仓期反向 vs 假设不止损反向) =====")
-        print(f"{'日期':<7}{'币':<12}{'向':<4}{'结果':<7}{'持仓反向':<9}{'不止损反向':<9}{'方向':<6}{'48h自然平仓'}")
+        print("\n===== 止损建议 (48h最大反向=裸奔全窗口MAE; 离场后延伸=触发离场后行情继续逆向的深度) =====")
+        print(f"{'日期':<7}{'币':<12}{'向':<4}{'结果':<7}{'48h最大反向':<12}{'离场后延伸':<10}{'方向':<6}{'48h自然平仓'}")
         for r in with_retrace:
             d = '✅对' if r.get('dir_ok') else '❌错'
             trig = '✅止损' if r['result'] == '-5.0%' else ('✅止盈' if r['result'] == '+10.0%' else '48h')
-            hold = f"{r['max_retrace']:.1f}%" if r.get('max_retrace') is not None else '-'
             nosl = f"{r.get('max_retrace_no_sl', 0):.1f}%" if r.get('max_retrace_no_sl') is not None else '-'
-            print(f"{r['date'][5:]:<7}{r['sym']:<12}{r['direction']:<4}{trig:<7}{hold:<9}{nosl:<9}{d:<5}{r['dir_ret']:+.1f}%")
+            mr = r.get('max_retrace')
+            ext = f"{r['max_retrace_no_sl'] - mr:.1f}%" if (r.get('max_retrace_no_sl') is not None and mr is not None
+                                                             and r['result'] in ('-5.0%', '+10.0%')) else '-'
+            print(f"{r['date'][5:]:<7}{r['sym']:<12}{r['direction']:<4}{trig:<7}{nosl:<12}{ext:<10}{d:<5}{r['dir_ret']:+.1f}%")
         # 最大止损建议: 用"假设不止损"全窗口反向深度
         swept_r = [r for r in with_retrace if r.get('dir_ok') and r['result'] == '-5.0%']
         if swept_r:
@@ -295,23 +297,27 @@ def tables_html(results):
     # 止损建议表
     with_r = [r for r in results if r.get('dir_ret') is not None]
     if with_r:
-        h.append('<br><b>止损建议 (持仓期反向=结算口径; 假设不止损反向=风险测算口径)</b><br>')
+        h.append('<br><b>止损建议 (48h最大反向=裸奔全窗口MAE; 离场后延伸=触发出场后行情继续逆向的深度, "-"=48h到期无离场)</b><br>')
         h.append('<table style="' + style + '"><tr>')
-        for c in ['日期', '币', '方向', '结果', '持仓期最大反向', '假设不止损反向', '方向对错', '48h自然平仓']:
+        for c in ['日期', '币', '方向', '结果', '48h最大反向', '离场后延伸', '方向对错', '48h自然平仓']:
             h.append(f'<th style="{th}">{c}</th>')
         h.append('</tr>')
         for r in with_r:
             d = '✅对' if r.get('dir_ok') else ('❌错' if r.get('dir_ok') is not None else '⏳')
             trig = '✅止损' if r['result'] == '-5.0%' else ('✅止盈' if r['result'] == '+10.0%' else '48h到期')
             ret_disp = f"{r['dir_ret']:+.1f}%" if r.get('dir_ret') is not None else '⏳未定'
-            hold = f"{r['max_retrace']:.1f}%" if r.get('max_retrace') is not None else '-'
             nosl = f"{r.get('max_retrace_no_sl', 0):.1f}%" if r.get('max_retrace_no_sl') is not None else '-'
+            mr = r.get('max_retrace')
+            if r.get('max_retrace_no_sl') is not None and mr is not None and r['result'] in ('-5.0%', '+10.0%'):
+                ext = f"{r['max_retrace_no_sl'] - mr:.1f}%"
+            else:
+                ext = '-'
             h.append(f"<tr><td style='{td}'>{esc(r['date'][5:])}</td>"
                      f"<td style='{td}'>{esc(r['sym'])}</td>"
                      f"<td style='{td}'>{r['direction']}</td>"
                      f"<td style='{td}'>{trig}</td>"
-                     f"<td style='{td}'>{hold}</td>"
                      f"<td style='{td}'>{nosl}</td>"
+                     f"<td style='{td}'>{ext}</td>"
                      f"<td style='{td}'>{d}</td>"
                      f"<td style='{td}'>{ret_disp}</td></tr>")
         h.append('</table>')
