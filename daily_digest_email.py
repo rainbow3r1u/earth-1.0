@@ -12,6 +12,55 @@ os.chdir(BASE)
 sys.path.insert(0, BASE)
 from alert_monitor import send_email
 
+_KLINE_CACHE = '/home/myuser/backtester/data_cache/notusdt_1d_full.json'
+
+
+def _btc_klines():
+    try:
+        kl = json.load(open(_KLINE_CACHE))['klines']
+        return next((kl[s] for s in kl if s.startswith('BTCUSDT') and len(kl[s]) > 200), None)
+    except Exception:
+        return None
+
+
+def _btc_vol_at(date_str):
+    """BTC 5日已实现波动%(人口std, 与2026-08-28分析口径一致): 指定预测日往前5根日K.
+    发现: AUC_L 失效(8/18)领先 BTC 大波动(8/19 +7.13%) 1 天; r(vol,AUC_L)=-0.52."""
+    btck = _btc_klines()
+    if btck is None:
+        return None
+    try:
+        ts_idx = {r['t']: i for i, r in enumerate(btck)}
+        T = datetime.datetime.strptime(date_str, '%Y-%m-%d')
+        t0 = int(datetime.datetime(T.year, T.month, T.day,
+                                   tzinfo=datetime.timezone.utc).timestamp() * 1000)
+        i = ts_idx.get(t0)
+        if i is None or i < 4:
+            return None
+        rets = [btck[j]['c'] / btck[j]['o'] - 1 for j in range(i - 4, i + 1)]
+        m = sum(rets) / len(rets)
+        return (sum((v - m) ** 2 for v in rets) / len(rets)) ** 0.5 * 100
+    except Exception:
+        return None
+
+
+def _btc_vol_latest():
+    """最近5根已收盘BTC日K的已实现波动%(排除今日未收盘bar, 晨报09:00时=截至昨日)."""
+    btck = _btc_klines()
+    if btck is None:
+        return None
+    try:
+        today0 = int(datetime.datetime.combine(datetime.date.today(), datetime.time(),
+                        tzinfo=datetime.timezone.utc).timestamp() * 1000)
+        rows = [r for r in btck if r['t'] < today0]
+        if len(rows) < 5:
+            return None
+        rets = [r['c'] / r['o'] - 1 for r in rows[-5:]]
+        m = sum(rets) / len(rets)
+        return (sum((v - m) ** 2 for v in rets) / len(rets)) ** 0.5 * 100
+    except Exception:
+        return None
+
 
 def _format_trade_summary():
     """读取今日 trade.log, 输出结构化中文摘要(替代原始日志行平铺)"""
@@ -458,9 +507,11 @@ def section_health():
                 if last.get('note'):
                     lines.append(f"  ⚠️ 注: {last['note'][:80]}")
                 if len(clean) > 1:
-                    lines.append('  干净期批作业: 日期   IC_L   IC_S   TOP1L   空前5')
+                    lines.append('  干净期批作业: 日期   IC_L   IC_S   TOP1L   空前5  BTCvol')
                     for d in clean[-7:]:
-                        lines.append(f"    {d['date'][5:]}  {_f(d.get('ic_long'))} {_f(d.get('ic_short'))} {d.get('top1_long_ret', 0):+6.1f}% {d.get('short5_avg_ret', 0):+6.1f}%")
+                        v = _btc_vol_at(d['date'])
+                        vs = f'{v:5.1f}' if v is not None else '  N/A'
+                        lines.append(f"    {d['date'][5:]}  {_f(d.get('ic_long'))} {_f(d.get('ic_short'))} {d.get('top1_long_ret', 0):+6.1f}% {d.get('short5_avg_ret', 0):+6.1f}% {vs}")
                 if len(clean) >= 3:
                     l5 = clean[-5:]
                     def _avg(key):
@@ -474,6 +525,22 @@ def section_health():
                     lines.append(f"  判定(近{len(l5)}日AUC均值 L={al:.2f}/S={ash:.2f}, 阈值0.60): {verdict}{note}")
                 else:
                     lines.append(f"  判定: 干净期样本累积中({len(clean)}/3天, ≥3天出判定)")
+                # BTC波动对照 + 领先预警 (2026-08-28 发现: AUC_L 失效(8/18)领先 BTC 大波动(8/19 +7.13%) 1 天,
+                # r(vol,AUC_L)=-0.52 t=-3.79; 判定只看AUC日当天vol — "失效始于平静市"=regime shift形态)
+                al_last = last.get('auc_long')
+                vol_at_aucday = _btc_vol_at(last['date'])
+                vol_now = _btc_vol_latest()
+                if isinstance(al_last, (int, float)) and vol_at_aucday is not None:
+                    if al_last < 0.55 and vol_at_aucday <= 2.0:
+                        vol_txt = f'最新{vol_now:.1f}%' if vol_now is not None else '最新N/A'
+                        state = ('BTC随后已放大(失效兑现期)' if (vol_now or 0) > 2.0
+                                 else 'BTC至今仍平静(领先大波动风险↑)')
+                        lines.append(f"  🚨 领先预警(8/18形态): {last['date'][5:]} AUC_L={al_last:.2f}已失效"
+                                     f" 而当日BTC波动仅{vol_at_aucday:.1f}%(平静) — 失效始于平静市而非已发冲击,"
+                                     f" {state} (n=1先例, 关注LONG仓位)")
+                    elif al_last < 0.55 and (vol_at_aucday > 2.0):
+                        lines.append(f"  ℹ️ AUC_L={al_last:.2f}走弱 且当日BTC波动已放大({vol_at_aucday:.1f}%) —"
+                                     " 冲击兑现期(历史恢复3-5天), SHORT侧通常不受损")
                 if dirty:
                     dl = [d['ic_long'] for d in dirty if d.get('ic_long') is not None]
                     ds = [d['ic_short'] for d in dirty if d.get('ic_short') is not None]
