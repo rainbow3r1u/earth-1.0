@@ -62,6 +62,27 @@ def _btc_vol_latest():
         return None
 
 
+def _perm_test_latest():
+    """今日最后一次运行的 PERM-TEST 结果: {side: (normal%, shuf%, drop%)}.
+    置换检验 = 防模型过拟合的当天体检(08:21即出, 无需等D+2)。drop>=5 健康, 0~5 偏弱, <0 过拟合。"""
+    out = {}
+    try:
+        today = datetime.date.today().isoformat()
+        with open('/home/myuser/.local/share/auto_trade/trade.log') as f:
+            lines = [l.strip() for l in f if today in l]
+        for l in lines:
+            if '[PERM-TEST]' in l and 'Best=' in l:
+                side = 'LONG' if '[LONG]' in l else ('SHORT' if '[SHORT]' in l else None)
+                if side:
+                    import re
+                    m = re.search(r'normal=([\d.]+)% shuf=([\d.]+)% drop=([+\-][\d.]+)%', l)
+                    if m:
+                        out[side] = (float(m.group(1)), float(m.group(2)), float(m.group(3)))
+    except Exception:
+        pass
+    return out
+
+
 def _format_trade_summary():
     """读取今日 trade.log, 输出结构化中文摘要(替代原始日志行平铺)"""
     import daily_predictor as dp
@@ -547,15 +568,83 @@ def section_forward_ic():
                               f"background:#fff9c4;border-left:4px solid #b8860b;'>"
                               f"ℹ️ AUC_L={al_last:.2f}走弱 且当日BTC波动已放大({vol_at_aucday:.1f}%) — "
                               f"冲击兑现期(历史恢复3-5天), SHORT侧通常不受损</div>")
+        # ===== 四灯驾驶舱: IC(风格) / VOL(行情) / AUC(确认) / PERM(模型本体) =====
+        # 每灯管一种病, 全绿=模型最佳状态
+        def _ravg(sub, key):
+            vs = [x[key] for x in sub if x.get(key) is not None]
+            return sum(vs)/len(vs) if vs else None
+        ml5, ms5 = _ravg(clean[-5:], 'ic_long'), _ravg(clean[-5:], 'ic_short')
+        ml5_prev = _ravg(clean[-10:-5], 'ic_long')
+        al5, as5 = _ravg(clean[-5:], 'auc_long'), _ravg(clean[-5:], 'auc_short')
+        al_last = last.get('auc_long')
+        vol_now = _btc_vol_latest()
+        perm = _perm_test_latest()
+
+        def _lamp(color, label, value, detail):
+            bg = {'g': '#c8e6c9', 'y': '#fff9c4', 'r': '#ffcdd2', 'n': '#eeeeee'}[color]
+            sym = {'g': '🟢', 'y': '🟡', 'r': '🔴', 'n': '⚪'}[color]
+            return (f"<td style='{cell_css}background:{bg};'><b>{sym} {label}</b><br>"
+                    f"<span style='font-size:12px;'>{value}</span><br>"
+                    f"<span style='font-size:10px;color:#555;'>{detail}</span></td>")
+
+        # 灯1 IC: 5日均L/S 方向 (期望L正S负); 领先预警逻辑与下方横幅一致
+        if ml5 is None:
+            ic_lamp = _lamp('n', 'IC 排序', 'N/A', '样本不足')
+        elif ml5 >= 0 and (ms5 is None or ms5 <= 0):
+            ic_lamp = _lamp('g', 'IC 排序', f'L {ml5:+.2f} / S {ms5:+.2f}' if ms5 is not None else f'L {ml5:+.2f}',
+                            '排序正常 · 应L正S负')
+        elif (ml5_prev is not None and ml5 > ml5_prev and ml5 > -0.05
+              and (al5 or 0) >= 0.55):
+            ic_lamp = _lamp('y', 'IC 排序', f'L {ml5:+.2f} / S {ms5:+.2f}' if ms5 is not None else f'L {ml5:+.2f}',
+                            '修复尾声 · 1-3天转正')
+        else:
+            ic_lamp = _lamp('r', 'IC 排序', f'L {ml5:+.2f} / S {ms5:+.2f}' if ms5 is not None else f'L {ml5:+.2f}',
+                            '排序反向 · 领先AUC崩~8天(n=1)')
+        # 灯2 VOL
+        if vol_now is None:
+            vol_lamp = _lamp('n', 'BTC 波动', 'N/A', '无数据')
+        elif vol_now <= 1.5:
+            vol_lamp = _lamp('g', 'BTC 波动', f'{vol_now:.1f}%', '平静 · alpha窗口')
+        elif vol_now <= 2.0:
+            vol_lamp = _lamp('y', 'BTC 波动', f'{vol_now:.1f}%', '警戒')
+        else:
+            vol_lamp = _lamp('r', 'BTC 波动', f'{vol_now:.1f}%', '高波动 · LONG受损')
+        # 灯3 AUC: 最新干净日单日 + 5日均
+        if al_last is None:
+            auc_lamp = _lamp('n', 'AUC 分类', 'N/A', '样本不足')
+        elif al_last >= 0.55 and (al5 or 0) >= 0.60:
+            auc_lamp = _lamp('g', 'AUC 分类', f'{al_last:.2f} (5日均{al5:.2f})', '分类健康')
+        elif al_last >= 0.55:
+            auc_lamp = _lamp('y', 'AUC 分类', f'{al_last:.2f} (5日均{al5:.2f})', '单日好/均值修复中')
+        else:
+            auc_lamp = _lamp('r', 'AUC 分类', f'{al_last:.2f} (5日均{al5:.2f})', '分类失效 · D+2确认')
+        # 灯4 PERM: 今日置换检验 drop
+        if not perm:
+            perm_lamp = _lamp('n', 'PERM 过拟合', 'N/A', '今日无记录')
+        else:
+            worst = min(v[2] for v in perm.values())
+            txt = ' / '.join(f'{k} drop {v[2]:+.1f}%' for k, v in sorted(perm.items()))
+            if worst >= 5:
+                perm_lamp = _lamp('g', 'PERM 过拟合', txt, '真实信号 · 当天08:21出')
+            elif worst >= 0:
+                perm_lamp = _lamp('y', 'PERM 过拟合', txt, '偏弱')
+            else:
+                perm_lamp = _lamp('r', 'PERM 过拟合', txt, '过拟合 · 已阻断该侧')
+        dash = ("<table style='border-collapse:collapse;margin-bottom:6px;'><tr>"
+                + ic_lamp + vol_lamp + auc_lamp + perm_lamp + "</tr></table>"
+                "<div style='font-size:10px;color:#666;margin-bottom:4px;'>"
+                "四灯驾驶舱: 🟢IC排序(风格) + 🟢BTC波动(行情) + 🟢AUC分类(确认) + 🟢PERM过拟合(模型本体) "
+                "— 全绿=模型最佳状态; 红灯按灯动作(IC红=关注LONG档, VOL红=预期AUC将崩, AUC红=降LONG档, PERM红=该侧已阻断)。</div>")
         return (f"<div style='font-size:12px;margin-bottom:4px;'>{head}</div>"
-                "<table style='border-collapse:collapse;'>"
+                + dash
+                + "<table style='border-collapse:collapse;'>"
                 f"<tr><th {hd}>日期</th><th {hd}>IC_L</th><th {hd}>IC_S</th>"
                 f"<th {hd}>TOP1L</th><th {hd}>空前5</th><th {hd}>BTC 5日波动</th></tr>"
                 + ''.join(rows) + "</table>"
                 + verdict_html + ic_lead_html + alert_html
                 + "<div style='font-size:10px;color:#666;margin-top:3px;'>"
-                "口径注: 本节为48h日线口径(open[D]→close[D+2]), 与第2节/3.8节的1m结算口径不同, 仅评估排序质量非交易结算。"
-                "BTCvol = BTC 5日已实现波动(底色: 绿≤1.5%平静 / 黄1.5~2%警戒 / 红>2%高波动)。"
+                "口径注: IC/AUC/VOL为48h日线口径(open[D]→close[D+2]), D+2确认; PERM为当日08:21实时。"
+                "BTCvol底色: 绿≤1.5%平静 / 黄1.5~2%警戒 / 红>2%高波动。"
                 "系统吃横盘期alpha: r(vol,AUC_L)=-0.52 — 平静期双侧正常, 高波动期LONG分类力崩、SHORT独立alpha仍可, "
                 "恢复期3-5天。IC_L深红(<-0.15)为排序显著反向。</div>")
     except Exception as e:
