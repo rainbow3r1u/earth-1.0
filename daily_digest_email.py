@@ -501,6 +501,33 @@ def section_forward_ic():
             verdict_html = (f"<div style='font-size:12px;margin-top:4px;padding:4px 8px;{bg}'>"
                             f"判定(近{len(l5)}日AUC均值 L={al:.2f}/S={ash:.2f}, 阈值0.60): "
                             f"<b style='color:{vc};'>{vv}</b>{ic_note}</div>")
+        # IC 领先预警 (2026-08-28 复盘发现: IC_L 5日均转负(8/12晨报)领先 AUC_L 崩塌(8/20晨报) 8 天,
+        # 即"IC负而AUC好"形态是风格切换早期信号; 但同样形态也出现在修复尾声(8/27), 用 IC 均值时间导数区分:
+        # 下行=恶化前兆(8/12型), 回升=修复尾声(8/27型)。n=1 规律, 边积累边验证。)
+        ic_lead_html = ''
+        if len(clean) >= 8:
+            def _ravg(sub, key):
+                vs = [x[key] for x in sub if x.get(key) is not None]
+                return sum(vs)/len(vs) if vs else None
+            ml_now = _ravg(clean[-5:], 'ic_long')
+            ml_prev = _ravg(clean[-10:-5], 'ic_long')
+            al_now = _ravg(clean[-5:], 'auc_long')
+            if (ml_now is not None and ml_now < 0 and al_now is not None and al_now >= 0.55
+                    and ml_prev is not None):
+                slope = ml_now - ml_prev
+                if slope < -0.01:
+                    ic_lead_html = (f"<div style='font-size:12px;margin-top:4px;padding:4px 8px;"
+                                    f"background:#ffe0b2;border-left:4px solid #e65100;'>"
+                                    f"🟠 <b>IC领先预警(8/12形态·早期)</b>: IC_L 5日均={ml_now:+.2f} 已负 而 AUC_L={al_now:.2f} 仍健康 — "
+                                    f"排序已反向、分类尚好。IC均值仍在下行({ml_prev:+.2f}→{ml_now:+.2f}), "
+                                    f"历史该形态领先 AUC 崩塌约 8 天(n=1), 关注 LONG 仓位与 BTC 波动。</div>")
+                elif slope > 0.01 and ml_now > -0.05:
+                    # 修复尾声需满足: 均值回升 且已逼近转正(>-0.05) — 8/15-8/17曾出现半路反弹误报(回升但仍在-0.02~-0.04深负后继续崩), 加此条件过滤
+                    ic_lead_html = (f"<div style='font-size:12px;margin-top:4px;padding:4px 8px;"
+                                    f"background:#e8f5e9;border-left:4px solid #0a0;'>"
+                                    f"🟢 <b>IC修复尾声(8/27形态)</b>: IC_L 5日均={ml_now:+.2f} 已回升"
+                                    f"({ml_prev:+.2f}→{ml_now:+.2f})且逼近转正, AUC_L={al_now:.2f} 先行恢复 — "
+                                    f"预计 1-3 天 IC 转正, 无需动作。</div>")
         # 预警区
         alert_html = ''
         al_last = last.get('auc_long')
@@ -525,7 +552,7 @@ def section_forward_ic():
                 f"<tr><th {hd}>日期</th><th {hd}>IC_L</th><th {hd}>IC_S</th>"
                 f"<th {hd}>TOP1L</th><th {hd}>空前5</th><th {hd}>BTC 5日波动</th></tr>"
                 + ''.join(rows) + "</table>"
-                + verdict_html + alert_html
+                + verdict_html + ic_lead_html + alert_html
                 + "<div style='font-size:10px;color:#666;margin-top:3px;'>"
                 "口径注: 本节为48h日线口径(open[D]→close[D+2]), 与第2节/3.8节的1m结算口径不同, 仅评估排序质量非交易结算。"
                 "BTCvol = BTC 5日已实现波动(底色: 绿≤1.5%平静 / 黄1.5~2%警戒 / 红>2%高波动)。"
