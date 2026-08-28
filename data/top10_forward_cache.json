@@ -2770,5 +2770,257 @@
     "pnl": 10.0
    }
   ]
+ },
+ "2026-08-25": {
+  "long": [
+   {
+    "sym": "USUSDT",
+    "prob": 74.0,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "BTRUSDT",
+    "prob": 69.3,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "CYSUSDT",
+    "prob": 60.0,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "NILUSDT",
+    "prob": 59.6,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "BANANAS31USDT",
+    "prob": 58.6,
+    "state": "EXP48",
+    "pnl": 0.28
+   },
+   {
+    "sym": "HEMIUSDT",
+    "prob": 56.9,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "VIRTUALUSDT",
+    "prob": 55.6,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "PORTALUSDT",
+    "prob": 54.9,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "COOKIEUSDT",
+    "prob": 54.6,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "SKYAIUSDT",
+    "prob": 53.6,
+    "state": "SL",
+    "pnl": -5.0
+   }
+  ],
+  "short": [
+   {
+    "sym": "ACEUSDT",
+    "prob": 89.3,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "MUBARAKUSDT",
+    "prob": 88.7,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "MAGMAUSDT",
+    "prob": 87.0,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "TAKEUSDT",
+    "prob": 85.5,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "STARUSDT",
+    "prob": 85.3,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "BMTUSDT",
+    "prob": 84.3,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "SIRENUSDT",
+    "prob": 83.9,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "ONGUSDT",
+    "prob": 82.5,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "APRUSDT",
+    "prob": 82.1,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "LITUSDT",
+    "prob": 81.0,
+    "state": "SL",
+    "pnl": -5.0
+   }
+  ]
+ },
+ "2026-08-26": {
+  "long": [
+   {
+    "sym": "BMTUSDT",
+    "prob": 84.0,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "PEOPLEUSDT",
+    "prob": 81.4,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "MUBARAKUSDT",
+    "prob": 76.6,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "ONGUSDT",
+    "prob": 75.4,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "CVXUSDT",
+    "prob": 73.2,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "ONEUSDT",
+    "prob": 68.0,
+    "state": "EXP48",
+    "pnl": 4.85
+   },
+   {
+    "sym": "VELVETUSDT",
+    "prob": 68.0,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "ACEUSDT",
+    "prob": 67.2,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "PROMUSDT",
+    "prob": 64.1,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "ALICEUSDT",
+    "prob": 63.6,
+    "state": "EXP48",
+    "pnl": 0.9
+   }
+  ],
+  "short": [
+   {
+    "sym": "TACUSDT",
+    "prob": 94.3,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "PORTALUSDT",
+    "prob": 90.4,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "COWUSDT",
+    "prob": 90.0,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "COTIUSDT",
+    "prob": 86.7,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "MAGMAUSDT",
+    "prob": 85.4,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "XANUSDT",
+    "prob": 85.4,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "DEXEUSDT",
+    "prob": 85.1,
+    "state": "EXP48",
+    "pnl": -1.93
+   },
+   {
+    "sym": "APRUSDT",
+    "prob": 84.6,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "BTRUSDT",
+    "prob": 84.5,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "SIRENUSDT",
+    "prob": 83.9,
+    "state": "SL",
+    "pnl": -5.0
+   }
+  ]
  }
 }
