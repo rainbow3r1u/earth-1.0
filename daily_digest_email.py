@@ -459,7 +459,8 @@ def section_forward_ic():
                 f"实际: LONG TOP1 {last.get('top1_long')} {last.get('top1_long_ret', 0):+.1f}% "
                 f"/ 空前5均 {s5:+.1f}%"
                 f"{' (空头盈利✅)' if s5 < 0 else ' (空头亏损⚠️)'}")
-        # 7日表
+        # 7日表 (注意: 不能在一个td上放两个style属性, HTML只认第一个 — 颜色须合并进同一style)
+        cell_css = "padding:2px 8px;border:1px solid #ccc;font-size:12px;"
         rows = []
         for d in clean[-7:]:
             v = _btc_vol_at(d['date'])
@@ -474,12 +475,12 @@ def section_forward_ic():
                 vc, vt = '#ffcdd2', f'{v:.1f} 高波动'
             c_icl = '#c00' if (d.get('ic_long') or 0) < -0.15 else '#333'
             rows.append(
-                f"<tr><td {cell}>{d['date'][5:]}</td>"
-                f"<td {cell} style='color:{c_icl};'>{_f(d.get('ic_long'))}</td>"
-                f"<td {cell}>{_f(d.get('ic_short'))}</td>"
-                f"<td {cell}>{d.get('top1_long_ret', 0):+.1f}%</td>"
-                f"<td {cell}>{d.get('short5_avg_ret', 0):+.1f}%</td>"
-                f"<td {cell} style='background:{vc};'><b>{vt}</b></td></tr>")
+                f"<tr><td style='{cell_css}'>{d['date'][5:]}</td>"
+                f"<td style='{cell_css}'><b style='color:{c_icl};'>{_f(d.get('ic_long'))}</b></td>"
+                f"<td style='{cell_css}'>{_f(d.get('ic_short'))}</td>"
+                f"<td style='{cell_css}'>{d.get('top1_long_ret', 0):+.1f}%</td>"
+                f"<td style='{cell_css}'>{d.get('short5_avg_ret', 0):+.1f}%</td>"
+                f"<td style='{cell_css}background:{vc};'><b>{vt}</b></td></tr>")
         # 判定行
         verdict_html = ''
         if len(clean) >= 3:
