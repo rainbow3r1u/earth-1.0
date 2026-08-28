@@ -312,15 +312,27 @@ def tables_html(results):
                 ext = f"{r['max_retrace_no_sl'] - mr:.1f}%"
             else:
                 ext = '-'
-            h.append(f"<tr><td style='{td}'>{esc(r['date'][5:])}</td>"
-                     f"<td style='{td}'>{esc(r['sym'])}</td>"
-                     f"<td style='{td}'>{r['direction']}</td>"
-                     f"<td style='{td}'>{trig}</td>"
-                     f"<td style='{td}'>{nosl}</td>"
-                     f"<td style='{td}'>{ext}</td>"
-                     f"<td style='{td}'>{d}</td>"
-                     f"<td style='{td}'>{ret_disp}</td></tr>")
+            # 研究重点高亮: 止损但方向对(扫损单) — 整行黄底, MAE 数字红色加粗
+            swept = (r['result'] == '-5.0%' and r.get('dir_ok'))
+            row_td = td + ('background:#fff3cd;' if swept else '')
+            mae_td = row_td + ('color:#c00;font-weight:bold;' if swept else '')
+            h.append(f"<tr><td style='{row_td}'>{esc(r['date'][5:])}</td>"
+                     f"<td style='{row_td}'>{esc(r['sym'])}</td>"
+                     f"<td style='{row_td}'>{r['direction']}</td>"
+                     f"<td style='{row_td}'>{trig}</td>"
+                     f"<td style='{mae_td}'>{nosl}</td>"
+                     f"<td style='{row_td}'>{ext}</td>"
+                     f"<td style='{row_td}'>{d}</td>"
+                     f"<td style='{row_td}'>{ret_disp}</td></tr>")
         h.append('</table>')
+        n_swept = len([r for r in with_r if r['result'] == '-5.0%' and r.get('dir_ok')])
+        if n_swept:
+            maes = [r.get('max_retrace_no_sl', 0) for r in with_r
+                    if r['result'] == '-5.0%' and r.get('dir_ok') and r.get('max_retrace_no_sl') is not None]
+            h.append(f"<div style='font-size:10px;color:#856404;background:#fff3cd;"
+                     f"padding:2px 4px;'>黄底行 = 止损但方向对(扫损单) {n_swept}笔: "
+                     f"这些单若裸奔扛过反向, 48h 终点为正收益 — 需承受 MAE "
+                     f"中位 {sorted(maes)[len(maes)//2]:.1f}% / 最大 {max(maes):.1f}%</div>")
     return ''.join(h)
 
 
