@@ -2,9 +2,9 @@
 """RESIDUAL 残差模型 小资金实盘执行器 (2026-09-01, 2000 CNY≈280U 测试)
 
 资金方案 (与用户确认 2026-09-01):
-  杠杆 5x 逐仓 | 单笔名义 30U | 单笔保证金 6U | 每日最多 10 笔 (影子臂top10)
-  峰值 20 笔×6U=120U (43%资金) | 爆仓距离≈19% | SL-5% | 48h 到期市价平
-  实盘×10 ≈ 影子臂 (residual_tracker 名义300U), 对账线性
+  杠杆 5x 逐仓 | 单笔名义 40U | 单笔保证金 8U | 每日最多 10 笔 (影子臂top10)
+  峰值 20 笔×8U=160U (57%资金, 缓冲120U) | 爆仓距离≈19% | SL-5% | 48h 到期市价平
+  20笔全灭≈-41U(-15%) | 实盘×7.5 ≈ 影子臂 (residual_tracker 名义300U), 对账线性
 
 与影子臂结算 (audit/residual_tracker.py) 的对齐与已知偏差:
   - 结算口径一致: SL-5% / 无止盈 / 48h到期 / CONTRACT_PRICE 触发 (K线low口径, 非主程序的MARK_PRICE)
@@ -39,11 +39,11 @@ LOCK_FILE = '/tmp/residual_live.lock'
 PRED_FIELD = 'top10_long_residual'
 
 # ==== 资金参数 (2000 CNY ≈ 280U 测试) ====
-NOTIONAL = 30.0      # 单笔名义U
+NOTIONAL = 40.0      # 单笔名义U (2026-09-01 用户确认上调: 20笔全灭≈-41U/-15%可接受)
 LEVERAGE = 5         # 逐仓杠杆
 MAX_DAILY = 10       # 每日最多开仓笔数
 SL_PCT = 0.05        # 止损 5%
-BALANCE_MIN_ABORT = 12.0       # 可用余额低于此值(1笔保证金×2)直接中止
+BALANCE_MIN_ABORT = 16.0       # 可用余额低于此值(1笔保证金8U×2)直接中止
 BALANCE_BUF_RATIO = 0.6        # 可用余额只允许动用 60% 做保证金
 
 CST = timezone(timedelta(hours=8))
