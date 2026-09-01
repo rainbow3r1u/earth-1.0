@@ -446,6 +446,90 @@ def section_hybrid():
         return f'<p style="color:#c00">(混合结构影子臂生成失败: {e})</p>'
 
 
+def section_residual():
+    """RESIDUAL影子臂 3.9: LONG残差标签模型TOP10 vs 主臂LONG 同规则对照 (2026-09-01上线).
+    治LONG标签beta假阳性: 残差标签=币48hret-当日宇宙中位>5pp (GPU 180d双窗 Sharpe 32.75/26.89 vs 基线21.33/22.12).
+    结算规则与3.8主臂LONG完全相同: 无止盈/SL-5%/48h/08:21入场/300U名义/1m全费用."""
+    try:
+        rs_path = '/home/myuser/websocket_new/data/residual_tracker.json'
+        hb_path = '/home/myuser/websocket_new/data/hybrid_tracker.json'
+        # 今日影子臂选币 (pred 文件 top10_long_residual 字段)
+        picks_html = ''
+        today_str = datetime.date.today().isoformat()
+        try:
+            pf = json.load(open(f'/home/myuser/websocket_new/data/pred_{today_str}.json'))
+            cands = pf.get('top10_long_residual', [])
+            if cands:
+                picks_html = ("<div style='font-size:11px;margin-top:4px;'><b>今日影子臂LONG TOP10:</b> "
+                              + ' | '.join(f"{c['symbol']}({c['prob']:.0f}%)" for c in cands) + '</div>')
+            else:
+                picks_html = ("<div style='font-size:10px;color:#888;'>今日pred无top10_long_residual字段 "
+                              "(影子臂9/1上线, 自9/2预测起生效)</div>")
+        except Exception:
+            pass
+        if not os.path.exists(rs_path):
+            return ('<p style="color:#888">(RESIDUAL影子臂: 尚无存档, residual_tracker 首次结算预计9/4)</p>'
+                    + picks_html)
+        rs = json.load(open(rs_path))
+        hb = json.load(open(hb_path)) if os.path.exists(hb_path) else {}
+        cell = "style='padding:2px 8px;border:1px solid #ccc;font-size:12px;'"
+        hd = "style='padding:2px 8px;border:1px solid #ccc;font-size:12px;background:#f0f0f0;'"
+        rows = []
+        cum_r = 0.0
+        cum_h = 0.0
+        n_days = 0
+        pending_note = []
+        for d in sorted(rs.keys()):
+            e = rs[d]
+            if not e.get('trades'):
+                continue  # 无选币日(字段缺失), 不进表
+            done = e.get('n_settled', 0) >= e.get('n_total', 99)
+            if not done:
+                pending_note.append(f"{d[5:]} 在持{e.get('n_total',0)-e.get('n_settled',0)}笔")
+                continue
+            r_u = e.get('day_pnl_u', 0)
+            h_u = sum(t['net_u'] for t in hb.get(d, {}).get('trades', [])
+                      if t.get('net_u') is not None and t.get('direction') == 'LONG')
+            cum_r += r_u
+            cum_h += h_u
+            n_days += 1
+            diff = r_u - h_u
+            c1 = '#0a0' if r_u >= 0 else '#c00'
+            c4 = '#0a0' if diff >= 0 else '#c00'
+            c5 = '#0a0' if (cum_r - cum_h) >= 0 else '#c00'
+            rows.append(
+                f"<tr><td {cell}>{d}</td>"
+                f"<td {cell}>{e.get('n_settled',0)}笔</td>"
+                f"<td {cell}><b style='color:{c1}'>{r_u:+.1f}</b></td>"
+                f"<td {cell}>{h_u:+.1f}</td>"
+                f"<td {cell}><b style='color:{c4}'>{diff:+.1f}</b></td>"
+                f"<td {cell}><b style='color:{c5}'>{cum_r - cum_h:+.1f}</b></td></tr>")
+        if rows:
+            c2 = '#0a0' if cum_r >= 0 else '#c00'
+            c6 = '#0a0' if (cum_r - cum_h) >= 0 else '#c00'
+            rows.append(f"<tr><td {hd}><b>合计 {n_days}天</b></td><td {cell}></td>"
+                        f"<td {cell}><b style='color:{c2}'>{cum_r:+.1f}U</b></td>"
+                        f"<td {cell}>{cum_h:+.1f}U</td><td {cell}></td>"
+                        f"<td {cell}><b style='color:{c6}'>{cum_r - cum_h:+.1f}U</b></td></tr>")
+        else:
+            rows.append(f"<tr><td {cell} colspan='6' style='color:#888;'>尚无盖棺日(首笔9/2开仓, 9/4首次结算)</td></tr>")
+        pending_html = ''
+        if pending_note:
+            pending_html = (f"<div style='font-size:10px;color:#888;'>未到期(不进表): "
+                            + ' | '.join(pending_note) + '</div>')
+        return ("<table style='border-collapse:collapse;'>"
+                f"<tr><th {hd}>日期</th><th {hd}>笔数</th>"
+                f"<th {hd}>影子臂当日U</th><th {hd}>主臂LONG当日U</th>"
+                f"<th {hd}>当日差(影子-主)</th><th {hd}>累计差</th></tr>"
+                + ''.join(rows) + "</table>"
+                + pending_html + picks_html
+                + "<div style='font-size:10px;color:#666;'>影子臂=残差标签LONG模型TOP10(币48hret-宇宙中位>5pp, "
+                "治beta假阳性) | 出场与主臂LONG完全相同: 无止盈/SL-5%/48h | SHORT与主臂相同不重复结算 | "
+                "GPU 180d双窗验证 Sharpe 32.75/26.89 vs 基线21.33/22.12 | 纯旁路不影响实盘</div>")
+    except Exception as e:
+        return f'<p style="color:#c00">(RESIDUAL影子臂生成失败: {e})</p>'
+
+
 def section_momentum():
     try:
         from daily_momentum_email import build_momentum_body_html
@@ -789,6 +873,8 @@ def main():
 {section_top10_forward_u()}
 <b>3.8 混合结构影子臂 每日U盈亏 (LONG无止盈+SHORT现行TP/SL)</b> <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>影子验证 · 08:21开仓 · strict48 · 1m全费用 · 60天验证期至~10/23</span>
 {section_hybrid()}
+<b>3.9 RESIDUAL影子臂 LONG对照 (残差标签: 币ret-宇宙中位>5pp)</b> <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>影子验证 · 残差标签LONG模型 · 出场同3.8主臂LONG · 纯旁路不影响实盘</span>
+{section_residual()}
 <b>4. 强势股续涨 + 每日资金榜</b> {tag_none}
 <pre {pre_style}>{section_momentum()}</pre>
 <b>5. 系统健康</b> {tag_none}

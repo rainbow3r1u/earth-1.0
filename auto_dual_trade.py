@@ -1004,11 +1004,16 @@ def train_and_predict(by_day, today_ts, klines):
     KRONOS_END = KRONOS_START + dp.EMBEDDING_DIM  # = 932
 
     X_train, y_long, y_short = [], [], []
+    y_long_residual = []   # RESIDUAL影子臂: 残差化LONG标签 (币ret - 当日宇宙中位ret > 5%)
     for ts in train_days:
+        day_rets = [ret for _, _, _, _, ret in by_day[ts] if abs(ret) > 1e-9]
+        day_med = sorted(day_rets)[len(day_rets)//2] if day_rets else 0.0
         for sym, feat, ll, ls, ret in by_day[ts]:
             X_train.append(feat)
             y_long.append(ll)
             y_short.append(ls)
+            # ret为百分数(与GPU实验口径一致: ret-med > 5.0 即超出宇宙中位5pp)
+            y_long_residual.append(1 if (ret - day_med) > 5.0 else 0)
         del by_day[ts]
     gc.collect()
     
@@ -1031,6 +1036,7 @@ def train_and_predict(by_day, today_ts, klines):
         X_train = X_train[_keep]
         y_long = [y_long[i] for i in range(len(y_long)) if _keep[i]]
         y_short = [y_short[i] for i in range(len(y_short)) if _keep[i]]
+        y_long_residual = [y_long_residual[i] for i in range(len(y_long_residual)) if _keep[i]]
     
     # 2. 异常全零列检查 (排除置零区域)
     if not USE_KRONOS:
@@ -1114,6 +1120,27 @@ def train_and_predict(by_day, today_ts, klines):
     try:
         with open(model_short_file,'wb') as f: pickle.dump(model_short, f)
     except Exception as e: log(f'空头模型保存失败: {e}')
+
+    # ==== RESIDUAL影子臂 (2026-09-01): 残差标签LONG模型, 纯旁路输出不影响主路径 ====
+    # 依据: GPU 180d A/B 双窗验证 RESIDUAL Sharpe 32.75/26.89 vs 基线 21.33/22.12
+    # 用途: top10_long_residual 写入 pred 文件, residual_tracker 结算, 晨报3.9节对照
+    model_long_res = None
+    try:
+        pos_lres = sum(y_long_residual)
+        if pos_lres >= 5:
+            log(f'训练影子多头模型(残差标签)... pos={pos_lres}')
+            model_long_res = XGBClassifier(n_estimators=200, max_depth=6, learning_rate=0.05,
+                                           min_child_weight=1, reg_lambda=10, reg_alpha=10,
+                                           subsample=0.8, colsample_bytree=0.6,
+                                           scale_pos_weight=(len(y_long_residual) - pos_lres) / pos_lres,
+                                           random_state=42, eval_metric='logloss', verbosity=0,
+                                           tree_method='hist')
+            model_long_res.fit(X_train, y_long_residual)
+        else:
+            log(f'⚠️ 影子臂残差标签正样本不足: {pos_lres}')
+    except Exception as _e:
+        log(f'影子臂训练失败(不影响主流程): {_e}')
+        model_long_res = None
 
     # SOUP 时间集成 (2026-07-30): 保存带日期模型副本 + 清理>4天旧副本
     # 回测: 旧regime Sharpe+0.64/MaxDD34%→15.6%; 新regime(温和档) 32.30→37.32 — 消每日重训抖动
@@ -1279,6 +1306,21 @@ def train_and_predict(by_day, today_ts, klines):
     # 排序取Top10
     top10_long = sorted(valid_long, key=lambda x: x[1], reverse=True)[:10]
     top10_short = sorted(valid_short, key=lambda x: x[1], reverse=True)[:10]
+
+    # ==== RESIDUAL影子臂输出 (2026-09-01): 残差标签LONG模型的TOP10, 旁路字段不参与交易 ====
+    top10_long_residual = []
+    if model_long_res is not None:
+        try:
+            probs_lres = model_long_res.predict_proba(X_pred)[:, 1]
+            valid_lres = [(s[0], probs_lres[i], s[4]) for s, i in zip(valid_samples, valid_indices)]
+            top10_long_residual = sorted(valid_lres, key=lambda x: x[1], reverse=True)[:10]
+            if top10_long_residual:
+                log(f'[影子臂-残差] LONG TOP3: ' + ', '.join(f'{s}({p*100:.0f}%)' for s, p, _ in top10_long_residual[:3]))
+        except Exception as _e:
+            log(f'影子臂预测失败(不影响主流程): {_e}')
+            top10_long_residual = []
+    global _TOP10_LONG_RESIDUAL
+    _TOP10_LONG_RESIDUAL = top10_long_residual
 
     # 全量概率列表存档用 (强势股邮件: 昨日涨5%币种的逐个判定)
     global _VALID_LONG_SHORT
@@ -1542,7 +1584,7 @@ def main():
     log(f'预测日期: {today_str}')
     
     best_long, best_short, top10_long, top10_short = train_and_predict(by_day, today_ts, klines)
-    
+
     # 预测存档：保存到 data/pred_YYYY-MM-DD.json (每天只存第一版)
     try:
         pred_archive_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
@@ -1554,6 +1596,9 @@ def main():
             'best_short': {'symbol': best_short[0], 'prob': round(float(best_short[1])*100, 1)} if best_short else None,
             'top10_long': [{'symbol': s, 'prob': round(float(p)*100, 1)} for s, p, r in top10_long],
             'top10_short': [{'symbol': s, 'prob': round(float(p)*100, 1)} for s, p, r in top10_short],
+            # RESIDUAL影子臂 (2026-09-01): 残差标签LONG模型TOP10, 结算见 audit/residual_tracker.py
+            'top10_long_residual': [{'symbol': s, 'prob': round(float(p)*100, 1)}
+                                     for s, p, r in globals().get('_TOP10_LONG_RESIDUAL', [])],
             'all_long': [[s, round(float(p)*100, 1)] for s, p, r in _VALID_LONG_SHORT.get('long', [])],
             'all_short': [[s, round(float(p)*100, 1)] for s, p, r in _VALID_LONG_SHORT.get('short', [])],
         }
