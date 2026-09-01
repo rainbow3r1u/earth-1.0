@@ -63,6 +63,7 @@ RESIDUAL_LABEL = os.environ.get('RESIDUAL_LABEL', '0') == '1'  # LONG标签残�
 XS_N_FEATS = 8
 # ==== 2026-09-01 P0: 训练/推理不对称 — 训练样本同款流动性过滤 (治"死币稀释训练集") ====
 VOLUME_FILTER = float(os.environ.get('VOLUME_FILTER', '0'))  # >0=阈值U: 样本日前5日均成交额<U的样本不入训练集 (口径=生产_filter_valid_samples); 敏感性300k/500k/1000k
+SEED_OFFSET = int(os.environ.get('SEED_OFFSET', '0'))  # 种子噪声对照: 同数据只换XGB随机种子, 量化指标自身的抖动底
 # lag/nolag 共用同一份样本缓存; aligned 标签不同, 独立缓存
 CACHE_DIR = f'{HOME}/backtester/data_cache/by_day_cache_v5' + ('_aligned' if MODE == 'aligned' else '') + ('_bb' if BB_FEATS else '') + ('_volraw' if VOLRAW_FEATS else '') + ('_fund' if FUND_FEATS else '') + ('_1d' if LABEL_1D else '') + ('_kr' if KRONOS_ON else '') + ('_rawr' if RAW_RET_FEATS else '') + ('_ext' if EXT_FEATS else '') + ('_div' if DIV_FEATS else '') + ('_xsr' if XS_RANK else '') + ('_resl' if RESIDUAL_LABEL else '') + os.environ.get('CACHE_SUFFIX', '')  # CACHE_SUFFIX: 特殊宇宙(如MIN_KLINES=35)隔离缓存防污染
 
@@ -418,8 +419,8 @@ def train_and_predict_batch(train_ts_list, pred_ts, entry_ts, klines, soup_hist=
         else:
             ml = None
     else:
-        ml = _fit_model(X_train, yL, pL, 42)
-    ms = _fit_model(X_train, yS, pS, 43)
+        ml = _fit_model(X_train, yL, pL, 42 + SEED_OFFSET)
+    ms = _fit_model(X_train, yS, pS, 43 + SEED_OFFSET)
 
     cache_file = f'{CACHE_DIR}/{pred_ts}.npz'
     if not os.path.exists(cache_file): return None
