@@ -161,6 +161,45 @@ def fmt_qty(q, step):
     return f'{q:.{dec}f}'
 
 
+def fmt_price(p, tick):
+    s = f'{tick:.10f}'.rstrip('0')
+    dec = len(s.split('.')[1]) if '.' in s else 0
+    return f'{p:.{dec}f}'
+
+
+def place_sl_algo(sym, stop_price, tick):
+    """SL条件单走 Algo Order API (普通order端点-4120被拒, 与主程序同款FIX);
+    CONTRACT_PRICE触发=K线low口径, 对齐residual_tracker结算"""
+    r = signed('POST', '/fapi/v1/algoOrder', {
+        'algoType': 'CONDITIONAL', 'symbol': sym, 'side': 'SELL',
+        'type': 'STOP_MARKET', 'triggerPrice': fmt_price(stop_price, tick),
+        'closePosition': 'true', 'workingType': 'CONTRACT_PRICE',
+        'priceProtect': 'true'})
+    return r.get('algoId') or r.get('orderId'), r
+
+
+def open_algo_ids(sym):
+    """该币当前挂在交易所的未触发algo单algoId集合"""
+    r = signed('GET', '/fapi/v1/openAlgoOrders', {'symbol': sym})
+    if isinstance(r, list):
+        return {(o.get('algoId') or o.get('orderId')) for o in r}, r
+    return set(), r
+
+
+def cancel_sl(sym, algo_id):
+    """撤SL algo单: 先按algoId单撤, 不行再按symbol撤(该symbol此时仅我们这一张)"""
+    if algo_id:
+        r = signed('DELETE', '/fapi/v1/algoOrders', {'algoId': algo_id})
+        if not (isinstance(r, dict) and r.get('code') not in (None, 200)):
+            return True
+        log(f'  {sym} 按algoId撤单回执: {str(r)[:100]}')
+    r2 = signed('DELETE', '/fapi/v1/algoOpenOrders', {'symbol': sym})
+    ok = not (isinstance(r2, dict) and r2.get('code') not in (None, 200))
+    if not ok:
+        log(f'  {sym} 撤SL失败: {str(r2)[:120]}')
+    return ok
+
+
 def get_price(sym):
     r = S.get(f'{BASE_URL}/fapi/v1/ticker/price', params={'symbol': sym}, timeout=10)
     if r.status_code == 200:
@@ -218,19 +257,22 @@ def open_one(sym, st):
         log(f'  {sym} 未确认成交, 撤单兜底')
         signed('DELETE', '/fapi/v1/order', {'symbol': sym, 'orderId': eo['orderId']})
         return None, '未成交'
-    # SL-5% (CONTRACT_PRICE = K线low口径, 与residual_tracker结算一致)
+    # SL-5% (Algo Order API + CONTRACT_PRICE, 与residual_tracker结算口径一致)
     sp = floor_step(entry * (1 - SL_PCT), fl['tick'])
-    so = signed('POST', '/fapi/v1/order', {
-        'symbol': sym, 'side': 'SELL', 'type': 'STOP_MARKET',
-        'stopPrice': f'{sp:.10f}'.rstrip('0').rstrip('.') if fl['tick'] < 1 else str(int(sp)),
-        'closePosition': 'true', 'workingType': 'CONTRACT_PRICE',
-        'newClientOrderId': f'rl-{sym[:12]}-sl-{tag}'[:36]})
-    if so.get('orderId') is None:
+    sl_algo_id, so = place_sl_algo(sym, sp, fl['tick'])
+    if sl_algo_id is None:
         log(f'  ⚠️ {sym} SL挂单失败: {str(so)[:120]} (仓位裸奔, reconcile会重挂)')
+    else:
+        # 确认真的挂在交易所 (主程序同款verify哲学)
+        for _ in range(3):
+            ids, _r = open_algo_ids(sym)
+            if sl_algo_id in ids:
+                log(f'  {sym} SL已确认挂交易所: algoId={sl_algo_id} @ {sp}')
+                break
+            time.sleep(1.0)
     rec = {'symbol': sym, 'direction': 'LONG', 'qty': qty, 'entry': entry,
            'open_time': int(time.time() * 1000), 'date': datetime.now(CST).date().isoformat(),
-           'sl_price': sp, 'sl_oid': so.get('orderId'),
-           'sl_cid': f'rl-{sym[:12]}-sl-{tag}'[:36], 'tag': tag}
+           'sl_price': sp, 'sl_algo_id': sl_algo_id, 'tag': tag}
     log(f'  开仓 {sym}: qty={qty} entry={entry} SL={sp} 名义≈{qty*entry:.1f}U 保证金≈{qty*entry/LEVERAGE:.1f}U')
     return rec, None
 
@@ -257,8 +299,8 @@ def close_one(sym, st, reason, exit_price=None, exit_time=None):
         return
     exit_time = exit_time or int(time.time() * 1000)
     if reason == '到期':
-        # 撤SL单
-        signed('DELETE', '/fapi/v1/order', {'symbol': sym, 'origClientOrderId': pos['sl_cid']})
+        # 撤SL algo单
+        cancel_sl(sym, pos.get('sl_algo_id'))
         fl = get_filters(sym, load_exinfo())
         if fl is None:
             log(f'  ⚠️ {sym} 无法平仓(过滤器缺失), 下轮重试')
@@ -282,8 +324,9 @@ def close_one(sym, st, reason, exit_price=None, exit_time=None):
         if exit_price is None:
             exit_price = get_price(sym) or pos['entry']
     gross_pct = (exit_price / pos['entry'] - 1) if exit_price else 0.0
-    time.sleep(1.0)  # 等income落账
-    net_u = fetch_income(sym, pos['open_time'], int(time.time() * 1000) + 3000)
+    time.sleep(1.5)  # 等income落账
+    # income时间戳为秒级截断且开仓手续费早于open_time → 窗口两侧各加缓冲; 同币上一笔仓位间隔≥2分钟不会串单
+    net_u = fetch_income(sym, pos['open_time'] - 2000, int(time.time() * 1000) + 5000)
     rec = dict(pos)
     rec.update({'trigger': reason, 'exit': exit_price, 'exit_time': exit_time,
                 'gross_pct': round(gross_pct * 100, 2), 'net_u': net_u})
@@ -314,35 +357,45 @@ def reconcile(st, close_expired=True):
         pos = st['open'][sym]
         amt = amt_by_sym.get(sym, 0.0)
         if amt <= 0:
-            # 已离场: 查SL单是否触发
-            o = signed('GET', '/fapi/v1/order',
-                       {'symbol': sym, 'origClientOrderId': pos['sl_cid']})
-            reason = '止损' if o.get('status') == 'FILLED' else '离场(未知/手动)'
-            exit_price = float(o.get('avgPrice') or 0) or get_price(sym)
-            close_one(sym, st, reason, exit_price=exit_price,
-                      exit_time=int(o.get('updateTime') or time.time() * 1000))
+            # 已离场: 从allOrders找开仓后最后一笔SELL成交 (SL触发/手动), income给真实净额
+            aos = signed('GET', '/fapi/v1/allOrders',
+                         {'symbol': sym, 'startTime': pos['open_time'] - 2000, 'limit': 50})
+            sells = [o for o in (aos if isinstance(aos, list) else [])
+                     if o.get('side') == 'SELL' and o.get('status') == 'FILLED'
+                     and float(o.get('executedQty') or 0) > 0]
+            if sells:
+                last = max(sells, key=lambda o: o.get('updateTime', 0))
+                exit_price = float(last['avgPrice'])
+                exit_time = int(last.get('updateTime') or time.time() * 1000)
+                # SL触发成交价≈触发价±滑点; 手动/到期离场价远离触发价
+                if pos.get('sl_price') and abs(exit_price / pos['sl_price'] - 1) < 0.01:
+                    reason = '止损'
+                else:
+                    reason = '离场(手动/其他)'
+            else:
+                exit_price, exit_time = get_price(sym), int(time.time() * 1000)
+                reason = '离场(未知)'
+            close_one(sym, st, reason, exit_price=exit_price, exit_time=exit_time)
             continue
         # 仍在场: 到期? (名义到期=开仓日+2天08:21 CST, 与tracker一致; 08:21 trade cron主平, hourly兜底)
         if close_expired and now_ms >= nominal_expiry_ms(pos):
             log(f'  {sym} 48h到期, 平仓')
             close_one(sym, st, '到期')
             continue
-        # SL单在不在? 不在则重挂 (防裸奔)
-        o = signed('GET', '/fapi/v1/order', {'symbol': sym, 'origClientOrderId': pos['sl_cid']})
-        if o.get('code') == -2013:
-            exinfo = load_exinfo()
-            fl = get_filters(sym, exinfo)
+        # SL algo单还在交易所吗? 不在则重挂 (防裸奔)
+        ids, _r = open_algo_ids(sym)
+        if pos.get('sl_algo_id') not in ids:
+            fl = get_filters(sym, load_exinfo())
             if fl:
                 sp = floor_step(pos['entry'] * (1 - SL_PCT), fl['tick'])
-                so = signed('POST', '/fapi/v1/order', {
-                    'symbol': sym, 'side': 'SELL', 'type': 'STOP_MARKET',
-                    'stopPrice': f'{sp:.10f}'.rstrip('0').rstrip('.') if fl['tick'] < 1 else str(int(sp)),
-                    'closePosition': 'true', 'workingType': 'CONTRACT_PRICE',
-                    'newClientOrderId': pos['sl_cid']})
-                if so.get('orderId'):
+                new_id, so = place_sl_algo(sym, sp, fl['tick'])
+                if new_id:
                     pos['sl_price'] = sp
-                    log(f'  {sym} SL单缺失已重挂 @ {sp}')
+                    pos['sl_algo_id'] = new_id
+                    log(f'  {sym} SL单缺失已重挂 @ {sp} (algoId={new_id})')
                     save_state(st)
+                else:
+                    log(f'  ⚠️ {sym} SL重挂失败: {str(so)[:120]}')
         time.sleep(0.15)
 
 
