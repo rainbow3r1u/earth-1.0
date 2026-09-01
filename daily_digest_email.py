@@ -536,12 +536,24 @@ def section_forward_ic():
             if (ml_now is not None and ml_now < 0 and al_now is not None and al_now >= 0.55
                     and ml_prev is not None):
                 slope = ml_now - ml_prev
+                # 尾部交叉验证(2026-09-01 加): 均值斜率会被窗口边界效应欺骗 —
+                # 9/1案例: 前窗含冲击深负日导致斜率>0, 但最近2天单日IC已重新深负(8/29 -0.17 / 8/30 -0.29),
+                # 修复被新回踩打断, 均值还来不及反应。最近2日深负(<-0.10)时强制降级, 不显示修复尾声。
+                recent2 = [x.get('ic_long') for x in clean[-2:]]
+                tail_deteriorating = (len(recent2) == 2 and all(isinstance(v, (int, float)) and v < -0.10 for v in recent2))
                 if slope < -0.01:
                     ic_lead_html = (f"<div style='font-size:12px;margin-top:4px;padding:4px 8px;"
                                     f"background:#ffe0b2;border-left:4px solid #e65100;'>"
                                     f"🟠 <b>IC领先预警(8/12形态·早期)</b>: IC_L 5日均={ml_now:+.2f} 已负 而 AUC_L={al_now:.2f} 仍健康 — "
                                     f"排序已反向、分类尚好。IC均值仍在下行({ml_prev:+.2f}→{ml_now:+.2f}), "
                                     f"历史该形态领先 AUC 崩塌约 8 天(n=1), 关注 LONG 仓位与 BTC 波动。</div>")
+                elif tail_deteriorating:
+                    last2 = clean[-2]['date'][5:]
+                    ic_lead_html = (f"<div style='font-size:12px;margin-top:4px;padding:4px 8px;"
+                                    f"background:#ffe0b2;border-left:4px solid #e65100;'>"
+                                    f"🟠 <b>IC修复中断·重新走弱</b>: 5日均斜率虽为正({ml_prev:+.2f}→{ml_now:+.2f}, 窗口惯性), "
+                                    f"但最近2日单日IC连续深负(≥-0.10, 最近{last2}) — 回升被新回踩打断, "
+                                    f"均值尚未反映。视为8/12形态候选, 盯后续BTC波动与LONG仓位。</div>")
                 elif slope > 0.01 and ml_now > -0.05:
                     # 修复尾声需满足: 均值回升 且已逼近转正(>-0.05) — 8/15-8/17曾出现半路反弹误报(回升但仍在-0.02~-0.04深负后继续崩), 加此条件过滤
                     ic_lead_html = (f"<div style='font-size:12px;margin-top:4px;padding:4px 8px;"
