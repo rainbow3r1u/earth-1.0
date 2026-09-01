@@ -57,8 +57,14 @@ WINSOR_Q = float(os.environ.get('WINSOR_Q', '0'))  # >0时改用自定义分位 
 WF_OFFSET = int(os.environ.get('WF_OFFSET', '0'))  # 评估窗口整体前移N天 (稳健性复核: 换时段防单窗口运气)
 ENTRY_SLIP = float(os.environ.get('ENTRY_SLIP', '0'))
 FEAT_SHIFT = int(os.environ.get('FEAT_SHIFT', '0'))  # 阴性对照: 特征前移N天(故意前视), 管道正确则此臂必须爆炸到~100%胜率  # 入场价不利漂移%: LONG按开盘价*(1+x)成交, SHORT*(1-x) — 检验5分钟延迟的真实成本
+# ==== 2026-09-01 LONG改造实验臂 (优化待办⭐) ====
+XS_RANK = os.environ.get('XS_RANK', '0') == '1'       # 横截面排名特征+BTC regime特征 追加8维 (治"看不见相对位置")
+RESIDUAL_LABEL = os.environ.get('RESIDUAL_LABEL', '0') == '1'  # LONG标签残差化: (币ret - 当日宇宙中位ret) > +5% (治"beta假阳性", SHORT标签不动)
+XS_N_FEATS = 8
+# ==== 2026-09-01 P0: 训练/推理不对称 — 训练样本同款流动性过滤 (治"死币稀释训练集") ====
+VOLUME_FILTER = float(os.environ.get('VOLUME_FILTER', '0'))  # >0=阈值U: 样本日前5日均成交额<U的样本不入训练集 (口径=生产_filter_valid_samples); 敏感性300k/500k/1000k
 # lag/nolag 共用同一份样本缓存; aligned 标签不同, 独立缓存
-CACHE_DIR = f'{HOME}/backtester/data_cache/by_day_cache_v5' + ('_aligned' if MODE == 'aligned' else '') + ('_bb' if BB_FEATS else '') + ('_volraw' if VOLRAW_FEATS else '') + ('_fund' if FUND_FEATS else '') + ('_1d' if LABEL_1D else '') + ('_kr' if KRONOS_ON else '') + ('_rawr' if RAW_RET_FEATS else '') + ('_ext' if EXT_FEATS else '') + ('_div' if DIV_FEATS else '') + os.environ.get('CACHE_SUFFIX', '')  # CACHE_SUFFIX: 特殊宇宙(如MIN_KLINES=35)隔离缓存防污染
+CACHE_DIR = f'{HOME}/backtester/data_cache/by_day_cache_v5' + ('_aligned' if MODE == 'aligned' else '') + ('_bb' if BB_FEATS else '') + ('_volraw' if VOLRAW_FEATS else '') + ('_fund' if FUND_FEATS else '') + ('_1d' if LABEL_1D else '') + ('_kr' if KRONOS_ON else '') + ('_rawr' if RAW_RET_FEATS else '') + ('_ext' if EXT_FEATS else '') + ('_div' if DIV_FEATS else '') + ('_xsr' if XS_RANK else '') + ('_resl' if RESIDUAL_LABEL else '') + os.environ.get('CACHE_SUFFIX', '')  # CACHE_SUFFIX: 特殊宇宙(如MIN_KLINES=35)隔离缓存防污染
 
 DAYS   = int(sys.argv[1]) if len(sys.argv) > 1 else 180
 STRIDE = int(sys.argv[2]) if len(sys.argv) > 2 else 1
@@ -85,7 +91,9 @@ _exp_tags = [t for t, on in [('RANK', RANK_MODE), ('DECAY' + str(int(TIME_DECAY)
              ('DART', DART_ON), ('SOUP', SOUP_ON), ('LGBM', LGBM_ON),
              ('PRUNE', bool(_prune_idx)), ('NOWIN', WINSOR_OFF),
              ('WINQ' + str(WINSOR_Q), WINSOR_Q > 0), ('OFF' + str(WF_OFFSET), WF_OFFSET > 0), ('ESLIP' + str(ENTRY_SLIP), ENTRY_SLIP > 0), ('FSHIFT' + str(FEAT_SHIFT), FEAT_SHIFT > 0),
-             ('RAWR', RAW_RET_FEATS), ('NAN', NAN_RAW), ('EXT', EXT_FEATS), ('DIV', DIV_FEATS)] if on]
+             ('RAWR', RAW_RET_FEATS), ('NAN', NAN_RAW), ('EXT', EXT_FEATS), ('DIV', DIV_FEATS),
+             ('XSR', XS_RANK), ('RESL', RESIDUAL_LABEL),
+             ('VF' + str(int(VOLUME_FILTER//1000)) + 'k', VOLUME_FILTER > 0)] if on]
 exp_label = '+'.join(_exp_tags) if _exp_tags else 'BASELINE'
 
 
@@ -205,6 +213,78 @@ def build_samples_parallel(klines, oi_data, sector_map, sector_heats, btc_rets, 
     sdays = sorted(by_day.keys())
     log(f'样本构建完成: {total}条 × {len(sdays)}天 ({time.time()-t0:.0f}s)')
 
+    # ==== 2026-09-01 LONG改造臂: 落盘前做横截面增强 (XS_RANK / RESIDUAL_LABEL) ====
+    if XS_RANK or RESIDUAL_LABEL:
+        # BTC regime 量 (按样本日, 全市场共享): 5日已实现波动 / 距30日高回撤 / 宇宙动量因子
+        btc_kls_ = klines.get('BTCUSDT', [])
+        btc_idx = {k['t']: i for i, k in enumerate(btc_kls_)}
+        DAY_MS = 86400000
+        xs_stats = {}   # ts -> (btc_vol5, btc_dd30, uni_mom_prev)
+        for ts in sdays:
+            bt_i = btc_idx.get(ts)
+            v5 = 0.0; dd30 = 0.0
+            if bt_i is not None and bt_i >= 5:
+                rets5 = [btc_kls_[j]['c']/btc_kls_[j]['o'] - 1 for j in range(bt_i-4, bt_i+1)]
+                m = sum(rets5)/5
+                v5 = (sum((r-m)**2 for r in rets5)/5) ** 0.5 * 100
+            if bt_i is not None and bt_i >= 30:
+                hi30 = max(k['h'] for k in btc_kls_[bt_i-29:bt_i+1])
+                dd30 = (hi30 - btc_kls_[bt_i]['c']) / hi30 * 100
+            # 宇宙动量因子: 用前一日已实现的横截面next_ret中位 (当日入场时点可知, 无前视;
+            # 用当日会泄漏48h收益信息 — 训练日当日next_ret在08:21入场时未知)
+            ts_prev = ts - DAY_MS
+            day_rets_prev = [s[4] for s in by_day.get(ts_prev, []) if abs(s[4]) > 1e-9]
+            uni_mom = float(np.median(day_rets_prev)) if day_rets_prev else 0.0
+            xs_stats[ts] = (v5, dd30, uni_mom)
+        log(f'XS增强: BTC regime + 横截面rank 预计算完成 ({len(xs_stats)}天)')
+
+        new_by_day = {}
+        for ts in sdays:
+            samples = by_day[ts]
+            n = len(samples)
+            syms = [s[0] for s in samples]
+            feats = [list(s[1]) for s in samples]
+            # 每样本横截面量: 用当日K线算 (rank必须全宇宙同日可比)
+            day_r7 = []; day_r30 = []; day_dd = []; day_turn = []
+            for s in samples:
+                kl = klines.get(s[0], [])
+                idx = {k['t']: i for i, k in enumerate(kl)}.get(ts)
+                if idx is None or idx < 30:
+                    day_r7.append(0.0); day_r30.append(0.0); day_dd.append(0.0); day_turn.append(0.0)
+                    continue
+                r7 = (kl[idx]['c']/kl[idx-7]['c'] - 1) * 100 if idx >= 7 else 0.0
+                r30 = (kl[idx]['c']/kl[idx-30]['c'] - 1) * 100
+                hi30 = max(k['h'] for k in kl[idx-29:idx+1])
+                dd = (hi30 - kl[idx]['c']) / hi30 * 100
+                q5 = sum(k['q'] for k in kl[idx-4:idx+1]) if idx >= 5 else 0.0
+                day_r7.append(r7); day_r30.append(r30); day_dd.append(dd); day_turn.append(q5)
+            # rank (当日全宇宙, 0~1, 高=热)
+            def _rank(vals):
+                order = sorted(range(n), key=lambda i: vals[i])
+                r = [0.0]*n
+                for pos, i in enumerate(order):
+                    r[i] = pos / max(n-1, 1)
+                return r
+            rk7, rk30, rkdd, rkq = _rank(day_r7), _rank(day_r30), _rank(day_dd), _rank(day_turn)
+            v5, dd30, uni_mom = xs_stats[ts]
+            # med_feat(第8维特征)必须用前一日横截面中位 — 当日next_ret在入场时未知, 用作特征即前视
+            day_rets_med_prev = [s[4] for s in by_day.get(ts - 86400000, []) if abs(s[4]) > 1e-9]
+            med_feat = float(np.median(day_rets_med_prev)) if day_rets_med_prev else 0.0
+            # med_ret_label(残差标签用): 训练样本的标签本就是历史已实现收益, 残差化对齐标签语义, 允许用当日中位(标签非特征)
+            med_ret_label = float(np.median([s[4] for s in samples])) if n else 0.0
+            new_samples = []
+            for i, (sym, feat, ll_, ls_, ret) in enumerate(samples):
+                if XS_RANK:
+                    # 8维: 7d收益rank / 30d收益rank / 距30d高回撤rank(高=超跌) / 成交额rank / BTC5日vol / BTC距高回撤 / 宇宙动量(前日) / 宇宙中位(前日)
+                    feat = list(feat) + [rk7[i], rk30[i], rkdd[i], rkq[i], v5, dd30, uni_mom, med_feat]
+                if RESIDUAL_LABEL:
+                    # LONG标签残差化: 币48h ret - 当日宇宙中位ret > +5% (SHORT不动)
+                    ll_ = 1 if (ret - med_ret_label) > 5.0 else 0
+                new_samples.append((sym, feat, ll_, ls_, ret))
+            new_by_day[ts] = new_samples
+        by_day = new_by_day
+        log(f'横截面增强落盘: XS_RANK={XS_RANK} RESIDUAL_LABEL={RESIDUAL_LABEL}')
+
     os.makedirs(CACHE_DIR, exist_ok=True)
     for ts in sdays:
         samples = by_day[ts]
@@ -216,6 +296,21 @@ def build_samples_parallel(klines, oi_data, sector_map, sector_heats, btc_rets, 
     return sdays
 
 # ============ 回测核心 ============
+_vol5_map = {}   # sym -> {ts_sec: 前5日均成交额U} (P0训练过滤用, 懒加载一次性预计算)
+_vf_total = 0; _vf_kept = 0   # P0臂过滤统计
+
+def _vol5_at(klines, sym, ts):
+    """sym在样本日ts的前5日均成交额U (口径=生产_filter_valid_samples: 样本日自身K线之前的5根);
+    None=该日无K线(无法计算, 视为不通过)"""
+    m = _vol5_map.get(sym)
+    if m is None:
+        kd = klines.get(sym, [])
+        m = {}
+        for j in range(5, len(kd)):
+            m[kd[j]['t'] // 1000] = sum(k['q'] for k in kd[j-5:j]) / 5.0
+        _vol5_map[sym] = m
+    return m.get(ts)
+
 def train_and_predict_batch(train_ts_list, pred_ts, entry_ts, klines, soup_hist=None):
     X_train, yL, yS, _grp, _wts = [], [], [], [], []
     _tmax = max(train_ts_list) if train_ts_list else 0
@@ -225,8 +320,16 @@ def train_and_predict_batch(train_ts_list, pred_ts, entry_ts, klines, soup_hist=
         try:
             data = np.load(cache_file)
             f_ = data['feats']
-            X_train.append(f_)
             lbl = data['labels']
+            if VOLUME_FILTER > 0:
+                # P0臂: 训练样本同款流动性过滤 (预测端已有同款过滤, 此处只治训练集不对称)
+                global _vf_total, _vf_kept
+                _v5s = [_vol5_at(klines, str(s), ts) for s in data['syms']]
+                _keep = np.array([v is not None and v >= VOLUME_FILTER for v in _v5s])
+                _vf_total += len(_keep); _vf_kept += int(_keep.sum())
+                if not _keep.any(): continue
+                f_ = f_[_keep]; lbl = lbl[_keep]
+            X_train.append(f_)
             yL.append(lbl[:, 0]); yS.append(lbl[:, 1])
             _grp.append(len(f_))
             if TIME_DECAY > 0:
@@ -469,6 +572,8 @@ def print_summary(trades, elapsed):
     print(f'回测完成 ({DAYS}d stride={STRIDE} MODE={MODE} EXP={exp_label})')
     print(f'  Sharpe={sharpe:.2f}  Cum={cum:+.1f}%  MaxDD={dd:.1f}%')
     print(f'  Trades={len(trades)}  Win={wins}/{len(trades)}({wins/len(trades)*100:.0f}%) T/ST={takes}/{stops}')
+    if VOLUME_FILTER > 0:
+        print(f'  训练样本过滤: {_vf_kept}/{_vf_total} 保留 {_vf_kept/max(_vf_total,1)*100:.0f}% (阈值{VOLUME_FILTER/1000:.0f}kU)')
     print(f'  Period: {d0} → {d1}  耗时: {elapsed/60:.0f}min')
     print(f'{sep}')
     return {'sharpe': sharpe, 'cum': cum, 'max_dd': dd, 'trades': len(trades),
