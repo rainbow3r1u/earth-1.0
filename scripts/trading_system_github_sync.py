@@ -19,9 +19,25 @@ LOG = os.path.join(HOME, 'logs', 'trading_system_github_sync.log')
 STATUS_PATH = os.path.join(HOME, 'websocket_new', 'logs', 'trading_system_sync_status.json')
 
 EXCLUDE_DIRS = {
-    '.git', '__pycache__', 'data', 'logs', 'node_modules', 'archive',
+    '.git', '__pycache__', 'logs', 'node_modules', 'archive',
     'kronos_finetune', 'kronos_model', 'static', 'templates', 'output',
     'experiments', '.codegraph', '.agents',
+}
+# data/ 白名单 (2026-09-02 补齐盲区): 核心公证数据随代码链同步 GitHub —
+# 残差臂/主臂 60 天验证的全部证据链: 预测公证(pred_*/top10_*) + 影子结算(hybrid/residual_tracker)
+# + 前向IC史 + 实盘执行器state; 其余 data/ 文件(kline缓存/大json/npz)仍排除
+DATA_WHITELIST_PREFIX = (
+    'data/pred_',                          # 每日预测公证 (主臂+残差臂TOP10, 事前不可篡改)
+    'data/top10_forward_cache',             # TOP10前向结算缓存
+    'data/hybrid_tracker',                  # 混合结构主臂影子结算
+    'data/residual_tracker',                # RESIDUAL影子臂结算
+    'data/residual_live_state',             # RESIDUAL实盘执行器持仓/历史
+    'data/forward_ic_history',              # 前向IC/AUC史 (四灯数据源)
+    'data/forward_tracker',                 # TOP1前向结算
+)
+DATA_WHITELIST_EXACT = {
+    'data/crypto_sectors.json',             # 板块映射 (特征输入, 版本影响生产)
+    'data/exchange_info.json',              # 交易所上市状态 (宇宙准入)
 }
 EXCLUDE_EXT = {
     '.pyc', '.pyo', '.db', '.sqlite', '.sqlite3', '.npz', '.bin', '.pkl',
@@ -124,6 +140,10 @@ def collect_files():
             except OSError:
                 continue
             rel = os.path.relpath(p, ROOT)
+            # data/ 只收白名单 (公证数据链), 其余排除 (缓存/大文件)
+            if rel.startswith('data/'):
+                if not (rel.startswith(DATA_WHITELIST_PREFIX) or rel in DATA_WHITELIST_EXACT):
+                    continue
             out[rel] = p
     return out
 
