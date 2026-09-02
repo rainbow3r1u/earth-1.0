@@ -83,6 +83,105 @@ def _perm_test_latest():
     return out
 
 
+def build_btc_alt_chart(days=30):
+    """5.5b BTC vs 山寨走势对比图 (2026-09-02 用户需求): matplotlib PNG 供邮件CID内嵌.
+    布局: 上=双线(BTC/山寨中位数, 均rebase到0%) 中=BTC 5日已实现vol柱(四灯同色) 下=山寨横截面离散度柱.
+    数据源: notusdt_1d_full.json 已收盘日K (09:00晨报时=截至昨日), 山寨=非BTC全宇宙(K线≥60).
+    返回 (png_path, 最新状态dict) 或 (None, None)."""
+    try:
+        import numpy as np
+        import matplotlib
+        matplotlib.use('Agg')
+        import matplotlib.pyplot as plt
+        with open(_KLINE_CACHE) as f:
+            kl = json.load(f)['klines']
+        btck = next(kl[s] for s in kl if s.startswith('BTCUSDT') and len(kl[s]) > 200)
+        today0 = int(datetime.datetime.combine(datetime.date.today(), datetime.time(),
+                        tzinfo=datetime.timezone.utc).timestamp() * 1000)
+        btc_rows = [r for r in btck if r['t'] < today0][-days:]
+        if len(btc_rows) < 10:
+            return None, None
+        # 山寨横截面: 每个样本日的 全宇宙日收益(中位数/离散度), K线>=60 天, 排除BTC
+        tset = {r['t'] for r in btc_rows}
+        xs = {t: [] for t in tset}
+        for sym, kls in kl.items():
+            if sym.startswith('BTCUSDT') or len(kls) < 60:
+                continue
+            for r in kls:
+                if r['t'] in xs and r['o'] > 0:
+                    xs[r['t']].append((r['c'] / r['o'] - 1) * 100)
+        btc_ret = [(r['c'] / r['o'] - 1) * 100 for r in btc_rows]
+        med_ret, disp = [], []
+        for r in btc_rows:
+            a = xs[r['t']]
+            med_ret.append(float(np.median(a)) if len(a) >= 50 else 0.0)
+            disp.append(float(np.std(a)) if len(a) >= 50 else 0.0)
+        # rebase 到 0%
+        btc_eq, alt_eq, b, a_ = [], [], 1.0, 1.0
+        for br, mr in zip(btc_ret, med_ret):
+            b *= (1 + br / 100); a_ *= (1 + mr / 100)
+            btc_eq.append((b - 1) * 100)
+            alt_eq.append((a_ - 1) * 100)
+        # BTC vol5 (人口std, 与四灯/5.5节完全同口径)
+        btc_vol5 = []
+        for i in range(len(btc_rows)):
+            if i < 4:
+                btc_vol5.append(0.0)
+                continue
+            rets5 = btc_ret[i-4:i+1]
+            m = sum(rets5) / 5
+            btc_vol5.append((sum((v - m) ** 2 for v in rets5) / 5) ** 0.5)
+        dstr = [datetime.datetime.fromtimestamp(r['t'] / 1000,
+                tz=datetime.timezone.utc).strftime('%m-%d') for r in btc_rows]
+        x = list(range(len(dstr)))
+        # ==== 画图 (无中文字体, 标签用英文) ====
+        fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(7.6, 6.2), dpi=140,
+                                            sharex=True, gridspec_kw={'height_ratios': [2, 1, 1]})
+        ax1.axhline(0, color='#999', lw=0.6, ls='--')
+        ax1.plot(x, btc_eq, color='#F7931A', lw=1.8, label=f'BTC (last {btc_eq[-1]:+.1f}%)')
+        ax1.plot(x, alt_eq, color='#4472C4', lw=1.8, label=f'Altcoin median (last {alt_eq[-1]:+.1f}%)')
+        ax1.fill_between(x, btc_eq, alt_eq, where=[b >= a for b, a in zip(btc_eq, alt_eq)],
+                          color='#F7931A', alpha=0.06, interpolate=True)
+        ax1.fill_between(x, btc_eq, alt_eq, where=[b < a for b, a in zip(btc_eq, alt_eq)],
+                          color='#4472C4', alpha=0.06, interpolate=True)
+        ax1.set_ylabel('Rebased %')
+        ax1.legend(loc='best', fontsize=8, framealpha=0.9)
+        ax1.set_title(f'BTC vs Altcoin Median — last {len(dstr)}d (closed bars)', fontsize=10)
+        ax1.grid(alpha=0.25, lw=0.4)
+        # BTC vol5: 四灯同色 绿<=1.5 黄1.5~2 红>2
+        c2 = ['#2e7d32' if v <= 1.5 else ('#f9a825' if v <= 2.0 else '#c62828') for v in btc_vol5]
+        ax2.bar(x, btc_vol5, color=c2, width=0.72)
+        ax2.axhline(1.5, color='#f9a825', lw=0.7, ls='--'); ax2.axhline(2.0, color='#c62828', lw=0.7, ls='--')
+        ax2.set_ylabel('BTC vol5 %')
+        ax2.grid(alpha=0.25, lw=0.4, axis='y')
+        # 山寨横截面离散度: 绿<=6 黄6~8 红>8 (候选第5灯, 8/30=7.4 黄警示)
+        c3 = ['#2e7d32' if v <= 6 else ('#f9a825' if v <= 8.0 else '#c62828') for v in disp]
+        ax3.bar(x, disp, color=c3, width=0.72)
+        ax3.axhline(6.0, color='#f9a825', lw=0.7, ls='--'); ax3.axhline(8.0, color='#c62828', lw=0.7, ls='--')
+        ax3.set_ylabel('Alt XS-disp %')
+        ax3.grid(alpha=0.25, lw=0.4, axis='y')
+        step = max(1, len(dstr) // 10)
+        ax3.set_xticks(x[::step]); ax3.set_xticklabels(dstr[::step], fontsize=7)
+        for ax in (ax1, ax2, ax3):
+            for s in ('top', 'right'):
+                ax.spines[s].set_visible(False)
+        fig.align_ylabels()
+        fig.tight_layout()
+        out_dir = os.path.join(BASE, 'data', 'charts')
+        os.makedirs(out_dir, exist_ok=True)
+        out = os.path.join(out_dir, f'btc_alt_{datetime.date.today().isoformat()}.png')
+        fig.savefig(out, bbox_inches='tight')
+        plt.close(fig)
+        state = {'btc_last': round(btc_eq[-1], 1), 'alt_last': round(alt_eq[-1], 1),
+                 'btc_vol5': round(btc_vol5[-1], 2), 'disp_last': round(disp[-1], 2),
+                 'n_days': len(dstr)}
+        return out, state
+    except Exception as e:
+        import traceback
+        print(f'[chart] 生成失败: {e}\n{traceback.format_exc()}')
+        return None, None
+
+
 def _format_trade_summary():
     """读取今日 trade.log, 输出结构化中文摘要(替代原始日志行平铺)"""
     import daily_predictor as dp
@@ -858,6 +957,21 @@ def main():
     tag48 = f"<span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>48h逻辑 · 1m口径 · 08:21开仓 · SL-5%/TP+10%/48h到期</span>"
     tag72 = f"<span style='{tag_style}background:#fff3e0;color:#e65100;'>72h逻辑 · 日线口径(老) · open[T]入场 · 扫T~T+2三根日线 · 与实盘口径不同仅参考</span>"
     tag_none = f"<span style='{tag_style}background:#eee;color:#666;'>无结算口径</span>"
+    # 5.5b BTC vs 山寨走势对比图 (2026-09-02): 8/30教训 — BTC vol灯绿但山寨横截面已在崩(中位-3.23%/89%下跌),
+    # 四灯只看BTC看不见山寨独立冲击 → 此图补盲区; 生成失败自动降级为文字行, 不影响晨报其余部分
+    chart_path, chart_state = build_btc_alt_chart()
+    chart_html = ''
+    if chart_path:
+        _s = chart_state or {}
+        chart_html = f"""
+<b>5.5b BTC vs 山寨走势对比图 (近{_s.get('n_days', 30)}天已收盘)</b> <span style='{tag_style}background:#fff3e0;color:#e65100;'>上:BTC/山寨中位数(均从0%起) · 中:BTC vol5(四灯同色) · 下:山寨横截面离散度(候选第5灯)</span>
+<div style='margin:6px 0;'><img src="cid:btcaltchart" style="max-width:100%;border:1px solid #ddd;border-radius:4px;"></div>
+<div style='font-size:11px;color:#555;'>BTC近30日 <b>{_s.get('btc_last', 0):+.1f}%</b> vs 山寨中位数 <b>{_s.get('alt_last', 0):+.1f}%</b>
+ | 最新BTC vol5 <b>{_s.get('btc_vol5', 0):.2f}%</b>(绿≤1.5/黄1.5~2/红>2, 与5.5节四灯同口径)
+ | 最新山寨离散度 <b>{_s.get('disp_last', 0):.2f}%</b>(绿≤6/黄6~8/红>8)
+ | 山寨离散度=当日全宇宙日收益横截面std, 是"山寨自己的vol灯": 8/30该值7.4%(黄)时BTC vol仅1.57%(黄绿), 山寨先崩BTC没动 — 第5灯候选, 阈值待60天校准</div>"""
+    else:
+        chart_html = "\n<div style='font-size:11px;color:#999;'>(5.5b 对比图生成失败, 略过)</div>"
     body_html = f"""<h2 style="margin:0 0 8px;">晨报总览 {today}</h2>
 <b>1. 交易摘要</b> {tag48_exec}
 <pre {pre_style}>{section_trade()}</pre>
@@ -881,9 +995,11 @@ def main():
 <pre {pre_style}>{section_health()}</pre>
 <b>5.5 前向批作业 · 模型质量与BTC波动 regime</b> <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>公证预测对答案 · 48h日线口径 · D+2确认</span>
 {section_forward_ic()}
+{chart_html}
 <b>6. GitHub 同步</b> {tag_none}
 <pre {pre_style}>{section_github_sync()}</pre>"""
-    send_email(f'晨报总览 {today}', '', body_html=body_html)
+    send_email(f'晨报总览 {today}', '', body_html=body_html,
+               inline_images={'btcaltchart': chart_path} if chart_path else None)
     print('digest sent')
 
 

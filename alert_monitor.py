@@ -21,6 +21,7 @@ import smtplib
 from datetime import datetime, timezone, timedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.image import MIMEImage
 from dotenv import load_dotenv
 
 # ============ 配置 ============
@@ -60,8 +61,9 @@ ALERT_STATE = '/home/myuser/websocket_new/logs/alert_state.json'
 ALERT_COOLDOWN_HOURS = 6  # 同一告警6小时冷却
 
 # ============ 邮件发送 ============
-def send_email(subject, body, priority='normal', body_html=None):
-    """发送邮件到QQ邮箱; body_html 可选: 提供时用其替换 pre 文本区(支持表格等富文本)"""
+def send_email(subject, body, priority='normal', body_html=None, inline_images=None):
+    """发送邮件到QQ邮箱; body_html 可选: 提供时用其替换 pre 文本区(支持表格等富文本);
+    inline_images 可选: {cid: png路径} — HTML里用 <img src="cid:xxx"> 引用 (multipart/related)"""
     if not SMTP_USER or not SMTP_AUTH_CODE:
         print('[ALERT] SMTP未配置, 跳过邮件发送. 请在.env中设置 SMTP_USER 和 SMTP_AUTH_CODE')
         return False
@@ -95,7 +97,23 @@ def send_email(subject, body, priority='normal', body_html=None):
     </p>
     </body></html>
     """
-    msg.attach(MIMEText(html, 'html', 'utf-8'))
+    if inline_images:
+        # 内嵌图片: multipart/related 才是 CID 引用的标准容器 (QQ邮箱网页/手机端实测可靠)
+        related = MIMEMultipart('related')
+        related.attach(MIMEText(html, 'html', 'utf-8'))
+        for cid, path in inline_images.items():
+            try:
+                with open(path, 'rb') as f:
+                    img = MIMEImage(f.read())
+                img.add_header('Content-ID', f'<{cid}>')
+                img.add_header('Content-Disposition', 'inline',
+                               filename=os.path.basename(path))
+                related.attach(img)
+            except Exception as e:
+                print(f'[ALERT] 内嵌图片失败 {path}: {e}')
+        msg.attach(related)
+    else:
+        msg.attach(MIMEText(html, 'html', 'utf-8'))
 
     try:
         with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=15) as s:
