@@ -1,0 +1,110 @@
+{
+ "2026-09-02": {
+  "updated": "2026-09-02T00:55:01.521076+00:00",
+  "day_pnl_u": 0,
+  "n_settled": 0,
+  "n_total": 10,
+  "trades": [
+   {
+    "symbol": "TACUSDT",
+    "direction": "LONG",
+    "prob": 85.7,
+    "entry": 0.002295,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null
+   },
+   {
+    "symbol": "PORTALUSDT",
+    "direction": "LONG",
+    "prob": 79.8,
+    "entry": 0.01435,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null
+   },
+   {
+    "symbol": "VIRTUALUSDT",
+    "direction": "LONG",
+    "prob": 75.9,
+    "entry": 0.6817,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null
+   },
+   {
+    "symbol": "ONGUSDT",
+    "direction": "LONG",
+    "prob": 75.3,
+    "entry": 0.10905,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null
+   },
+   {
+    "symbol": "COWUSDT",
+    "direction": "LONG",
+    "prob": 74.4,
+    "entry": 0.1235,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null
+   },
+   {
+    "symbol": "VETUSDT",
+    "direction": "LONG",
+    "prob": 73.0,
+    "entry": 0.006629,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null
+   },
+   {
+    "symbol": "BROCCOLI714USDT",
+    "direction": "LONG",
+    "prob": 72.9,
+    "entry": 0.01631,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null
+   },
+   {
+    "symbol": "MOVRUSDT",
+    "direction": "LONG",
+    "prob": 72.3,
+    "entry": 0.7924,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null
+   },
+   {
+    "symbol": "KMNOUSDT",
+    "direction": "LONG",
+    "prob": 71.7,
+    "entry": 0.02338,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null
+   },
+   {
+    "symbol": "EDENUSDT",
+    "direction": "LONG",
+    "prob": 70.5,
+    "entry": 0.05837,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null
+   }
+  ]
+ }
+}
