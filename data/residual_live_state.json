@@ -1,0 +1,173 @@
+{
+ "config": {
+  "notional": 30.0,
+  "leverage": 5,
+  "max_daily": 10
+ },
+ "open": {
+  "TACUSDT": {
+   "symbol": "TACUSDT",
+   "direction": "LONG",
+   "qty": 17323.0,
+   "entry": 0.00231,
+   "open_time": 1788308682974,
+   "date": "2026-09-02",
+   "sl_price": 0.0021939999999999998,
+   "sl_algo_id": 2000001402580134,
+   "tag": "260902"
+  },
+  "PORTALUSDT": {
+   "symbol": "PORTALUSDT",
+   "direction": "LONG",
+   "qty": 2787.4,
+   "entry": 0.01436,
+   "open_time": 1788308684251,
+   "date": "2026-09-02",
+   "sl_price": 0.013640000000000001,
+   "sl_algo_id": 2000001402580169,
+   "tag": "260902"
+  },
+  "VIRTUALUSDT": {
+   "symbol": "VIRTUALUSDT",
+   "direction": "LONG",
+   "qty": 58.6,
+   "entry": 0.682,
+   "open_time": 1788308685667,
+   "date": "2026-09-02",
+   "sl_price": 0.6479,
+   "sl_algo_id": 2000001402580211,
+   "tag": "260902"
+  },
+  "ONGUSDT": {
+   "symbol": "ONGUSDT",
+   "direction": "LONG",
+   "qty": 363.0,
+   "entry": 0.11009,
+   "open_time": 1788308686880,
+   "date": "2026-09-02",
+   "sl_price": 0.10458,
+   "sl_algo_id": 2000001402580225,
+   "tag": "260902"
+  },
+  "COWUSDT": {
+   "symbol": "COWUSDT",
+   "direction": "LONG",
+   "qty": 323.0,
+   "entry": 0.1236,
+   "open_time": 1788308688084,
+   "date": "2026-09-02",
+   "sl_price": 0.1174,
+   "sl_algo_id": 2000001402580247,
+   "tag": "260902"
+  },
+  "VETUSDT": {
+   "symbol": "VETUSDT",
+   "direction": "LONG",
+   "qty": 6031.0,
+   "entry": 0.006631,
+   "open_time": 1788308689281,
+   "date": "2026-09-02",
+   "sl_price": 0.006299,
+   "sl_algo_id": 2000001402580282,
+   "tag": "260902"
+  },
+  "BROCCOLI714USDT": {
+   "symbol": "BROCCOLI714USDT",
+   "direction": "LONG",
+   "qty": 2458.0,
+   "entry": 0.01628,
+   "open_time": 1788308690484,
+   "date": "2026-09-02",
+   "sl_price": 0.015460000000000002,
+   "sl_algo_id": 2000001402580288,
+   "tag": "260902"
+  },
+  "MOVRUSDT": {
+   "symbol": "MOVRUSDT",
+   "direction": "LONG",
+   "qty": 50.28,
+   "entry": 0.7956,
+   "open_time": 1788308691685,
+   "date": "2026-09-02",
+   "sl_price": 0.7558,
+   "sl_algo_id": 2000001402580321,
+   "tag": "260902"
+  },
+  "KMNOUSDT": {
+   "symbol": "KMNOUSDT",
+   "direction": "LONG",
+   "qty": 1713.0,
+   "entry": 0.02336,
+   "open_time": 1788308692885,
+   "date": "2026-09-02",
+   "sl_price": 0.02219,
+   "sl_algo_id": 2000001402580331,
+   "tag": "260902"
+  },
+  "EDENUSDT": {
+   "symbol": "EDENUSDT",
+   "direction": "LONG",
+   "qty": 687.0,
+   "entry": 0.0581945,
+   "open_time": 1788308694083,
+   "date": "2026-09-02",
+   "sl_price": 0.05528,
+   "sl_algo_id": 2000001402580349,
+   "tag": "260902"
+  }
+ },
+ "history": [
+  {
+   "symbol": "ETHUSDT",
+   "direction": "LONG",
+   "qty": 0.016,
+   "entry": 2452.71,
+   "open_time": 1788256900014,
+   "date": "2026-09-01",
+   "sl_price": 2330.07,
+   "sl_oid": null,
+   "sl_cid": "rl-ETHUSDT-sl-260901",
+   "tag": "260901",
+   "trigger": "链路测试",
+   "exit": 2452.31,
+   "exit_time": 1788256900017,
+   "gross_pct": -0.02,
+   "net_u": -0.0456
+  },
+  {
+   "symbol": "ETHUSDT",
+   "direction": "LONG",
+   "qty": 0.016,
+   "entry": 2452.03,
+   "open_time": 1788257240159,
+   "date": "2026-09-01",
+   "sl_price": 2329.42,
+   "sl_algo_id": 2000001401114581,
+   "tag": "260901",
+   "trigger": "链路测试2(algoSL)",
+   "exit": 2451.93,
+   "exit_time": 1788257240207,
+   "gross_pct": -0.0,
+   "net_u": -0.0408
+  }
+ ],
+ "days": {
+  "2026-09-02": {
+   "opened": [
+    "TACUSDT",
+    "PORTALUSDT",
+    "VIRTUALUSDT",
+    "ONGUSDT",
+    "COWUSDT",
+    "VETUSDT",
+    "BROCCOLI714USDT",
+    "MOVRUSDT",
+    "KMNOUSDT",
+    "EDENUSDT"
+   ],
+   "skipped": [],
+   "avail_u": 275.5,
+   "n_planned": 10
+  }
+ }
+}
