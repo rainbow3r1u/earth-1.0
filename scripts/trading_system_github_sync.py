@@ -171,6 +171,19 @@ def main():
         'message': '',
     }
     files = collect_files()
+    # 仓库体积监控 (2026-09-02): GitHub 1GB建议/5GB软限 — 超阈值写进晨报亮灯
+    # size-pack 是远端真实体积(git压缩后); 本地.git含松散对象会虚高, 不作数
+    repo_mb = None
+    try:
+        import subprocess, re as _re
+        r = subprocess.run(['git', '-C', ROOT, 'count-objects', '-vH'],
+                           capture_output=True, text=True, timeout=30)
+        m = _re.search(r'size-pack:\s*([\d.]+)\s*(GiB|MiB|KiB)', r.stdout)
+        if m:
+            mult = {'KiB': 1/1024, 'MiB': 1.0, 'GiB': 1024.0}[m.group(2)]
+            repo_mb = round(float(m.group(1)) * mult, 1)
+    except Exception as e:
+        log(f'repo size check failed: {e}')
     os.makedirs(STATE_DIR, exist_ok=True)
     old = {}
     if os.path.exists(MANIFEST):
@@ -221,7 +234,8 @@ def main():
         'failed': 0,
         'removed': len(removed),
         'files': [rel for rel, _ in changed],
-        'message': f'changed={len(changed)} removed={len(removed)}',
+        'repo_mb': repo_mb,
+        'message': f'changed={len(changed)} removed={len(removed)} repo={repo_mb}MB',
     })
     write_status(status_payload)
     log('=== trading system github sync done ===')
