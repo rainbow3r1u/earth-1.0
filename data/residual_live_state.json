@@ -16,17 +16,6 @@
    "sl_algo_id": 2000001402580134,
    "tag": "260902"
   },
-  "PORTALUSDT": {
-   "symbol": "PORTALUSDT",
-   "direction": "LONG",
-   "qty": 2787.4,
-   "entry": 0.01436,
-   "open_time": 1788308684251,
-   "date": "2026-09-02",
-   "sl_price": 0.013640000000000001,
-   "sl_algo_id": 2000001402580169,
-   "tag": "260902"
-  },
   "VIRTUALUSDT": {
    "symbol": "VIRTUALUSDT",
    "direction": "LONG",
@@ -36,17 +25,6 @@
    "date": "2026-09-02",
    "sl_price": 0.6479,
    "sl_algo_id": 2000001402580211,
-   "tag": "260902"
-  },
-  "ONGUSDT": {
-   "symbol": "ONGUSDT",
-   "direction": "LONG",
-   "qty": 363.0,
-   "entry": 0.11009,
-   "open_time": 1788308686880,
-   "date": "2026-09-02",
-   "sl_price": 0.10458,
-   "sl_algo_id": 2000001402580225,
    "tag": "260902"
   },
   "COWUSDT": {
@@ -149,6 +127,38 @@
    "exit_time": 1788257240207,
    "gross_pct": -0.0,
    "net_u": -0.0408
+  },
+  {
+   "symbol": "ONGUSDT",
+   "direction": "LONG",
+   "qty": 363.0,
+   "entry": 0.11009,
+   "open_time": 1788308686880,
+   "date": "2026-09-02",
+   "sl_price": 0.10458,
+   "sl_algo_id": 2000001402580225,
+   "tag": "260902",
+   "trigger": "止损",
+   "exit": 0.10462,
+   "exit_time": 1788311732429,
+   "gross_pct": -4.97,
+   "net_u": -1.9513
+  },
+  {
+   "symbol": "PORTALUSDT",
+   "direction": "LONG",
+   "qty": 2787.4,
+   "entry": 0.01436,
+   "open_time": 1788308684251,
+   "date": "2026-09-02",
+   "sl_price": 0.013640000000000001,
+   "sl_algo_id": 2000001402580169,
+   "tag": "260902",
+   "trigger": "止损",
+   "exit": 0.01376,
+   "exit_time": 1788322262699,
+   "gross_pct": -4.18,
+   "net_u": -1.7136
   }
  ],
  "days": {
