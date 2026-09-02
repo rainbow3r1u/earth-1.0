@@ -940,6 +940,15 @@ def section_github_sync():
             if len(files) > 20:
                 lines.append(f'  ... 共 {len(files)} 个')
         lines.append(f'删除/移除: {removed}')
+        # 仓库体积监控 (2026-09-02): GitHub 建议<1GB/软限5GB — 绿<500MB 黄<2GB 红≥2GB
+        repo_mb = st.get('repo_mb')
+        if repo_mb is not None:
+            if repo_mb >= 2000:
+                lines.append(f'仓库体积: {repo_mb:.0f}MB 🚨 已超2GB, 接近GitHub软限(5GB), 需清理历史大文件')
+            elif repo_mb >= 500:
+                lines.append(f'仓库体积: {repo_mb:.0f}MB 🟡 过半(GitHub建议<1GB), 关注增速')
+            else:
+                lines.append(f'仓库体积: {repo_mb:.0f}MB 🟢 (GitHub建议<1GB/软限5GB)')
         return '\n'.join(lines)
     except Exception as e:
         return f'[GitHub同步] ⚠️ 读取失败: {e}'
