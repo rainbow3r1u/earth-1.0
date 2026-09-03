@@ -697,6 +697,60 @@ def section_residual_picks():
         return f'<p style="color:#c00">(选币差异生成失败: {e})</p>'
 
 
+def section_residual_survival():
+    """3.9c 残差实盘批次生存表 (2026-09-03 用户需求):
+    每批'开仓N笔→存活/止损/到期'动态 + 存活率%。直观看出每批选币的成色衰减速度。
+    数据: residual_live_state.json 的 days(开仓名单)/open(在持)/history(已离场, 含trigger)。"""
+    try:
+        cell = "style='padding:2px 8px;border:1px solid #ccc;font-size:12px;'"
+        hd = "style='padding:2px 8px;border:1px solid #ccc;font-size:12px;background:#f0f0f0;'"
+        sp = '/home/myuser/websocket_new/data/residual_live_state.json'
+        if not os.path.exists(sp):
+            return "<div style='font-size:11px;color:#888;'>(3.9c 批次生存表: 无实盘state)</div>"
+        st = json.load(open(sp))
+        days_opened = st.get('days', {})
+        open_syms = set(st.get('open', {}).keys())
+        # 已离场按批分组
+        gone = {}
+        for r in st.get('history', []):
+            if r.get('trigger') in ('链路测试', '链路测试2(algoSL)'):
+                continue  # 排除测试单
+            gone.setdefault(r['date'], []).append(r)
+        rows = []
+        for d in sorted(days_opened.keys()):
+            opened = [s for s in days_opened[d].get('opened', [])]
+            if not opened or d < '2026-09-02':
+                continue  # 9/2起正式策略批
+            alive = [s for s in opened if s in open_syms]
+            stopped = [r for r in gone.get(d, []) if r.get('trigger') == '止损']
+            expired = [r for r in gone.get(d, []) if r.get('trigger') == '到期']
+            other = len(gone.get(d, [])) - len(stopped) - len(expired)
+            surv = len(alive) / len(opened) * 100 if opened else 0
+            # 存活率配色: 绿≥70 黄40-70 红<40
+            sc = '#0a0' if surv >= 70 else ('#b8860b' if surv >= 40 else '#c00')
+            stop_u = sum(r.get('net_u', 0) for r in stopped)
+            exp_u = sum(r.get('net_u', 0) for r in expired)
+            rows.append(
+                f"<tr><td {cell}>{d}</td><td {cell}>{len(opened)}笔</td>"
+                f"<td {cell}><b style='color:{sc};'>{len(alive)}</b></td>"
+                f"<td {cell}>{len(stopped)}</td><td {cell}>{len(expired)}</td>"
+                f"<td {cell}>{other}</td>"
+                f"<td {cell}><b style='color:{sc};'>{surv:.0f}%</b></td>"
+                f"<td {cell}>{stop_u:+.1f}</td><td {cell}>{exp_u:+.1f}</td></tr>")
+        if not rows:
+            return "<div style='font-size:11px;color:#888;'>(3.9c 批次生存表: 尚无正式批次)</div>"
+        return ("<table style='border-collapse:collapse;'>"
+                f"<tr><th {hd}>批次</th><th {hd}>开仓</th><th {hd}>存活</th><th {hd}>止损</th>"
+                f"<th {hd}>到期平</th><th {hd}>其他</th><th {hd}>存活率</th>"
+                f"<th {hd}>止损净U</th><th {hd}>到期净U</th></tr>"
+                + ''.join(rows) + "</table>"
+                + "<div style='font-size:10px;color:#666;'>残差实盘每批生存动态 (9/2起正式批; 72h持有, SL-5%盘中触发) | "
+                "存活率配色: 绿≥70%/黄40~70%/红<40% | 止损净U=该批已止损单的真实净亏损合计 | "
+                "存活=仍在持仓等待72h到期 | '其他'=手动/异常离场</div>")
+    except Exception as e:
+        return f'<p style="color:#c00">(批次生存表生成失败: {e})</p>'
+
+
 def section_momentum():
     try:
         from daily_momentum_email import build_momentum_body_html
@@ -1068,6 +1122,8 @@ def main():
 {section_residual()}
 <b>3.9b 主LONG vs 残差LONG 当日选币差异</b> <span style='{tag_style}background:#e3f2fd;color:#1565c0;'>重合币/独有币对照 · 双方概率 · 近7日重合度趋势</span>
 {section_residual_picks()}
+<b>3.9c 残差实盘批次生存表</b> <span style='{tag_style}background:#fff3e0;color:#e65100;'>每批开仓N笔 → 存活/止损/到期 · 存活率 · 批内净U</span>
+{section_residual_survival()}
 <b>4. 强势股续涨 + 每日资金榜</b> {tag_none}
 <pre {pre_style}>{section_momentum()}</pre>
 <b>5. 系统健康</b> {tag_none}
