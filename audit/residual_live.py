@@ -319,13 +319,20 @@ def close_one(sym, st, reason, exit_price=None, exit_time=None):
             log(f'  ⚠️ {sym} 平仓下单失败: {str(o)[:120]}, 下轮重试')
             return
         time.sleep(0.8)
+        _final = None
         for _ in range(10):
             oo = signed('GET', '/fapi/v1/order', {'symbol': sym, 'orderId': o['orderId']})
-            if oo.get('status') == 'FILLED':
+            _final = oo.get('status')
+            if _final == 'FILLED':
                 exit_price = float(oo.get('avgPrice') or exit_price or pos['entry'])
                 pos['qty'] = float(oo.get('executedQty') or pos['qty'])
                 break
             time.sleep(0.4)
+        if _final != 'FILLED':
+            # 市价单未确认成交(被拒/异常): 保留state下轮重试, 防孤儿仓失去管理
+            # (部分成交残余由下轮reduceOnly兜底, income窗口从open_time起算不会漏记)
+            log(f'  ⚠️ {sym} 平仓未确认({_final}), 保留state下轮重试')
+            return
         if exit_price is None:
             exit_price = get_price(sym) or pos['entry']
     gross_pct = (exit_price / pos['entry'] - 1) if exit_price else 0.0
@@ -447,14 +454,20 @@ def mode_trade(st, force=False):
         save_state(st)
         return
     cands = cands[:MAX_DAILY]
-    # 4. 余额 → 笔数
+    # 4. 余额 → 笔数 (72h三批资金守卫, 2026-09-03):
+    #    约束=开仓后总保证金占用 ≤ 权益×85%, 且不超当前可用现金
+    #    稳态自洽: 08:21先平最老一批(释放~80U)再开新10笔 → 占用回到~240U/81%附近
     acct = signed('GET', '/fapi/v2/account')
-    avail = float(acct.get('availableBalance', 0)) if isinstance(acct, dict) else 0.0
+    avail = float(acct.get('availableBalance', 0) or 0) if isinstance(acct, dict) else 0.0
+    equity = float(acct.get('totalMarginBalance', 0) or 0) if isinstance(acct, dict) else 0.0
     margin_per = NOTIONAL / LEVERAGE
-    n_afford = int(avail * BALANCE_BUF_RATIO // margin_per)
-    n_target = min(len(cands), MAX_DAILY, max(n_afford, 0))
-    log(f'== 开仓: 候选{len(cands)}笔, 可用{avail:.1f}U → 计划{n_target}笔 '
-        f'(每笔保证金{margin_per:.0f}U/名义{NOTIONAL:.0f}U/{LEVERAGE}x逐仓) ==')
+    used = max(equity - avail, 0.0)
+    n_eq = int((equity * BALANCE_BUF_RATIO - used) // margin_per)   # 权益85%约束
+    n_cash = int(avail // margin_per)                                # 可用现金约束
+    n_afford = max(min(n_eq, n_cash), 0)
+    n_target = min(len(cands), MAX_DAILY, n_afford)
+    log(f'== 开仓: 候选{len(cands)}笔, 权益{equity:.1f}U 可用{avail:.1f}U 已占用{used:.1f}U '
+        f'→ 计划{n_target}笔 (每笔保证金{margin_per:.0f}U/名义{NOTIONAL:.0f}U/{LEVERAGE}x逐仓) ==')
     if n_target < 1:
         log(f'⚠️ 可用余额不足以开1笔 (需≥{BALANCE_MIN_ABORT:.0f}U缓冲), 中止')
         st['days'][today_str] = {'opened': [], 'note': f'余额不足 avail={avail:.1f}'}
