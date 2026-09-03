@@ -3652,5 +3652,131 @@
     "pnl": -5.0
    }
   ]
+ },
+ "2026-09-01": {
+  "long": [
+   {
+    "sym": "ZKCUSDT",
+    "prob": 85.3,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "TACUSDT",
+    "prob": 83.7,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "STBLUSDT",
+    "prob": 82.9,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "MERLUSDT",
+    "prob": 80.1,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "4USDT",
+    "prob": 78.9,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "JCTUSDT",
+    "prob": 78.7,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "TAGUSDT",
+    "prob": 77.6,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "STARUSDT",
+    "prob": 77.4,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "CRVUSDT",
+    "prob": 77.0,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "SKYAIUSDT",
+    "prob": 76.6,
+    "state": "SL",
+    "pnl": -5.0
+   }
+  ],
+  "short": [
+   {
+    "sym": "FLOCKUSDT",
+    "prob": 90.6,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "ZORAUSDT",
+    "prob": 89.1,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "SKRUSDT",
+    "prob": 87.2,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "USELESSUSDT",
+    "prob": 76.5,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "HEMIUSDT",
+    "prob": 74.2,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "0GUSDT",
+    "prob": 73.8,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "龙虾USDT",
+    "prob": 71.5,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "NOTUSDT",
+    "prob": 70.8,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "ARBUSDT",
+    "prob": 69.8,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "CYSUSDT",
+    "prob": 69.2,
+    "state": "TP",
+    "pnl": 10.0
+   }
+  ]
  }
 }

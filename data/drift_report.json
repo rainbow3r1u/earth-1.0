@@ -1,21 +1,21 @@
 {
- "date": "2026-08-28",
+ "date": "2026-09-03",
  "status": "OK",
  "file_check": [
   {
    "file": "btc_chain.csv",
    "status": "OK",
-   "detail": "追加 1412 行 (154760→156172)"
+   "detail": "追加 1413 行 (163193→164606)"
   },
   {
    "file": "btc_dominance.json",
    "status": "OK",
-   "detail": "追加 1 行 (466→467)"
+   "detail": "追加 1 行 (472→473)"
   },
   {
    "file": "btc_mcap.json",
    "status": "OK",
-   "detail": "追加 1 行 (469→470)"
+   "detail": "追加 1 行 (475→476)"
   },
   {
    "file": "protocol_map.json",
@@ -25,37 +25,37 @@
   {
    "file": "btc_chain_tvl.json",
    "status": "OK",
-   "detail": "追加 1 行 (1986→1987)"
+   "detail": "追加 1 行 (1992→1993)"
   },
   {
    "file": "hashrate_history.json",
    "status": "OK",
-   "detail": "追加 1 行 (1741→1742)"
+   "detail": "追加 1 行 (1747→1748)"
   },
   {
    "file": "btc_coinbase_premium_gap.json",
    "status": "OK",
-   "detail": "追加 1 行 (1362→1363)"
+   "detail": "追加 1 行 (1368→1369)"
   },
   {
    "file": "btc_coinbase_premium_index.json",
    "status": "OK",
-   "detail": "追加 1 行 (1362→1363)"
+   "detail": "追加 1 行 (1368→1369)"
   },
   {
    "file": "btc_korea_premium_index.json",
    "status": "OK",
-   "detail": "追加 1 行 (1362→1363)"
+   "detail": "追加 1 行 (1368→1369)"
   },
   {
    "file": "stablecoin_exchange_netflow.json",
    "status": "OK",
-   "detail": "追加 1 行 (1363→1364)"
+   "detail": "追加 1 行 (1369→1370)"
   },
   {
    "file": "fear_greed_history.json",
    "status": "OK",
-   "detail": "追加 1 行 (463→464)"
+   "detail": "追加 1 行 (469→470)"
   },
   {
    "file": "macro_assets.json",
@@ -65,18 +65,18 @@
   {
    "file": "etf_flow.json",
    "status": "OK",
-   "detail": "追加 1 行 (57→58)"
+   "detail": "追加 2 行 (61→63)"
   },
   {
    "file": "liq_daily.json",
    "status": "OK",
-   "detail": "追加 1 行 (80→81)"
+   "detail": "追加 1 行 (86→87)"
   }
  ],
  "replay": {
   "status": "OK",
   "checked": 3,
-  "detail": "3探针一致(样本日 2026-08-28)"
+  "detail": "3探针一致(样本日 2026-09-03)"
  },
  "alerts": []
 }

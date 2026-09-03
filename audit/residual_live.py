@@ -488,7 +488,7 @@ def mode_trade(st, force=False):
 
 def mode_status(st):
     print(f'== RESIDUAL 实盘执行器状态 ==')
-    print(f'配置: 名义{NOTIONAL}U/笔 {LEVERAGE}x逐仓 SL-{SL_PCT*100:.0f}% 48h')
+    print(f'配置: 名义{NOTIONAL}U/笔 {LEVERAGE}x逐仓 SL-{SL_PCT*100:.0f}% {HOLD_DAYS*24}h')
     acct = signed('GET', '/fapi/v2/account')
     if isinstance(acct, dict):
         print(f'账户: 可用 {acct.get("availableBalance")}U | 总权益 {acct.get("totalMarginBalance")}U')

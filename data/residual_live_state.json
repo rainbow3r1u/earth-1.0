@@ -137,17 +137,6 @@
    "sl_algo_id": 2000001404993824,
    "tag": "260903"
   },
-  "MUBARAKUSDT": {
-   "symbol": "MUBARAKUSDT",
-   "direction": "LONG",
-   "qty": 1397.0,
-   "entry": 0.02867,
-   "open_time": 1788395030807,
-   "date": "2026-09-03",
-   "sl_price": 0.02723,
-   "sl_algo_id": 2000001404993845,
-   "tag": "260903"
-  },
   "ZAMAUSDT": {
    "symbol": "ZAMAUSDT",
    "direction": "LONG",
@@ -268,6 +257,22 @@
    "exit_time": 1788385457484,
    "gross_pct": -5.19,
    "net_u": -2.1276
+  },
+  {
+   "symbol": "MUBARAKUSDT",
+   "direction": "LONG",
+   "qty": 1397.0,
+   "entry": 0.02867,
+   "open_time": 1788395030807,
+   "date": "2026-09-03",
+   "sl_price": 0.02723,
+   "sl_algo_id": 2000001404993845,
+   "tag": "260903",
+   "trigger": "止损",
+   "exit": 0.02716,
+   "exit_time": 1788404700312,
+   "gross_pct": -5.27,
+   "net_u": -2.1485
   }
  ],
  "days": {

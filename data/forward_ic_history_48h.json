@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-02T08:50:02.526805",
+ "updated": "2026-09-03T08:50:02.342570",
  "days": [
   {
    "date": "2026-07-28",
@@ -630,6 +630,24 @@
    "top1_short": "SKRUSDT",
    "top1_short_ret": -8.13,
    "short5_avg_ret": -11.56
+  },
+  {
+   "date": "2026-09-01",
+   "dirty": false,
+   "n_sym": 512,
+   "n_liq": 512,
+   "ic_long": -0.0344,
+   "ic_short": -0.078,
+   "auc_long": 0.5654,
+   "auc_short": 0.7559,
+   "ic_long_liq": -0.0344,
+   "ic_short_liq": -0.078,
+   "top1_long": "ZKCUSDT",
+   "top1_long_prob": 85.3,
+   "top1_long_ret": -8.44,
+   "top1_short": "FLOCKUSDT",
+   "top1_short_ret": -6.17,
+   "short5_avg_ret": -2.19
   }
  ]
 }
