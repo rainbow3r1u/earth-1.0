@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
 """RESIDUAL 残差模型 小资金实盘执行器 (2026-09-01, 2000 CNY≈280U 测试)
 
-资金方案 (与用户确认 2026-09-01):
+资金方案 (2026-09-01 确认, 2026-09-03 迁移72h):
   杠杆 5x 逐仓 | 单笔名义 40U | 单笔保证金 8U | 每日最多 10 笔 (影子臂top10)
-  峰值 20 笔×8U=160U (57%资金, 缓冲120U) | 爆仓距离≈19% | SL-5% | 48h 到期市价平
-  20笔全灭≈-41U(-15%) | 实盘×7.5 ≈ 影子臂 (residual_tracker 名义300U), 对账线性
+  持仓 72h (开仓日+3天08:21到期市价平) | 稳态 3 批共存, 峰值 ~30 笔
+  峰值 30 笔×8U=240U (81%资金, 守卫放宽至85%支持满配, 用户确认可承受)
+  爆仓距离≈19% | SL-5% | 30笔全灭理论上限≈-62U(-22%), 实际因每日止损很难满配
+  2026-09-03 前为 48h/2批; 迁移依据: 9/2 预研 29天580笔 72h 多赚+3101U(+111%)
 
 与影子臂结算 (audit/residual_tracker.py) 的对齐与已知偏差:
-  - 结算口径一致: SL-5% / 无止盈 / 48h到期 / CONTRACT_PRICE 触发 (K线low口径, 非主程序的MARK_PRICE)
+  - ⚠️ 2026-09-03 起实盘为 72h 活体实验臂, 影子结算链维持 48h 至 10/23 终审 → 两口径分叉期
+    (实盘收益预期应参考 72h 语义; 与影子对照时注意窗口差 24h)
+  - SL规则一致: SL-5% / CONTRACT_PRICE 触发 (K线low口径, 非主程序的MARK_PRICE)
   - 已知偏差①: 实盘入场≈08:23-08:26 (pred落地后), 影子名义入场08:21 → 入场价差=执行滞后, 正是本测试要量的
   - 已知偏差②: 实盘SL挂在实盘成交价×0.95, 影子按其名义入场价×0.95 → ±0.0x%级, 可忽略
-  - 已知偏差③: top10与前日持仓重叠的币跳过开仓(净持仓无法分批挂SL), 差异记录在 state.days.skipped_overlap
+  - 已知偏差③: top10与在持仓位重叠的币跳过开仓(净持仓无法分批挂SL), 差异记录在 state.days.skipped_overlap
 
 安全边界 (独立于主系统, 不碰 state.json / TRADING_ENABLED):
   - 只做 LONG, 只用 pred 文件 top10_long_residual 字段, 每日≤10笔
@@ -43,8 +47,9 @@ NOTIONAL = 40.0      # 单笔名义U (2026-09-01 用户确认上调: 20笔全灭
 LEVERAGE = 5         # 逐仓杠杆
 MAX_DAILY = 10       # 每日最多开仓笔数
 SL_PCT = 0.05        # 止损 5%
+HOLD_DAYS = 3        # 持仓窗口 72h (2026-09-03 由48h迁移, 与标签72h终点语义对齐; 稳态3批共存, 峰值~30笔)
 BALANCE_MIN_ABORT = 16.0       # 可用余额低于此值(1笔保证金8U×2)直接中止
-BALANCE_BUF_RATIO = 0.6        # 可用余额只允许动用 60% 做保证金
+BALANCE_BUF_RATIO = 0.85       # 可用余额允许动用 85% 做保证金 (2026-09-03 由60%放宽: 72h三批满配30笔×8U=240U需81%; 用户确认可承受)
 
 CST = timezone(timedelta(hours=8))
 DAY_MS = 86400000
@@ -338,9 +343,13 @@ def close_one(sym, st, reason, exit_price=None, exit_time=None):
 
 
 def nominal_expiry_ms(pos):
-    """名义到期 = 开仓日+2天的 00:21 UTC (=08:21 CST, 与 residual_tracker 结算口径一致)"""
+    """名义到期 = 开仓日+3天的 00:21 UTC (=08:21 CST, 72h持有)。
+    2026-09-03 用户决策: 48h→72h迁移 — 与标签语义(72h终点)对齐, 依据 9/2 预研
+    (29天580笔: 72h比48h多赚+3101U/+111%, 剔史诗日仍+51U/天)。
+    注意: 影子结算链(residual_tracker/晨报3.9)维持48h至10/23终审, 本执行器为72h活体实验臂。
+    基于pos['date']计算 → 存量仓位自动延至72h (9/2批→9/5到期, 9/3批→9/6到期)。"""
     d0 = datetime.strptime(pos['date'], '%Y-%m-%d').replace(tzinfo=timezone.utc)
-    return int((d0 + timedelta(days=2, minutes=21)).timestamp() * 1000)
+    return int((d0 + timedelta(days=HOLD_DAYS, minutes=21)).timestamp() * 1000)
 
 
 def reconcile(st, close_expired=True):
@@ -377,9 +386,9 @@ def reconcile(st, close_expired=True):
                 reason = '离场(未知)'
             close_one(sym, st, reason, exit_price=exit_price, exit_time=exit_time)
             continue
-        # 仍在场: 到期? (名义到期=开仓日+2天08:21 CST, 与tracker一致; 08:21 trade cron主平, hourly兜底)
+        # 仍在场: 到期? (72h名义到期=开仓日+3天08:21 CST; 08:21 trade cron主平, hourly兜底)
         if close_expired and now_ms >= nominal_expiry_ms(pos):
-            log(f'  {sym} 48h到期, 平仓')
+            log(f'  {sym} 72h到期, 平仓')
             close_one(sym, st, '到期')
             continue
         # SL algo单还在交易所吗? 不在则重挂 (防裸奔)
