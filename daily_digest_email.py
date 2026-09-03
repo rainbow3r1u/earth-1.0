@@ -629,6 +629,74 @@ def section_residual():
         return f'<p style="color:#c00">(RESIDUAL影子臂生成失败: {e})</p>'
 
 
+def section_residual_picks():
+    """3.9b 主LONG vs 残差LONG 当日选币差异 (2026-09-03 用户需求):
+    当日对照表(重合币/各自独有币+双方概率) + 近7日重合度趋势。
+    解读: 重合度持续>70%=两模型本质同源, 残差边际改进有限; 40-60%摆动=残差在看不同的东西。"""
+    try:
+        import datetime as _dt
+        cell = "style='padding:2px 8px;border:1px solid #ccc;font-size:12px;'"
+        hd = "style='padding:2px 8px;border:1px solid #ccc;font-size:12px;background:#f0f0f0;'"
+        today_str = _dt.date.today().isoformat()
+
+        def _load(day):
+            try:
+                d = json.load(open(f'/home/myuser/websocket_new/data/pred_{day}.json'))
+                ml = d.get('top10_long') or []
+                rl_ = d.get('top10_long_residual') or []
+                if ml and rl_:
+                    return {c['symbol']: c['prob'] for c in ml}, {c['symbol']: c['prob'] for c in rl_}
+            except Exception:
+                pass
+            return None, None
+
+        # ==== 当日对照 ====
+        ml, rl_ = _load(today_str)
+        if ml is None:
+            return ("<div style='font-size:11px;color:#888;'>(3.9b 选币差异: 今日pred尚无双臂TOP10)</div>")
+        overlap = [s for s in rl_ if s in ml]
+        only_r = [s for s in rl_ if s not in ml]
+        only_m = [s for s in ml if s not in rl_]
+        # 重合行
+        rows = []
+        for s in overlap:
+            rows.append(f"<tr><td {cell}>{s}</td><td {cell}>{ml[s]:.0f}%</td><td {cell}>{rl_[s]:.0f}%</td>"
+                        f"<td {cell} style='color:#888;'>重合</td></tr>")
+        # 残差独有 (高亮: 残差臂实盘开的就是这些+重合币)
+        for s in only_r:
+            rows.append(f"<tr><td {cell}><b>{s}</b></td><td {cell} style='color:#999;'>—</td>"
+                        f"<td {cell}><b style='color:#1565c0;'>{rl_[s]:.0f}%</b></td>"
+                        f"<td {cell} style='background:#e3f2fd;color:#1565c0;'>残差独有</td></tr>")
+        # 主臂独有
+        for s in only_m:
+            rows.append(f"<tr><td {cell}>{s}</td><td {cell}>{ml[s]:.0f}%</td>"
+                        f"<td {cell} style='color:#999;'>—</td>"
+                        f"<td {cell} style='color:#e65100;'>主臂独有</td></tr>")
+        pct = len(overlap) * 10
+        # ==== 近7日重合度趋势 ====
+        trend = []
+        for i in range(6, -1, -1):
+            day = (_dt.date.today() - _dt.timedelta(days=i)).isoformat()
+            m2, r2 = _load(day)
+            if m2 is not None:
+                ov = sum(1 for s in r2 if s in m2)
+                trend.append((day[5:], ov * 10))
+        trend_html = ''
+        if len(trend) >= 2:
+            trend_html = ("<div style='font-size:11px;margin-top:4px;'>近7日重合度: "
+                          + ' | '.join(f"{d}:{p}%" for d, p in trend) + "</div>")
+        return (f"<div style='font-size:12px;margin:2px 0 6px;'>今日重合度: "
+                f"<b>{len(overlap)}/10 ({pct}%)</b> — 残差独有 {len(only_r)} 币, 主臂独有 {len(only_m)} 币</div>"
+                "<table style='border-collapse:collapse;'>"
+                f"<tr><th {hd}>币种</th><th {hd}>主臂概率</th><th {hd}>残差概率</th><th {hd}>归属</th></tr>"
+                + ''.join(rows) + "</table>" + trend_html
+                + "<div style='font-size:10px;color:#666;'>重合币=两模型共识(自身动量强); 残差独有币=已证明相对强度"
+                "(跑赢宇宙中位)但绝对涨幅未达标主臂阈值的币 | 重合度>70%=两模型同源边际改进有限; 40~60%=在看不同的东西 | "
+                "残差实盘持仓=重合币+残差独有币</div>")
+    except Exception as e:
+        return f'<p style="color:#c00">(选币差异生成失败: {e})</p>'
+
+
 def section_momentum():
     try:
         from daily_momentum_email import build_momentum_body_html
@@ -998,6 +1066,8 @@ def main():
 {section_hybrid()}
 <b>3.9 RESIDUAL影子臂 LONG对照 (残差标签: 币ret-宇宙中位>5pp)</b> <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>影子验证 · 残差标签LONG模型 · 出场同3.8主臂LONG · 纯旁路不影响实盘</span>
 {section_residual()}
+<b>3.9b 主LONG vs 残差LONG 当日选币差异</b> <span style='{tag_style}background:#e3f2fd;color:#1565c0;'>重合币/独有币对照 · 双方概率 · 近7日重合度趋势</span>
+{section_residual_picks()}
 <b>4. 强势股续涨 + 每日资金榜</b> {tag_none}
 <pre {pre_style}>{section_momentum()}</pre>
 <b>5. 系统健康</b> {tag_none}
