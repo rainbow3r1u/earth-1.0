@@ -197,3 +197,5 @@ IC↔批次盈亏对齐: forward_ic_history_48h.json (days[].date/ic_long/auc_lo
 | 新电脑本地TRAE | ⚠️ 知识可用/数据不可用 | ①拷贝本目录到新机 `~/.trae/skills/` ②分析需SSH到服务器执行(连接方式见AGENTS.md/GPU文档) |
 
 **迁移后自动生效**: SKILL自包含全部解读知识(funding税基准/IC时序结构/双层regime/自愈周期/正期望基准), 不依赖对话历史或memory; 但项目memory(`~/.trae-cn/memory/`)与SKILL不在同一目录, 换机后memory为空, 以SKILL+AGENTS.md为知识源。
+
+**跨设备同步机制 (2026-09-04 已部署)**: 仓库内 `websocket_new/.trae/skills/morning-report-analyst/SKILL.md` 是指向本文件的符号链接 → 每日 08:50 trading_system_github_sync.py 自动把最新版推到 GitHub(rainbow3r1u/earth-1.0, 私有)。新机器恢复: `git clone` 仓库后将 `.trae/skills/morning-report-analyst/` 拷到 `~/.trae/skills/` 即可; SKILL后续演进无需手动同步。
