@@ -214,17 +214,6 @@
    "sl_algo_id": 2000001407537963,
    "tag": "260904"
   },
-  "EGLDUSDT": {
-   "symbol": "EGLDUSDT",
-   "direction": "LONG",
-   "qty": 8.3,
-   "entry": 4.783,
-   "open_time": 1788481533311,
-   "date": "2026-09-04",
-   "sl_price": 4.543,
-   "sl_algo_id": 2000001407537994,
-   "tag": "260904"
-  },
   "EDGEUSDT": {
    "symbol": "EDGEUSDT",
    "direction": "LONG",
@@ -382,6 +371,22 @@
    "exit_time": 1788429858726,
    "gross_pct": -4.99,
    "net_u": -1.979
+  },
+  {
+   "symbol": "EGLDUSDT",
+   "direction": "LONG",
+   "qty": 8.3,
+   "entry": 4.783,
+   "open_time": 1788481533311,
+   "date": "2026-09-04",
+   "sl_price": 4.543,
+   "sl_algo_id": 2000001407537994,
+   "tag": "260904",
+   "trigger": "止损",
+   "exit": 4.541,
+   "exit_time": 1788484618377,
+   "gross_pct": -5.06,
+   "net_u": -2.0473
   }
  ],
  "days": {
