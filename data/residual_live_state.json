@@ -71,17 +71,6 @@
    "sl_algo_id": 2000001402580349,
    "tag": "260902"
   },
-  "ANKRUSDT": {
-   "symbol": "ANKRUSDT",
-   "direction": "LONG",
-   "qty": 8884.0,
-   "entry": 0.004508,
-   "open_time": 1788395023431,
-   "date": "2026-09-03",
-   "sl_price": 0.004282,
-   "sl_algo_id": 2000001404993706,
-   "tag": "260903"
-  },
   "WAXPUSDT": {
    "symbol": "WAXPUSDT",
    "direction": "LONG",
@@ -102,17 +91,6 @@
    "date": "2026-09-03",
    "sl_price": 0.008099,
    "sl_algo_id": 2000001404993749,
-   "tag": "260903"
-  },
-  "TUTUSDT": {
-   "symbol": "TUTUSDT",
-   "direction": "LONG",
-   "qty": 1610.0,
-   "entry": 0.02485,
-   "open_time": 1788395027066,
-   "date": "2026-09-03",
-   "sl_price": 0.023600000000000003,
-   "sl_algo_id": 2000001404993763,
    "tag": "260903"
   },
   "HUSDT": {
@@ -158,6 +136,105 @@
    "sl_price": 5.106,
    "sl_algo_id": 2000001404993871,
    "tag": "260903"
+  },
+  "4USDT": {
+   "symbol": "4USDT",
+   "direction": "LONG",
+   "qty": 2368.0,
+   "entry": 0.0168926,
+   "open_time": 1788481524900,
+   "date": "2026-09-04",
+   "sl_price": 0.016047,
+   "sl_algo_id": 2000001407537812,
+   "tag": "260904"
+  },
+  "GALAUSDT": {
+   "symbol": "GALAUSDT",
+   "direction": "LONG",
+   "qty": 22321.0,
+   "entry": 0.001792,
+   "open_time": 1788481526109,
+   "date": "2026-09-04",
+   "sl_price": 0.001702,
+   "sl_algo_id": 2000001407537829,
+   "tag": "260904"
+  },
+  "DUSKUSDT": {
+   "symbol": "DUSKUSDT",
+   "direction": "LONG",
+   "qty": 553.0,
+   "entry": 0.07224,
+   "open_time": 1788481527320,
+   "date": "2026-09-04",
+   "sl_price": 0.06862,
+   "sl_algo_id": 2000001407537882,
+   "tag": "260904"
+  },
+  "SPXUSDT": {
+   "symbol": "SPXUSDT",
+   "direction": "LONG",
+   "qty": 65.0,
+   "entry": 0.6107,
+   "open_time": 1788481528523,
+   "date": "2026-09-04",
+   "sl_price": 0.5801000000000001,
+   "sl_algo_id": 2000001407537895,
+   "tag": "260904"
+  },
+  "NEARUSDT": {
+   "symbol": "NEARUSDT",
+   "direction": "LONG",
+   "qty": 20.0,
+   "entry": 1.947,
+   "open_time": 1788481529717,
+   "date": "2026-09-04",
+   "sl_price": 1.849,
+   "sl_algo_id": 2000001407537912,
+   "tag": "260904"
+  },
+  "AAVEUSDT": {
+   "symbol": "AAVEUSDT",
+   "direction": "LONG",
+   "qty": 0.3,
+   "entry": 132.5,
+   "open_time": 1788481530912,
+   "date": "2026-09-04",
+   "sl_price": 125.87,
+   "sl_algo_id": 2000001407537935,
+   "tag": "260904"
+  },
+  "ZECUSDT": {
+   "symbol": "ZECUSDT",
+   "direction": "LONG",
+   "qty": 0.042,
+   "entry": 943.3,
+   "open_time": 1788481532112,
+   "date": "2026-09-04",
+   "sl_price": 896.13,
+   "sl_algo_id": 2000001407537963,
+   "tag": "260904"
+  },
+  "EGLDUSDT": {
+   "symbol": "EGLDUSDT",
+   "direction": "LONG",
+   "qty": 8.3,
+   "entry": 4.783,
+   "open_time": 1788481533311,
+   "date": "2026-09-04",
+   "sl_price": 4.543,
+   "sl_algo_id": 2000001407537994,
+   "tag": "260904"
+  },
+  "EDGEUSDT": {
+   "symbol": "EDGEUSDT",
+   "direction": "LONG",
+   "qty": 66.0,
+   "entry": 0.6051,
+   "open_time": 1788481534507,
+   "date": "2026-09-04",
+   "sl_price": 0.5748,
+   "sl_algo_id": 2000001407538020,
+   "tag": "260904"
   }
  },
  "history": [
@@ -273,6 +350,38 @@
    "exit_time": 1788404700312,
    "gross_pct": -5.27,
    "net_u": -2.1485
+  },
+  {
+   "symbol": "ANKRUSDT",
+   "direction": "LONG",
+   "qty": 8884.0,
+   "entry": 0.004508,
+   "open_time": 1788395023431,
+   "date": "2026-09-03",
+   "sl_price": 0.004282,
+   "sl_algo_id": 2000001404993706,
+   "tag": "260903",
+   "trigger": "止损",
+   "exit": 0.004291,
+   "exit_time": 1788412361336,
+   "gross_pct": -4.81,
+   "net_u": -1.5184
+  },
+  {
+   "symbol": "TUTUSDT",
+   "direction": "LONG",
+   "qty": 1610.0,
+   "entry": 0.02485,
+   "open_time": 1788395027066,
+   "date": "2026-09-03",
+   "sl_price": 0.023600000000000003,
+   "sl_algo_id": 2000001404993763,
+   "tag": "260903",
+   "trigger": "止损",
+   "exit": 0.02361,
+   "exit_time": 1788429858726,
+   "gross_pct": -4.99,
+   "net_u": -1.979
   }
  ],
  "days": {
@@ -309,6 +418,24 @@
     "BROCCOLI714USDT(与前批持仓重叠)"
    ],
    "avail_u": 231.1,
+   "n_planned": 10
+  },
+  "2026-09-04": {
+   "opened": [
+    "4USDT",
+    "GALAUSDT",
+    "DUSKUSDT",
+    "SPXUSDT",
+    "NEARUSDT",
+    "AAVEUSDT",
+    "ZECUSDT",
+    "EGLDUSDT",
+    "EDGEUSDT"
+   ],
+   "skipped": [
+    "VIRTUALUSDT(与前批持仓重叠)"
+   ],
+   "avail_u": 177.5,
    "n_planned": 10
   }
  }
