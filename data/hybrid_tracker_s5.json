@@ -1,6 +1,6 @@
 {
  "2026-08-03": {
-  "updated": "2026-09-03T00:50:01.543755+00:00",
+  "updated": "2026-09-04T00:50:01.991302+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": 167.6,
   "n_settled": 15,
@@ -159,7 +159,7 @@
   ]
  },
  "2026-08-04": {
-  "updated": "2026-09-03T00:50:01.543792+00:00",
+  "updated": "2026-09-04T00:50:01.991341+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": 251.7,
   "n_settled": 15,
@@ -318,7 +318,7 @@
   ]
  },
  "2026-08-05": {
-  "updated": "2026-09-03T00:50:01.543803+00:00",
+  "updated": "2026-09-04T00:50:01.991353+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": 455.0,
   "n_settled": 15,
@@ -477,7 +477,7 @@
   ]
  },
  "2026-08-06": {
-  "updated": "2026-09-03T00:50:01.543811+00:00",
+  "updated": "2026-09-04T00:50:01.991364+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": 175.8,
   "n_settled": 15,
@@ -636,7 +636,7 @@
   ]
  },
  "2026-08-07": {
-  "updated": "2026-09-03T00:50:01.543819+00:00",
+  "updated": "2026-09-04T00:50:01.991373+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": 848.0,
   "n_settled": 15,
@@ -795,7 +795,7 @@
   ]
  },
  "2026-08-08": {
-  "updated": "2026-09-03T00:50:01.543826+00:00",
+  "updated": "2026-09-04T00:50:01.991380+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": -87.9,
   "n_settled": 15,
@@ -954,7 +954,7 @@
   ]
  },
  "2026-08-09": {
-  "updated": "2026-09-03T00:50:01.543834+00:00",
+  "updated": "2026-09-04T00:50:01.991388+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": -209.9,
   "n_settled": 15,
@@ -1113,7 +1113,7 @@
   ]
  },
  "2026-08-10": {
-  "updated": "2026-09-03T00:50:01.543841+00:00",
+  "updated": "2026-09-04T00:50:01.991396+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": -34.5,
   "n_settled": 15,
@@ -1272,7 +1272,7 @@
   ]
  },
  "2026-08-11": {
-  "updated": "2026-09-03T00:50:01.543848+00:00",
+  "updated": "2026-09-04T00:50:01.991408+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": -15.9,
   "n_settled": 15,
@@ -1431,7 +1431,7 @@
   ]
  },
  "2026-08-12": {
-  "updated": "2026-09-03T00:50:01.543856+00:00",
+  "updated": "2026-09-04T00:50:01.991417+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": -97.8,
   "n_settled": 15,
@@ -1590,7 +1590,7 @@
   ]
  },
  "2026-08-13": {
-  "updated": "2026-09-03T00:50:01.545218+00:00",
+  "updated": "2026-09-04T00:50:01.991425+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": 445.2,
   "n_settled": 15,
@@ -1749,7 +1749,7 @@
   ]
  },
  "2026-08-14": {
-  "updated": "2026-09-03T00:50:01.545234+00:00",
+  "updated": "2026-09-04T00:50:01.991434+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": 294.4,
   "n_settled": 15,
@@ -1908,7 +1908,7 @@
   ]
  },
  "2026-08-15": {
-  "updated": "2026-09-03T00:50:01.545242+00:00",
+  "updated": "2026-09-04T00:50:01.991445+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": 17.4,
   "n_settled": 15,
@@ -2067,7 +2067,7 @@
   ]
  },
  "2026-08-16": {
-  "updated": "2026-09-03T00:50:01.545249+00:00",
+  "updated": "2026-09-04T00:50:01.991453+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": 10.4,
   "n_settled": 15,
@@ -2226,7 +2226,7 @@
   ]
  },
  "2026-08-17": {
-  "updated": "2026-09-03T00:50:01.545258+00:00",
+  "updated": "2026-09-04T00:50:01.991466+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": -105.1,
   "n_settled": 15,
@@ -2385,7 +2385,7 @@
   ]
  },
  "2026-08-18": {
-  "updated": "2026-09-03T00:50:01.545269+00:00",
+  "updated": "2026-09-04T00:50:01.991475+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": -64.3,
   "n_settled": 15,
@@ -2544,7 +2544,7 @@
   ]
  },
  "2026-08-19": {
-  "updated": "2026-09-03T00:50:01.545277+00:00",
+  "updated": "2026-09-04T00:50:01.991485+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": 128.0,
   "n_settled": 15,
@@ -2703,7 +2703,7 @@
   ]
  },
  "2026-08-20": {
-  "updated": "2026-09-03T00:50:01.545286+00:00",
+  "updated": "2026-09-04T00:50:01.991492+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": 120.9,
   "n_settled": 15,
@@ -2862,7 +2862,7 @@
   ]
  },
  "2026-08-21": {
-  "updated": "2026-09-03T00:50:01.545293+00:00",
+  "updated": "2026-09-04T00:50:01.991501+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": -8.8,
   "n_settled": 15,
@@ -3021,7 +3021,7 @@
   ]
  },
  "2026-08-22": {
-  "updated": "2026-09-03T00:50:01.545301+00:00",
+  "updated": "2026-09-04T00:50:01.991510+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": -142.3,
   "n_settled": 15,
@@ -3180,7 +3180,7 @@
   ]
  },
  "2026-08-23": {
-  "updated": "2026-09-03T00:50:01.545309+00:00",
+  "updated": "2026-09-04T00:50:01.991519+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": -6.5,
   "n_settled": 15,
@@ -3339,7 +3339,7 @@
   ]
  },
  "2026-08-24": {
-  "updated": "2026-09-03T00:50:01.545317+00:00",
+  "updated": "2026-09-04T00:50:01.991528+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": -48.9,
   "n_settled": 15,
@@ -3498,7 +3498,7 @@
   ]
  },
  "2026-08-25": {
-  "updated": "2026-09-03T00:50:01.545325+00:00",
+  "updated": "2026-09-04T00:50:01.991538+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": 1054.2,
   "n_settled": 15,
@@ -3657,7 +3657,7 @@
   ]
  },
  "2026-08-26": {
-  "updated": "2026-09-03T00:50:01.545331+00:00",
+  "updated": "2026-09-04T00:50:01.991547+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": 116.5,
   "n_settled": 15,
@@ -3816,7 +3816,7 @@
   ]
  },
  "2026-08-27": {
-  "updated": "2026-09-03T00:50:01.545338+00:00",
+  "updated": "2026-09-04T00:50:01.991555+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": 124.5,
   "n_settled": 15,
@@ -3975,7 +3975,7 @@
   ]
  },
  "2026-08-28": {
-  "updated": "2026-09-03T00:50:01.545345+00:00",
+  "updated": "2026-09-04T00:50:01.991563+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": -92.0,
   "n_settled": 15,
@@ -4134,7 +4134,7 @@
   ]
  },
  "2026-08-29": {
-  "updated": "2026-09-03T00:50:01.545352+00:00",
+  "updated": "2026-09-04T00:50:01.991572+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": -203.6,
   "n_settled": 15,
@@ -4293,7 +4293,7 @@
   ]
  },
  "2026-08-30": {
-  "updated": "2026-09-03T00:50:01.545359+00:00",
+  "updated": "2026-09-04T00:50:01.991581+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": -97.8,
   "n_settled": 15,
@@ -4452,7 +4452,7 @@
   ]
  },
  "2026-08-31": {
-  "updated": "2026-09-03T00:50:01.545366+00:00",
+  "updated": "2026-09-04T00:50:01.991589+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": 4.5,
   "n_settled": 15,
@@ -4611,7 +4611,7 @@
   ]
  },
  "2026-09-01": {
-  "updated": "2026-09-03T00:50:01.545373+00:00",
+  "updated": "2026-09-04T00:50:01.991597+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": -194.4,
   "n_settled": 15,
@@ -4770,10 +4770,10 @@
   ]
  },
  "2026-09-02": {
-  "updated": "2026-09-03T00:50:01.545380+00:00",
+  "updated": "2026-09-04T00:50:01.991605+00:00",
   "derived_from": "hybrid_tracker.json",
-  "day_pnl_u": -104.1,
-  "n_settled": 9,
+  "day_pnl_u": 2.3,
+  "n_settled": 15,
   "n_total": 15,
   "trades": [
    {
@@ -4783,17 +4783,17 @@
     "result": "-5.0%",
     "trigger": "止损",
     "time": "09-02 04:11",
-    "net_u": -15.59,
+    "net_u": -14.4,
     "symbol": "PORTALUSDT"
    },
    {
     "direction": "LONG",
     "prob": 84.5,
     "entry": 0.1235,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null,
+    "result": "+5.7%",
+    "trigger": "到期",
+    "time": "09-04 00:21",
+    "net_u": 16.66,
     "symbol": "COWUSDT"
    },
    {
@@ -4803,7 +4803,7 @@
     "result": "-5.0%",
     "trigger": "止损",
     "time": "09-02 21:44",
-    "net_u": -15.6,
+    "net_u": -15.69,
     "symbol": "TACUSDT"
    },
    {
@@ -4813,7 +4813,7 @@
     "result": "-5.0%",
     "trigger": "止损",
     "time": "09-02 10:22",
-    "net_u": -15.6,
+    "net_u": -15.69,
     "symbol": "SQDUSDT"
    },
    {
@@ -4823,57 +4823,57 @@
     "result": "-5.0%",
     "trigger": "止损",
     "time": "09-02 09:43",
-    "net_u": -15.6,
+    "net_u": -15.64,
     "symbol": "MOVRUSDT"
    },
    {
     "direction": "LONG",
     "prob": 82.0,
     "entry": 0.02338,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null,
+    "result": "+6.1%",
+    "trigger": "到期",
+    "time": "09-04 00:21",
+    "net_u": 17.63,
     "symbol": "KMNOUSDT"
    },
    {
     "direction": "LONG",
     "prob": 82.0,
     "entry": 0.01631,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null,
+    "result": "+13.9%",
+    "trigger": "到期",
+    "time": "09-04 00:21",
+    "net_u": 41.07,
     "symbol": "BROCCOLI714USDT"
    },
    {
     "direction": "LONG",
     "prob": 80.0,
     "entry": 0.6817,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null,
+    "result": "+2.3%",
+    "trigger": "到期",
+    "time": "09-04 00:21",
+    "net_u": 6.53,
     "symbol": "VIRTUALUSDT"
    },
    {
     "direction": "LONG",
     "prob": 79.8,
     "entry": 0.0022,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null,
+    "result": "+3.4%",
+    "trigger": "到期",
+    "time": "09-04 00:21",
+    "net_u": 9.66,
     "symbol": "CELRUSDT"
    },
    {
     "direction": "LONG",
     "prob": 79.7,
     "entry": 0.011032,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null,
+    "result": "+7.4%",
+    "trigger": "到期",
+    "time": "09-04 00:21",
+    "net_u": 21.21,
     "symbol": "CHILLGUYUSDT"
    },
    {
@@ -4883,7 +4883,7 @@
     "result": "+10.0%",
     "trigger": "止盈",
     "time": "09-02 02:28",
-    "net_u": 21.48,
+    "net_u": 14.19,
     "symbol": "ACEUSDT"
    },
    {
@@ -4893,7 +4893,7 @@
     "result": "-5.0%",
     "trigger": "止损",
     "time": "09-02 03:11",
-    "net_u": -14.8,
+    "net_u": -14.57,
     "symbol": "UAIUSDT"
    },
    {
@@ -4903,7 +4903,7 @@
     "result": "-5.0%",
     "trigger": "止损",
     "time": "09-02 02:46",
-    "net_u": -14.95,
+    "net_u": -14.26,
     "symbol": "龙虾USDT"
    },
    {
@@ -4913,7 +4913,7 @@
     "result": "-5.0%",
     "trigger": "止损",
     "time": "09-02 01:55",
-    "net_u": -17.97,
+    "net_u": -18.97,
     "symbol": "BTRUSDT"
    },
    {
@@ -4923,36 +4923,36 @@
     "result": "-5.0%",
     "trigger": "止损",
     "time": "09-02 07:31",
-    "net_u": -15.49,
+    "net_u": -15.41,
     "symbol": "USELESSUSDT"
    }
   ]
  },
  "2026-09-03": {
-  "updated": "2026-09-03T00:50:01.545386+00:00",
+  "updated": "2026-09-04T00:50:01.991614+00:00",
   "derived_from": "hybrid_tracker.json",
-  "day_pnl_u": 29.6,
-  "n_settled": 1,
+  "day_pnl_u": -28.4,
+  "n_settled": 8,
   "n_total": 15,
   "trades": [
    {
     "direction": "LONG",
     "prob": 92.5,
     "entry": 0.004647,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null,
+    "result": "-5.0%",
+    "trigger": "止损",
+    "time": "09-03 04:35",
+    "net_u": -3.28,
     "symbol": "ANKRUSDT"
    },
    {
     "direction": "LONG",
     "prob": 84.9,
     "entry": 0.004513,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null,
+    "result": "-5.0%",
+    "trigger": "止损",
+    "time": "09-03 05:19",
+    "net_u": -14.83,
     "symbol": "WAXPUSDT"
    },
    {
@@ -5029,50 +5029,50 @@
     "direction": "LONG",
     "prob": 68.0,
     "entry": 0.126,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null,
+    "result": "-5.0%",
+    "trigger": "止损",
+    "time": "09-03 17:59",
+    "net_u": -15.66,
     "symbol": "BEATUSDT"
    },
    {
     "direction": "SHORT",
     "prob": 91.6,
     "entry": 0.48471,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null,
+    "result": "+10.0%",
+    "trigger": "止盈",
+    "time": "09-03 07:55",
+    "net_u": 30.48,
     "symbol": "BTWUSDT"
    },
    {
     "direction": "SHORT",
     "prob": 90.8,
     "entry": 0.022563,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null,
+    "result": "-5.0%",
+    "trigger": "止损",
+    "time": "09-03 00:47",
+    "net_u": -23.05,
     "symbol": "SKRUSDT"
    },
    {
     "direction": "SHORT",
     "prob": 88.4,
     "entry": 0.0455,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null,
+    "result": "-5.0%",
+    "trigger": "止损",
+    "time": "09-03 08:49",
+    "net_u": -16.51,
     "symbol": "BTRUSDT"
    },
    {
     "direction": "SHORT",
     "prob": 85.4,
     "entry": 4.801,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null,
+    "result": "-5.0%",
+    "trigger": "止损",
+    "time": "09-03 01:41",
+    "net_u": -15.42,
     "symbol": "PROMUSDT"
    },
    {
@@ -5082,8 +5082,167 @@
     "result": "+10.0%",
     "trigger": "止盈",
     "time": "09-03 00:34",
-    "net_u": 29.58,
+    "net_u": 29.85,
     "symbol": "AKEUSDT"
+   }
+  ]
+ },
+ "2026-09-04": {
+  "updated": "2026-09-04T00:50:01.991622+00:00",
+  "derived_from": "hybrid_tracker.json",
+  "day_pnl_u": -15.5,
+  "n_settled": 1,
+  "n_total": 15,
+  "trades": [
+   {
+    "direction": "LONG",
+    "prob": 89.0,
+    "entry": 0.07223,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null,
+    "symbol": "DUSKUSDT"
+   },
+   {
+    "direction": "LONG",
+    "prob": 88.6,
+    "entry": 0.001794,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null,
+    "symbol": "GALAUSDT"
+   },
+   {
+    "direction": "LONG",
+    "prob": 88.5,
+    "entry": 0.01692,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null,
+    "symbol": "4USDT"
+   },
+   {
+    "direction": "LONG",
+    "prob": 86.6,
+    "entry": 0.03975,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null,
+    "symbol": "SANDUSDT"
+   },
+   {
+    "direction": "LONG",
+    "prob": 86.1,
+    "entry": 5.83,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null,
+    "symbol": "ENSUSDT"
+   },
+   {
+    "direction": "LONG",
+    "prob": 85.6,
+    "entry": 0.6976,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null,
+    "symbol": "VIRTUALUSDT"
+   },
+   {
+    "direction": "LONG",
+    "prob": 84.6,
+    "entry": 0.957,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null,
+    "symbol": "AXSUSDT"
+   },
+   {
+    "direction": "LONG",
+    "prob": 84.3,
+    "entry": 0.006391,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null,
+    "symbol": "ROSEUSDT"
+   },
+   {
+    "direction": "LONG",
+    "prob": 83.4,
+    "entry": 1.948,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null,
+    "symbol": "NEARUSDT"
+   },
+   {
+    "direction": "LONG",
+    "prob": 82.8,
+    "entry": 0.005398,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null,
+    "symbol": "1000SHIBUSDT"
+   },
+   {
+    "direction": "SHORT",
+    "prob": 89.7,
+    "entry": 0.2609,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null,
+    "symbol": "CYSUSDT"
+   },
+   {
+    "direction": "SHORT",
+    "prob": 88.7,
+    "entry": 0.01578,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null,
+    "symbol": "PORTALUSDT"
+   },
+   {
+    "direction": "SHORT",
+    "prob": 87.0,
+    "entry": 0.09868,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null,
+    "symbol": "ONGUSDT"
+   },
+   {
+    "direction": "SHORT",
+    "prob": 86.8,
+    "entry": 0.019908,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null,
+    "symbol": "SKRUSDT"
+   },
+   {
+    "direction": "SHORT",
+    "prob": 86.6,
+    "entry": 0.034027,
+    "result": "-5.0%",
+    "trigger": "止损",
+    "time": "09-04 00:25",
+    "net_u": -15.51,
+    "symbol": "BULLAUSDT"
    }
   ]
  }
