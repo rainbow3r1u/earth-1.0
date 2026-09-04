@@ -137,17 +137,6 @@
    "sl_algo_id": 2000001404993871,
    "tag": "260903"
   },
-  "4USDT": {
-   "symbol": "4USDT",
-   "direction": "LONG",
-   "qty": 2368.0,
-   "entry": 0.0168926,
-   "open_time": 1788481524900,
-   "date": "2026-09-04",
-   "sl_price": 0.016047,
-   "sl_algo_id": 2000001407537812,
-   "tag": "260904"
-  },
   "GALAUSDT": {
    "symbol": "GALAUSDT",
    "direction": "LONG",
@@ -387,6 +376,22 @@
    "exit_time": 1788484618377,
    "gross_pct": -5.06,
    "net_u": -2.0473
+  },
+  {
+   "symbol": "4USDT",
+   "direction": "LONG",
+   "qty": 2368.0,
+   "entry": 0.0168926,
+   "open_time": 1788481524900,
+   "date": "2026-09-04",
+   "sl_price": 0.016047,
+   "sl_algo_id": 2000001407537812,
+   "tag": "260904",
+   "trigger": "止损",
+   "exit": 0.016053,
+   "exit_time": 1788501678568,
+   "gross_pct": -4.97,
+   "net_u": -2.0308
   }
  ],
  "days": {
