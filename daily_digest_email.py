@@ -182,9 +182,19 @@ def build_btc_alt_chart(days=30):
         return None, None
 
 
+def _refresh_tracker():
+    """晨报前刷新预测tracker(2026-09-06 从 _format_trade_summary 移出: 格式化函数不应有写盘副作用)."""
+    try:
+        import daily_predictor as dp
+        dp.LOG_DIR = os.path.join(BASE, 'data')
+        dp.TRACK_FILE = os.path.join(dp.LOG_DIR, 'prediction_tracker.json')
+        dp.verify_yesterday()
+    except Exception:
+        pass
+
+
 def _format_trade_summary():
     """读取今日 trade.log, 输出结构化中文摘要(替代原始日志行平铺)"""
-    import daily_predictor as dp
     today_str = datetime.date.today().isoformat()
     log_file = '/home/myuser/.local/share/auto_trade/trade.log'
     try:
@@ -200,14 +210,6 @@ def _format_trade_summary():
     lines = lines[cut:]
     if not lines:
         return '(今日无交易日志)'
-
-    # 保持 tracker 新鲜(原 build_daily_report_body 内逻辑)
-    try:
-        dp.LOG_DIR = os.path.join(BASE, 'data')
-        dp.TRACK_FILE = os.path.join(dp.LOG_DIR, 'prediction_tracker.json')
-        dp.verify_yesterday()
-    except Exception:
-        pass
 
     def clean(l):
         c = l.split('] ', 1)[-1] if '] ' in l else l
@@ -361,19 +363,27 @@ def section_verify():
 
 
 def section_long_top10():
-    """LONG TOP10 列表 + 成交额(2026-08-08 用户新增)"""
+    """LONG TOP10 列表 + 成交额(2026-08-08 用户新增).
+    2026-09-06 修: 优先今日pred文件, 缺失时明示'旧数据'而非静默冒充今日; glob 去2026死锁."""
     try:
         import glob
-        preds = sorted(glob.glob(f'{BASE}/data/pred_2026-*.json'))
-        if not preds:
+        today = datetime.date.today().isoformat()
+        today_f = f'{BASE}/data/pred_{today}.json'
+        if os.path.exists(today_f):
+            pf, stale = today_f, False
+        else:
+            preds = sorted(glob.glob(f'{BASE}/data/pred_*.json'))
+            pf, stale = (preds[-1], True) if preds else (None, False)
+        if not pf:
             return '(无预测文件)'
-        pred = json.load(open(preds[-1]))
+        pred = json.load(open(pf))
         top10 = pred.get('top10_long', [])
         if not top10:
             return '(今日无 LONG TOP10)'
         # K线缓存成交额(最后1根 q = 24h 成交额 U)
         kl = json.load(open('/home/myuser/backtester/data_cache/notusdt_1d_full.json'))['klines']
-        lines = [f"=== LONG TOP10 ({pred.get('date', '')[:10]}) ===",
+        stale_tag = ' ⚠️旧数据(今日预测尚未生成!)' if stale else ''
+        lines = [f"=== LONG TOP10 ({pred.get('date', '')[:10]}){stale_tag} ===",
                  f"{'#':>2} {'币种':<16} {'概率':>6} {'24h成交额':>10}"]
         for i, item in enumerate(top10[:10], 1):
             sym = item['symbol']
@@ -523,12 +533,17 @@ def section_hybrid():
                 s5_settled = [d for d in s5 if s5[d].get('n_settled',0) >= s5[d].get('n_total',99)]
                 if s5_settled:
                     s5_tot = sum(s5[d].get('day_pnl_u',0) for d in s5_settled)
-                    diff = s5_tot - cum  # cum = 主臂同期累计
+                    # 2026-09-06 修: 主臂只累加与S5相同的已结算日(两臂上线日不同/结算进度不同天
+                    # 会造成口径错位, 9/6前直接减主臂全部历史累计)
+                    main_same = [d for d in s5_settled
+                                 if d in hb and hb[d].get('n_settled',0) >= hb[d].get('n_total',99)]
+                    main_tot = sum(hb[d].get('day_pnl_u',0) for d in main_same)
+                    diff = s5_tot - main_tot  # 同窗口对照
                     c3 = '#0a0' if s5_tot >= 0 else '#c00'
                     c4 = '#0a0' if diff >= 0 else '#c00'
                     s5_html = ("<div style='font-size:11px;margin-top:4px;'>"
                                f"⚖️ S5对照臂(SHORT仅前5笔, LONG同主臂) {len(s5_settled)}天: "
-                               f"<b style='color:{c3}'>{s5_tot:+.1f}U</b> vs 主臂 {cum:+.1f}U — "
+                               f"<b style='color:{c3}'>{s5_tot:+.1f}U</b> vs 主臂同期({len(main_same)}天) {main_tot:+.1f}U — "
                                f"SHORT6-10名净贡献 <b style='color:{c4}'>{-diff:+.1f}U</b>"
                                " (负=砍掉6-10更优)</div>")
         except Exception:
@@ -672,7 +687,9 @@ def section_residual_picks():
             rows.append(f"<tr><td {cell}>{s}</td><td {cell}>{ml[s]:.0f}%</td>"
                         f"<td {cell} style='color:#999;'>—</td>"
                         f"<td {cell} style='color:#e65100;'>主臂独有</td></tr>")
-        pct = len(overlap) * 10
+        # 2026-09-06 修: 分母用实际榜单长度(榜单<10币时 *10 会失真)
+        den = len(rl_) if rl_ else 1
+        pct = round(len(overlap) / den * 100)
         # ==== 近7日重合度趋势 ====
         trend = []
         for i in range(6, -1, -1):
@@ -680,13 +697,13 @@ def section_residual_picks():
             m2, r2 = _load(day)
             if m2 is not None:
                 ov = sum(1 for s in r2 if s in m2)
-                trend.append((day[5:], ov * 10))
+                trend.append((day[5:], round(ov / len(r2) * 100) if r2 else 0))
         trend_html = ''
         if len(trend) >= 2:
             trend_html = ("<div style='font-size:11px;margin-top:4px;'>近7日重合度: "
                           + ' | '.join(f"{d}:{p}%" for d, p in trend) + "</div>")
         return (f"<div style='font-size:12px;margin:2px 0 6px;'>今日重合度: "
-                f"<b>{len(overlap)}/10 ({pct}%)</b> — 残差独有 {len(only_r)} 币, 主臂独有 {len(only_m)} 币</div>"
+                f"<b>{len(overlap)}/{den} ({pct}%)</b> — 残差独有 {len(only_r)} 币, 主臂独有 {len(only_m)} 币</div>"
                 "<table style='border-collapse:collapse;'>"
                 f"<tr><th {hd}>币种</th><th {hd}>主臂概率</th><th {hd}>残差概率</th><th {hd}>归属</th></tr>"
                 + ''.join(rows) + "</table>" + trend_html
@@ -1076,8 +1093,26 @@ def section_github_sync():
         return f'[GitHub同步] ⚠️ 读取失败: {e}'
 
 
+def _send_digest(subject, body_html, chart_path):
+    """带一次重试的发送(2026-09-06 加: SMTP瞬时故障当天晨报不再直接丢失).
+    注: digest_guard 保险丝只兜编译损坏; 本重试兜瞬时SMTP故障; 持续SMTP故障
+    两个通道都失效, 由 09:15 系统体检(agent health_check)邮件尝试告警."""
+    import time as _t
+    for attempt in (1, 2):
+        try:
+            send_email(subject, '', body_html=body_html,
+                       inline_images={'btcaltchart': chart_path} if chart_path else None)
+            return True
+        except Exception as e:
+            print(f'[晨报] 发送失败(第{attempt}次): {e}')
+            if attempt == 1:
+                _t.sleep(20)
+    return False
+
+
 def main():
     today = datetime.date.today().isoformat()
+    _refresh_tracker()
     # 文本节转 pre; 第2节(前向结算)为 HTML 表格
     pre_style = ("style=\"white-space:pre-wrap;font-size:11px;"
                  "font-family:'SimHei','Microsoft YaHei','PingFang SC',Consolas,monospace;line-height:1.5;\"")
@@ -1133,9 +1168,11 @@ def main():
 {chart_html}
 <b>6. GitHub 同步</b> {tag_none}
 <pre {pre_style}>{section_github_sync()}</pre>"""
-    send_email(f'晨报总览 {today}', '', body_html=body_html,
-               inline_images={'btcaltchart': chart_path} if chart_path else None)
-    print('digest sent')
+    if _send_digest(f'晨报总览 {today}', body_html, chart_path):
+        print('digest sent')
+    else:
+        print('digest SEND FAILED: 重试后仍失败(见上方错误), 本日晨报未发出')
+        sys.exit(1)
 
 
 if __name__ == '__main__':
