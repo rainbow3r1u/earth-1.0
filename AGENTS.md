@@ -1,6 +1,6 @@
 # AGENTS.md — 系统接手总入口(For Any AI, 不依赖对话上下文)
 
-> 最后更新: 2026-09-04(新增§0.5 底层逻辑宪法) | 适用目录: `/home/myuser/websocket_new/`(earth-1.0 仓库)
+> 最后更新: 2026-09-06(§4流水线对齐实际crontab; 公证脚本v2根治stash-pop冲突§7.10; 新增体检SKILL) | 适用目录: `/home/myuser/websocket_new/`(earth-1.0 仓库)
 > 本文件是接手本系统的**第一份必读文档**。读完本文件后按「接手顺序」逐份阅读即可独立工作。
 
 ---
@@ -78,19 +78,36 @@ E=+8.8U/笔来自样本, 震荡期临时转负(8/28~9/3六连亏-701U)是方差�
 | `audit/{audit_snapshot,audit_verify}.py` | 生产训练审计(8/2 挂) | 🟢 实验 |
 | `~/.local/share/auto_trade/train_data_latest.npz` | 生产训练数据(疑似有特征偏差) | 数据 |
 
-## 4. 每日流水线(cron, 北京时间)
+## 4. 每日流水线(cron, 北京时间; 2026-09-06 与实际 crontab 对齐)
 
 ```
-每分钟  guardian.py 守护
-6:00   daily_data_collection.py 采集
-7:30   K线+OI 补采
-8:04   audit_snapshot.py 审计快照(只读) ← 8/2 新增
-8:05   auto_dual_trade.py 训练+预测(+交易, 当前关闭)
-8:20   预测公证(git push GitHub, 预测先于结果)
-8:25   audit_verify.py 审计校验(只读) ← 8/2 新增
-8:40   cron_monitor 失败重试
-9:00   晨报(2日验证 8/6 起为完整K线口径: T+2收盘后结算+入场日不豁免止损, 近7天滚动重算)
+每分钟  guardian.py 守护(进程拉起 + 热力图/宇宙快照等周期任务, 日志 /tmp/guardian.log)
+04:10  sector_fetcher.py 板块数据
+06:00  daily_data_collection.py 主采集(K线/宏观/链上/情绪/稳定币)
+06:05  fetch_etf.py ETF资金流 | 06:10 coingecko_mcap 市值 | 06:12 exchange_info | 06:20 oi_snapshot
+07:10  daily_universe_snapshot.py 宇宙快照(data/universe/)
+07:30  update_klines_oi K线+OI 补采
+08:02  data_versions_snapshot.py 数据版本快照(只读)
+08:04  audit_snapshot.py 审计快照(只读)
+08:05  auto_dual_trade.py 训练+预测(SOUP+置换检验; 交易由 residual_live 执行)
+08:20  telegram_group_bot.py signal
+08:21  residual_live.py trade 实盘: 对账/平到期 → 开新批(≤10笔, 40U名义/5x逐仓/SL-5%/72h)
+08:25  audit_verify.py 审计校验(只读)
+08:30  notarize_pred.sh 预测公证(v2: 快照提交+rebase -X theirs, 预测先于结果)
+08:30  data_drift_monitor.py --check 数据漂移 | replay_verify.py 重放校验 | oi_180d_ready.py
+08:40  cron_monitor.py --task 交易预测 失败重试
+08:45  hybrid_tracker.py 主臂影子结算
+08:50  trading_system_github_sync.py GitHub同步(Contents API) + forward_ic_check.py 前向IC + hybrid_s5.py S5对照臂
+08:55  residual_tracker.py 残差影子结算
+09:00  digest_guard.sh 晨报(保险丝: 脚本编译损坏时自动用备份版发送; 2日验证为完整K线口径)
+09:02  telegram_group_bot.py pnl | 09:05 altcoin_volume_alert.py 放量警报 | 09:10 forward_tracker.py
+09:15  system_health_check.py --notify 全链路体检(缺失/失效即邮件告警) ← 9/6 新增
+每小时:31  residual_live.py reconcile 对账/SL丢失重挂
+每周日 03:00  obsidian_github_sync.py
 ```
+
+> **体检SKILL**: `.agents/skills/health-check/`(触发词"体检SKILL"; 手动 `python3 scripts/system_health_check.py`)。
+> 流水线任一环节"有没有跑/产物在不在"以体检SKILL检查矩阵为准。
 
 ## 5. 铁律(必须遵守)
 
@@ -127,6 +144,8 @@ E=+8.8U/笔来自样本, 震荡期临时转负(8/28~9/3六连亏-701U)是方差�
    ④ 独立方向(8/10 后, 用户 8/7 立项): 持续放量趋势延续研究(SKYAI 案例; 独立模型, 不动方向模型; 先群组统计验证"量能持续性"判别力) — 任务卡 `Sync/rainbow/想法箱/持续放量趋势延续研究-排期8-10后.md`
 8. **8/10 评审及之后的研究核心主题(用户 8/7 定调, 四个字): 止损位置。** 本周全部工作(MAE实测/止损扫描/距前低/LIGHT案例/手动台账)皆为其子问题。
 9. **待复测约定(用户 8/7 嘱托, 勿忘)**: 用户假设 — 止损 1-15% 区间存在择优档位拐点, 与距前低距离、量能形态相关(用户 10 年交易直觉, 默会知识, 需代码扫描逼近)。当前干净样本(8/3~8/6, ~60 个 LONG 候选)不足为据: "6-10% 甜区"等切片结论**只是线索, 非证伪非证实**, 按用户指示暂不入台账。**触发条件: 干净 LONG 候选样本累积 ≥200 笔(约每日+15~20, 两三周后)时重跑网格: 止损档位(1-15%逐档) × 距前低(细分桶) × 量能(分位)**。方法论约定: 用户直觉提假设 → 数据裁决 → 代码逼近拐点; 直觉与数据互纠(8/7 用户曾纠正小样本草率证伪)。
+10. ~~**公证 stash-pop 冲突**(8/26、8/27、9/5 三次复发)~~ → **已根治 2026-09-06**: 根因是 08:50 GitHub 同步(Contents API)在远程生成提交, 次日 08:30 公证的 `stash pop` 与其在相同文件上三方合并 → UU; 9/4 残差双轨上线后 `residual_live_state.json` 每日被同步上传+每日被改写, 冲突已成必然。公证脚本重写为 **v2**(临时快照提交 + `rebase -X theirs` 取本地 + `reset --mixed` 解包, 全程无 stash, 失败完整回滚); commit 7973118。9/5 遗留 stash@{0} 待用户确认后 drop。
+11. **晨报代码已知小坑(2026-09-06 体检发现, 大部分已修)**: pred 取档已改"优先今日+缺失明示旧数据"; S5 对照臂改同窗口对照; 重合度分母改实际榜单长度; 发送加一次重试; `_refresh_tracker` 副作用已移出格式化函数。**digest_guard 保险丝只兜编译损坏, 运行时错误无保险丝**(09:15 体检兜底告警)。
 
 ## 8. 常用操作
 
