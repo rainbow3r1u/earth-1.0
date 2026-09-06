@@ -5,61 +5,6 @@
   "max_daily": 10
  },
  "open": {
-  "WAXPUSDT": {
-   "symbol": "WAXPUSDT",
-   "direction": "LONG",
-   "qty": 9000.0,
-   "entry": 0.0044382,
-   "open_time": 1788395024637,
-   "date": "2026-09-03",
-   "sl_price": 0.004216,
-   "sl_algo_id": 2000001404993724,
-   "tag": "260903"
-  },
-  "MOVEUSDT": {
-   "symbol": "MOVEUSDT",
-   "direction": "LONG",
-   "qty": 4690.0,
-   "entry": 0.008526,
-   "open_time": 1788395025834,
-   "date": "2026-09-03",
-   "sl_price": 0.008099,
-   "sl_algo_id": 2000001404993749,
-   "tag": "260903"
-  },
-  "HUSDT": {
-   "symbol": "HUSDT",
-   "direction": "LONG",
-   "qty": 508.0,
-   "entry": 0.07868,
-   "open_time": 1788395028261,
-   "date": "2026-09-03",
-   "sl_price": 0.07474,
-   "sl_algo_id": 2000001404993774,
-   "tag": "260903"
-  },
-  "QUSDT": {
-   "symbol": "QUSDT",
-   "direction": "LONG",
-   "qty": 1849.0,
-   "entry": 0.021634,
-   "open_time": 1788395029547,
-   "date": "2026-09-03",
-   "sl_price": 0.020551999999999997,
-   "sl_algo_id": 2000001404993824,
-   "tag": "260903"
-  },
-  "ENSUSDT": {
-   "symbol": "ENSUSDT",
-   "direction": "LONG",
-   "qty": 7.4,
-   "entry": 5.375,
-   "open_time": 1788395033267,
-   "date": "2026-09-03",
-   "sl_price": 5.106,
-   "sl_algo_id": 2000001404993871,
-   "tag": "260903"
-  },
   "GALAUSDT": {
    "symbol": "GALAUSDT",
    "direction": "LONG",
@@ -148,28 +93,6 @@
    "sl_algo_id": 2000001410239429,
    "tag": "260905"
   },
-  "ONUSDT": {
-   "symbol": "ONUSDT",
-   "direction": "LONG",
-   "qty": 179.0,
-   "entry": 0.2225,
-   "open_time": 1788567900677,
-   "date": "2026-09-05",
-   "sl_price": 0.21130000000000002,
-   "sl_algo_id": 2000001410239475,
-   "tag": "260905"
-  },
-  "STARUSDT": {
-   "symbol": "STARUSDT",
-   "direction": "LONG",
-   "qty": 369.0,
-   "entry": 0.10839,
-   "open_time": 1788567901927,
-   "date": "2026-09-05",
-   "sl_price": 0.10297,
-   "sl_algo_id": 2000001410239693,
-   "tag": "260905"
-  },
   "GPSUSDT": {
    "symbol": "GPSUSDT",
    "direction": "LONG",
@@ -235,6 +158,105 @@
    "sl_price": 0.07094,
    "sl_algo_id": 2000001410239922,
    "tag": "260905"
+  },
+  "ARBUSDT": {
+   "symbol": "ARBUSDT",
+   "direction": "LONG",
+   "qty": 214.1,
+   "entry": 0.18678,
+   "open_time": 1788654335409,
+   "date": "2026-09-06",
+   "sl_price": 0.17744000000000001,
+   "sl_algo_id": 2000001412792647,
+   "tag": "260906"
+  },
+  "QUSDT": {
+   "symbol": "QUSDT",
+   "direction": "LONG",
+   "qty": 1550.0,
+   "entry": 0.025808,
+   "open_time": 1788654336616,
+   "date": "2026-09-06",
+   "sl_price": 0.024517,
+   "sl_algo_id": 2000001412792679,
+   "tag": "260906"
+  },
+  "CHIPUSDT": {
+   "symbol": "CHIPUSDT",
+   "direction": "LONG",
+   "qty": 676.0,
+   "entry": 0.05909,
+   "open_time": 1788654337831,
+   "date": "2026-09-06",
+   "sl_price": 0.056130000000000006,
+   "sl_algo_id": 2000001412792701,
+   "tag": "260906"
+  },
+  "BTRUSDT": {
+   "symbol": "BTRUSDT",
+   "direction": "LONG",
+   "qty": 817.0,
+   "entry": 0.04892,
+   "open_time": 1788654339115,
+   "date": "2026-09-06",
+   "sl_price": 0.046470000000000004,
+   "sl_algo_id": 2000001412792724,
+   "tag": "260906"
+  },
+  "ZKCUSDT": {
+   "symbol": "ZKCUSDT",
+   "direction": "LONG",
+   "qty": 804.0,
+   "entry": 0.04974,
+   "open_time": 1788654340450,
+   "date": "2026-09-06",
+   "sl_price": 0.04725000000000001,
+   "sl_algo_id": 2000001412792743,
+   "tag": "260906"
+  },
+  "BRUSDT": {
+   "symbol": "BRUSDT",
+   "direction": "LONG",
+   "qty": 147.0,
+   "entry": 0.27196,
+   "open_time": 1788654341915,
+   "date": "2026-09-06",
+   "sl_price": 0.25836000000000003,
+   "sl_algo_id": 2000001412792791,
+   "tag": "260906"
+  },
+  "UAIUSDT": {
+   "symbol": "UAIUSDT",
+   "direction": "LONG",
+   "qty": 73.0,
+   "entry": 0.5405,
+   "open_time": 1788654343178,
+   "date": "2026-09-06",
+   "sl_price": 0.5134000000000001,
+   "sl_algo_id": 2000001412792817,
+   "tag": "260906"
+  },
+  "FLOCKUSDT": {
+   "symbol": "FLOCKUSDT",
+   "direction": "LONG",
+   "qty": 626.0,
+   "entry": 0.06389,
+   "open_time": 1788654344376,
+   "date": "2026-09-06",
+   "sl_price": 0.06069000000000001,
+   "sl_algo_id": 2000001412792841,
+   "tag": "260906"
+  },
+  "UNIUSDT": {
+   "symbol": "UNIUSDT",
+   "direction": "LONG",
+   "qty": 5.0,
+   "entry": 7.137,
+   "open_time": 1788654345574,
+   "date": "2026-09-06",
+   "sl_price": 6.78,
+   "sl_algo_id": 2000001412792869,
+   "tag": "260906"
   }
  },
  "history": [
@@ -526,6 +548,118 @@
    "exit_time": 1788567673888,
    "gross_pct": -0.59,
    "net_u": -0.3076
+  },
+  {
+   "symbol": "STARUSDT",
+   "direction": "LONG",
+   "qty": 369.0,
+   "entry": 0.10839,
+   "open_time": 1788567901927,
+   "date": "2026-09-05",
+   "sl_price": 0.10297,
+   "sl_algo_id": 2000001410239693,
+   "tag": "260905",
+   "trigger": "离场(手动/其他)",
+   "exit": 0.1045472,
+   "exit_time": 1788578170164,
+   "gross_pct": -3.55,
+   "net_u": -1.4573
+  },
+  {
+   "symbol": "HUSDT",
+   "direction": "LONG",
+   "qty": 508.0,
+   "entry": 0.07868,
+   "open_time": 1788395028261,
+   "date": "2026-09-03",
+   "sl_price": 0.07474,
+   "sl_algo_id": 2000001404993774,
+   "tag": "260903",
+   "trigger": "离场(手动/其他)",
+   "exit": 0.07581,
+   "exit_time": 1788635175995,
+   "gross_pct": -3.65,
+   "net_u": -1.581
+  },
+  {
+   "symbol": "ONUSDT",
+   "direction": "LONG",
+   "qty": 179.0,
+   "entry": 0.2225,
+   "open_time": 1788567900677,
+   "date": "2026-09-05",
+   "sl_price": 0.21130000000000002,
+   "sl_algo_id": 2000001410239475,
+   "tag": "260905",
+   "trigger": "止损",
+   "exit": 0.2113,
+   "exit_time": 1788633751543,
+   "gross_pct": -5.03,
+   "net_u": -2.057
+  },
+  {
+   "symbol": "WAXPUSDT",
+   "direction": "LONG",
+   "qty": 9000.0,
+   "entry": 0.0044382,
+   "open_time": 1788395024637,
+   "date": "2026-09-03",
+   "sl_price": 0.004216,
+   "sl_algo_id": 2000001404993724,
+   "tag": "260903",
+   "trigger": "到期",
+   "exit": 0.004486,
+   "exit_time": 1788654061746,
+   "gross_pct": 1.08,
+   "net_u": 0.4621
+  },
+  {
+   "symbol": "MOVEUSDT",
+   "direction": "LONG",
+   "qty": 4690.0,
+   "entry": 0.008526,
+   "open_time": 1788395025834,
+   "date": "2026-09-03",
+   "sl_price": 0.008099,
+   "sl_algo_id": 2000001404993749,
+   "tag": "260903",
+   "trigger": "到期",
+   "exit": 0.009134,
+   "exit_time": 1788654064327,
+   "gross_pct": 7.13,
+   "net_u": 2.7856
+  },
+  {
+   "symbol": "QUSDT",
+   "direction": "LONG",
+   "qty": 1849.0,
+   "entry": 0.021634,
+   "open_time": 1788395029547,
+   "date": "2026-09-03",
+   "sl_price": 0.020551999999999997,
+   "sl_algo_id": 2000001404993824,
+   "tag": "260903",
+   "trigger": "到期",
+   "exit": 0.0257835,
+   "exit_time": 1788654066841,
+   "gross_pct": 19.18,
+   "net_u": 7.4793
+  },
+  {
+   "symbol": "ENSUSDT",
+   "direction": "LONG",
+   "qty": 7.4,
+   "entry": 5.375,
+   "open_time": 1788395033267,
+   "date": "2026-09-03",
+   "sl_price": 5.106,
+   "sl_algo_id": 2000001404993871,
+   "tag": "260903",
+   "trigger": "到期",
+   "exit": 5.939,
+   "exit_time": 1788654069347,
+   "gross_pct": 10.49,
+   "net_u": 4.0959
   }
  ],
  "days": {
@@ -598,6 +732,24 @@
     "QUSDT(与前批持仓重叠)"
    ],
    "avail_u": 183.0,
+   "n_planned": 10
+  },
+  "2026-09-06": {
+   "opened": [
+    "ARBUSDT",
+    "QUSDT",
+    "CHIPUSDT",
+    "BTRUSDT",
+    "ZKCUSDT",
+    "BRUSDT",
+    "UAIUSDT",
+    "FLOCKUSDT",
+    "UNIUSDT"
+   ],
+   "skipped": [
+    "MUBARAKUSDT(与前批持仓重叠)"
+   ],
+   "avail_u": 176.7,
    "n_planned": 10
   }
  }
