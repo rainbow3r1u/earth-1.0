@@ -106,3 +106,6 @@ data/btc_dominance_proxy.json
 # runtime logs
 logs/
 *.bak_*
+
+# 晨报图表(可再生成: build_btc_alt_chart 09:00每日重建, sync也排除.png)
+data/charts/
