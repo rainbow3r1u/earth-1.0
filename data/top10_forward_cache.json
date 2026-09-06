@@ -3904,5 +3904,131 @@
     "pnl": -5.0
    }
   ]
+ },
+ "2026-09-03": {
+  "long": [
+   {
+    "sym": "ANKRUSDT",
+    "prob": 92.5,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "WAXPUSDT",
+    "prob": 84.9,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "BROCCOLI714USDT",
+    "prob": 82.2,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "QUSDT",
+    "prob": 75.4,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "MOVEUSDT",
+    "prob": 70.8,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "GOATUSDT",
+    "prob": 69.0,
+    "state": "EXP48",
+    "pnl": 3.79
+   },
+   {
+    "sym": "DUSKUSDT",
+    "prob": 69.0,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "GALAUSDT",
+    "prob": 68.6,
+    "state": "EXP48",
+    "pnl": 2.32
+   },
+   {
+    "sym": "HUSDT",
+    "prob": 68.3,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "BEATUSDT",
+    "prob": 68.0,
+    "state": "SL",
+    "pnl": -5.0
+   }
+  ],
+  "short": [
+   {
+    "sym": "BTWUSDT",
+    "prob": 91.6,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "SKRUSDT",
+    "prob": 90.8,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "BTRUSDT",
+    "prob": 88.4,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "PROMUSDT",
+    "prob": 85.4,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "AKEUSDT",
+    "prob": 83.6,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "龙虾USDT",
+    "prob": 83.4,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "EGLDUSDT",
+    "prob": 83.4,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "TACUSDT",
+    "prob": 83.2,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "FLOCKUSDT",
+    "prob": 80.8,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "ONGUSDT",
+    "prob": 79.8,
+    "state": "SL",
+    "pnl": -5.0
+   }
+  ]
  }
 }
