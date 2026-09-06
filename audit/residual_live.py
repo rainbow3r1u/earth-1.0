@@ -205,6 +205,19 @@ def cancel_sl(sym, algo_id):
     return ok
 
 
+def sl_algo_triggered(pos):
+    """查我方SL algo单最终状态 (GET /fapi/v1/algoOrder, 单数端点):
+    True=已触发且有实际成交(止损) | False=未触发(EXPIRED/CANCELED) | None=查询失败(调用方走价格窗兜底)
+    标定: 触发单algoStatus=FINISHED+actualOrderId非空; 被撤单=EXPIRED+actualOrderId空 (9/6 ONG/ENS实测)"""
+    aid = pos.get('sl_algo_id')
+    if not aid:
+        return None
+    r = signed('GET', '/fapi/v1/algoOrder', {'algoId': str(aid), 'symbol': pos['symbol']})
+    if not (isinstance(r, dict) and r.get('algoStatus')):
+        return None
+    return r.get('algoStatus') == 'FINISHED' and bool(r.get('actualOrderId'))
+
+
 def get_price(sym):
     r = S.get(f'{BASE_URL}/fapi/v1/ticker/price', params={'symbol': sym}, timeout=10)
     if r.status_code == 200:
@@ -383,9 +396,17 @@ def reconcile(st, close_expired=True):
                 last = max(sells, key=lambda o: o.get('updateTime', 0))
                 exit_price = float(last['avgPrice'])
                 exit_time = int(last.get('updateTime') or time.time() * 1000)
-                # SL触发成交价≈触发价±滑点; 手动/到期离场价远离触发价
-                if pos.get('sl_price') and abs(exit_price / pos['sl_price'] - 1) < 0.01:
+                # 主判据=SL algo单最终状态(触发即止损, 与成交价无关): 插针急跌触发后瞬间反弹,
+                # 成交价可优于触发价1~2%, 固定1%价格窗会把这类止损误判为手动(9/5 STAR/9/6 HUSDT案例)
+                trig = sl_algo_triggered(pos)
+                if trig is True:
                     reason = '止损'
+                elif trig is None:
+                    # 查询失败兜底: 价格窗放宽到3%容纳插针滑点
+                    if pos.get('sl_price') and abs(exit_price / pos['sl_price'] - 1) < 0.03:
+                        reason = '止损'
+                    else:
+                        reason = '离场(手动/其他)'
                 else:
                     reason = '离场(手动/其他)'
             else:

@@ -726,7 +726,7 @@ def section_residual_survival():
             return "<div style='font-size:11px;color:#888;'>(3.9c 批次生存表: 无实盘state)</div>"
         st = json.load(open(sp))
         days_opened = st.get('days', {})
-        open_syms = set(st.get('open', {}).keys())
+        open_pos = list(st.get('open', {}).values())
         # 已离场按批分组
         gone = {}
         for r in st.get('history', []):
@@ -738,7 +738,9 @@ def section_residual_survival():
             opened = [s for s in days_opened[d].get('opened', [])]
             if not opened or d < '2026-09-02':
                 continue  # 9/2起正式策略批
-            alive = [s for s in opened if s in open_syms]
+            # 存活按持仓的批次标签归属: 重开仓(如9/2批BROCCOLI714在9/5批重启)计入新批次, 不再虚增老批次存活数
+            alive = [s for s in opened
+                     if any(p.get('symbol') == s and p.get('date') == d for p in open_pos)]
             stopped = [r for r in gone.get(d, []) if r.get('trigger') == '止损']
             expired = [r for r in gone.get(d, []) if r.get('trigger') == '到期']
             other = len(gone.get(d, [])) - len(stopped) - len(expired)
@@ -763,7 +765,7 @@ def section_residual_survival():
                 + ''.join(rows) + "</table>"
                 + "<div style='font-size:10px;color:#666;'>残差实盘每批生存动态 (9/2起正式批; 72h持有, SL-5%盘中触发) | "
                 "存活率配色: 绿≥70%/黄40~70%/红<40% | 止损净U=该批已止损单的真实净亏损合计 | "
-                "存活=仍在持仓等待72h到期 | '其他'=手动/异常离场</div>")
+                "存活=本批持仓仍在等待72h到期(按批次标签归属, 币被后续批次重开计入新批) | '其他'=手动/异常离场</div>")
     except Exception as e:
         return f'<p style="color:#c00">(批次生存表生成失败: {e})</p>'
 
