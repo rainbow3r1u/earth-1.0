@@ -770,6 +770,55 @@ def section_residual_survival():
         return f'<p style="color:#c00">(批次生存表生成失败: {e})</p>'
 
 
+def section_short_top5():
+    """3.9d SHORT TOP5 试盘时机 (2026-09-07 用户需求):
+    每日SHORT prob前5的滚动胜率 vs 盈亏平衡线33.3%, 只输出一个结论:
+    当前适不适合小资金试盘。判定规则见 ~/.trae/skills/short-top5-timing/SKILL.md
+    红灯: 滚动胜率<33% | 黄灯: 33~40%无资金面配合 | 绿灯: ≥40%且放量潮/BTC破位。
+    数据: hybrid_tracker.json SHORT侧; 生成失败自动降级, 不影响晨报。"""
+    try:
+        d = json.load(open('/home/myuser/websocket_new/data/hybrid_tracker.json'))
+        days = sorted(d.keys())
+        recent = days[-10:]
+        rtp = rn = 0
+        alltp = alln = 0
+        for day in days:
+            shorts = sorted([t for t in d[day]['trades'] if t['direction'] == 'SHORT'],
+                            key=lambda t: -t['prob'])
+            for t in shorts[:5]:
+                trig = t.get('trigger')
+                if trig in ('止盈', '止损', '到期'):
+                    alln += 1
+                    alltp += (trig == '止盈')
+                    if day in recent:
+                        rn += 1
+                        rtp += (trig == '止盈')
+        if rn == 0:
+            return ("<div style='font-size:11px;color:#888;'>(3.9d SHORT TOP5: 近10日尚无已结算批次)</div>")
+        wr = rtp / rn * 100
+        all_wr = alltp / alln * 100 if alln else 0
+        # 资金面信号: 山寨放量潮口径(非TOP50放量币数>150 — 简化版: 用近3日hybrid在SHORT侧
+        # 止盈占比代理脉冲形态; 完整口径以山寨资金SKILL判定为准, 此处只做胜率主判)
+        if wr < 33:
+            color, bg, verdict = '#c00', '#ffebee', '🔴 不适合 — 滚动胜率低于盈亏平衡线33.3%'
+        elif wr < 40:
+            color, bg, verdict = '#b8860b', '#fffde7', '🟡 观察 — 线上但未达40%, 且无资金面配合'
+        else:
+            color, bg, verdict = '#1b5e20', '#e8f5e9', '🟢 数据条件满足 — 是否试盘由用户拍板'
+        cell = "style='padding:2px 8px;border:1px solid #ccc;font-size:12px;'"
+        cell_bg = f"style='padding:2px 8px;border:1px solid #ccc;font-size:12px;background:{bg};'"
+        return (
+            f"<table style='border-collapse:collapse;'><tr>"
+            f"<td {cell_bg}><b style='color:{color};'>{verdict}</b></td></tr>"
+            f"<tr><td {cell}>近10日已结算 {rn}笔: 胜率<b>{wr:.0f}%</b> ({rtp}止盈) | "
+            f"8/3以来全程 {alln}笔: {all_wr:.0f}% | 盈亏平衡线=33.3%(TP10/SL5赔率2:1) | "
+            f"绿灯另需: 放量潮(>150币放量/总额>75亿)或BTC破位 | 近10日批次多数T+2才结算, 滚动值有滞后</td></tr></table>"
+            f"<div style='font-size:10px;color:#666;'>SHORT TOP5=每日prob最高5笔做空(TP10/SL5/48h影子口径) | "
+            f"历史锚: 8月脉冲市38%/日均+12.6U, 8/23后存量市32%/日均-4.8U | 试盘规格与停止线见 short-top5-timing SKILL §3</div>")
+    except Exception as e:
+        return f"<div style='font-size:11px;color:#888;'>(3.9d SHORT TOP5 生成失败: {e})</div>"
+
+
 def section_momentum():
     try:
         from daily_momentum_email import build_momentum_body_html
@@ -1161,6 +1210,8 @@ def main():
 {section_residual_picks()}
 <b>3.9c 残差实盘批次生存表</b> <span style='{tag_style}background:#fff3e0;color:#e65100;'>每批开仓N笔 → 存活/止损/到期 · 存活率 · 批内净U</span>
 {section_residual_survival()}
+<b>3.9d SHORT TOP5 试盘时机</b> <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>滚动胜率 vs 盈亏线33.3% · 只输出一个结论: 适不适合小资金试盘</span>
+{section_short_top5()}
 <b>4. 强势股续涨 + 每日资金榜</b> {tag_none}
 <pre {pre_style}>{section_momentum()}</pre>
 <b>5. 系统健康</b> {tag_none}
