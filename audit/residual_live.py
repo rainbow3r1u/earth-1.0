@@ -5,13 +5,13 @@
   杠杆 5x 逐仓 | 单笔名义 40U | 单笔保证金 8U | 每日最多 10 笔 (影子臂top10)
   持仓 72h (开仓日+3天08:21到期市价平) | 稳态 3 批共存, 峰值 ~30 笔
   峰值 30 笔×8U=240U (81%资金, 守卫放宽至85%支持满配, 用户确认可承受)
-  爆仓距离≈19% | SL-5% | 30笔全灭理论上限≈-62U(-22%), 实际因每日止损很难满配
+  爆仓距离≈19% | SL-8%(2026-09-07由5%调) | 30笔全灭理论上限≈-99U(-35%), 实际因每日止损很难满配
   2026-09-03 前为 48h/2批; 迁移依据: 9/2 预研 29天580笔 72h 多赚+3101U(+111%)
 
 与影子臂结算 (audit/residual_tracker.py) 的对齐与已知偏差:
   - ⚠️ 2026-09-03 起实盘为 72h 活体实验臂, 影子结算链维持 48h 至 10/23 终审 → 两口径分叉期
     (实盘收益预期应参考 72h 语义; 与影子对照时注意窗口差 24h)
-  - SL规则一致: SL-5% / CONTRACT_PRICE 触发 (K线low口径, 非主程序的MARK_PRICE)
+  - SL规则一致: SL-8% / CONTRACT_PRICE 触发 (K线low口径, 非主程序的MARK_PRICE)
   - 已知偏差①: 实盘入场≈08:23-08:26 (pred落地后), 影子名义入场08:21 → 入场价差=执行滞后, 正是本测试要量的
   - 已知偏差②: 实盘SL挂在实盘成交价×0.95, 影子按其名义入场价×0.95 → ±0.0x%级, 可忽略
   - 已知偏差③: top10与在持仓位重叠的币跳过开仓(净持仓无法分批挂SL), 差异记录在 state.days.skipped_overlap
@@ -46,7 +46,7 @@ PRED_FIELD = 'top10_long_residual'
 NOTIONAL = 40.0      # 单笔名义U (2026-09-01 用户确认上调: 20笔全灭≈-41U/-15%可接受)
 LEVERAGE = 5         # 逐仓杠杆
 MAX_DAILY = 10       # 每日最多开仓笔数
-SL_PCT = 0.05        # 止损 5%
+SL_PCT = 0.08        # 止损 8% (2026-09-07 用户拍板 5%→8%: 180d回测TOP10模拟器1585笔, 8%档胜率+6pp/右尾截杀96→56/净多赚+2645%名义, 单笔上限-2.0U→-3.2U; 依据docs/优化待办 SL网格扫描)
 HOLD_DAYS = 3        # 持仓窗口 72h (2026-09-03 由48h迁移, 与标签72h终点语义对齐; 稳态3批共存, 峰值~30笔)
 BALANCE_MIN_ABORT = 16.0       # 可用余额低于此值(1笔保证金8U×2)直接中止
 BALANCE_BUF_RATIO = 0.85       # 可用余额允许动用 85% 做保证金 (2026-09-03 由60%放宽: 72h三批满配30笔×8U=240U需81%; 用户确认可承受)
@@ -238,7 +238,7 @@ def safe_cid(s):
 
 
 def open_one(sym, st):
-    """开一笔: 5x逐仓 市价30U + 挂SL-5%(CONTRACT_PRICE)"""
+    """开一笔: 5x逐仓 市价40U + 挂SL-8%(CONTRACT_PRICE)"""
     exinfo = load_exinfo()
     fl = get_filters(sym, exinfo)
     if fl is None:
@@ -281,7 +281,7 @@ def open_one(sym, st):
         log(f'  {sym} 未确认成交, 撤单兜底')
         signed('DELETE', '/fapi/v1/order', {'symbol': sym, 'orderId': eo['orderId']})
         return None, '未成交'
-    # SL-5% (Algo Order API + CONTRACT_PRICE, 与residual_tracker结算口径一致)
+    # SL-8% (Algo Order API + CONTRACT_PRICE, 与residual_tracker结算口径一致)
     sp = floor_step(entry * (1 - SL_PCT), fl['tick'])
     sl_algo_id, so = place_sl_algo(sym, sp, fl['tick'])
     if sl_algo_id is None:
