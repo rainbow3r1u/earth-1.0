@@ -230,6 +230,12 @@ def entry_tag(d=None):
     d = d or datetime.now(CST)
     return d.strftime('%y%m%d')
 
+def safe_cid(s):
+    """币安clientOrderId仅允许 ^[.A-Z:/a-z0-9_-]{1,36}$ (2026-09-07: 龙虾USDT等中文名币被-1100拒单)"""
+    import string
+    ok = set(string.ascii_letters + string.digits + '.:/_-')
+    return ''.join(c if c in ok else 'X' for c in s)[:36]
+
 
 def open_one(sym, st):
     """开一笔: 5x逐仓 市价30U + 挂SL-5%(CONTRACT_PRICE)"""
@@ -259,7 +265,7 @@ def open_one(sym, st):
     eo = signed('POST', '/fapi/v1/order', {
         'symbol': sym, 'side': 'BUY', 'type': 'MARKET',
         'quantity': fmt_qty(qty, fl['step']),
-        'newClientOrderId': f'rl-{sym[:14]}-e-{tag}'[:36]})
+        'newClientOrderId': safe_cid(f'rl-{sym[:14]}-e-{tag}')})
     if eo.get('orderId') is None:
         return None, f'下单失败: {str(eo)[:120]}'
     # 等成交
@@ -327,7 +333,7 @@ def close_one(sym, st, reason, exit_price=None, exit_time=None):
             'symbol': sym, 'side': 'SELL', 'type': 'MARKET',
             'quantity': fmt_qty(pos['qty'], fl['step']),
             'reduceOnly': 'true',
-            'newClientOrderId': f'rl-{sym[:12]}-x-{entry_tag()}'[:36]})
+            'newClientOrderId': safe_cid(f'rl-{sym[:12]}-x-{entry_tag()}')})
         if o.get('orderId') is None:
             log(f'  ⚠️ {sym} 平仓下单失败: {str(o)[:120]}, 下轮重试')
             return
