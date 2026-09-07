@@ -1,6 +1,7 @@
 # AGENTS.md — 系统接手总入口(For Any AI, 不依赖对话上下文)
 
-> 最后更新: 2026-09-07(新增铁律7特征提案双门槛; FEAT4证伪归档; GPU数据补齐后干净基线16.81) | 适用目录: `/home/myuser/websocket_new/`(earth-1.0 仓库)
+> 最后更新: 2026-09-07晚(SL-8%生产变更+铁律7+TOP10模拟器§8.1+GPU端口24127) | 适用目录: `/home/myuser/websocket_new/`(earth-1.0 仓库)
+> **新会话/新AGENT入口**: ①读本文件(宪法§0.5+铁律§5) → ②读最新交接 `docs/交接总结-20260907-特征审判与SL8调参.md`(本期全部变更+时间表) → ③触发词技能见§8.1后SKILL清单/交接总结§四。换电脑: clone本仓库即得全部知识(自包含)。
 > 本文件是接手本系统的**第一份必读文档**。读完本文件后按「接手顺序」逐份阅读即可独立工作。
 
 ---
@@ -44,7 +45,7 @@ E=+8.8U/笔来自样本, 震荡期临时转负(8/28~9/3六连亏-701U)是方差�
 
 **地球版量化交易系统**:XGBoost 双模型(LONG/SHORT)每日全量重训,基于 946 维特征(主传感器=对BTC残差)预测币安 U-M 合约 2 日涨跌,aligned 时序(预测日=入场日),止盈+10%/止损-5%/48h 退出。三端架构:生产端(本机,每日训练+预测+公证)/ GPU 回溯端(175.155.64.171,回测实验)/ 观察端(已下线)。
 
-**当前状态(2026-09-06)**: 生产流水线完全体运行中(采集→训练→预测→公证→实盘→影子结算→晨报→体检, 全表见§4)。**交易分两层, 勿混淆**: ① 老双模型自动交易**关闭**(`backtester/config/current_params.json` 的 `_live_trading.TRADING_ENABLED=false` 覆盖代码默认值, 且本金<10u 跳过); ② **残差实盘 LONG 臂运行中**(`audit/residual_live.py`, 9/2 起正式批: 40U 名义/5x 逐仓/SL-5%/72h/每日≤10笔, 交易所真实挂 SL algo 单)。幽灵问题已修复(8/3, §7.1); 公证 stash-pop 冲突已根治(9/6, §7.10); 全链路体检 SKILL 上线(9/6, §4/§8)。
+**当前状态(2026-09-06)**: 生产流水线完全体运行中(采集→训练→预测→公证→实盘→影子结算→晨报→体检, 全表见§4)。**交易分两层, 勿混淆**: ① 老双模型自动交易**关闭**(`backtester/config/current_params.json` 的 `_live_trading.TRADING_ENABLED=false` 覆盖代码默认值, 且本金<10u 跳过); ② **残差实盘 LONG 臂运行中**(`audit/residual_live.py`, 9/2 起正式批: 40U 名义/5x 逐仓/SL-8%(9/7由5%调,依据TOP10模拟器网格)/72h/每日≤10笔, 交易所真实挂 SL algo 单)。幽灵问题已修复(8/3, §7.1); 公证 stash-pop 冲突已根治(9/6, §7.10); 全链路体检 SKILL 上线(9/6, §4/§8)。
 
 ## 1. 知识权威源(按优先级)
 
@@ -149,7 +150,7 @@ E=+8.8U/笔来自样本, 震荡期临时转负(8/28~9/3六连亏-701U)是方差�
 3. ~~**前向 4 连止损(7/29~8/1)**~~ → **已关闭(2026-09-06)**: 评审期(8/10)已过, 修复后系统转入完全体长跑(§2), 7/29~8/2 脏数据期仅作历史标注
 4. **SOUP 历史模型边界**: 8/3 已隔离 7/31~8/2 错位模型副本至 `/tmp/poison_models/`(仍在, 重启即清, 无需处理); 若从旧备份恢复模型目录, 需先甄别错位模型
 5. SYSTEM_OVERVIEW.md 内容滞后(7/18 版), 现状以 Obsidian 为准
-6. GPU SSH 端口已变更为 **24090**(旧 22160/22183/22156 全失效)
+6. GPU SSH 端口已变更为 **24127**(2026-09-07; 旧 24090/24017/22160/22183/22156 全失效)
 7. **待研究队列(8/10 评审后启动, 用户 8/6 排期; 均为生产变更, 走铁律 1)**:
    ① 深度树陡峭边界+数据微差 敏感性实验(8/6 用户拍板挂起);
    ② **核心**: 路径感知标签族(MAE/MFE 回归为核心 — 用户 8/6 实测观察"方向对被止损"是主要损耗; 干净期实测: 止损单 35% 方向最终正确, MAE 中位 9% > 止损线 5%) — 任务卡 `Sync/rainbow/想法箱/路径标签实验-排期8-10后.md`
@@ -186,7 +187,7 @@ E=+8.8U/笔来自样本, 震荡期临时转负(8/28~9/3六连亏-701U)是方差�
 - **全链路体检**: `python3 scripts/system_health_check.py`(09:15 cron 自动跑, `--notify` 失败邮件; 日志 logs/health_check.log; 详见体检SKILL `.agents/skills/health-check/`)
 - **实盘状态**: `cd /home/myuser/websocket_new && python3 audit/residual_live.py status`(权益/在持/当日开仓/SL)
 - 手动触发训练: `cd /home/myuser/websocket_new && python3 auto_dual_trade.py`(会拿锁, 勿重复跑)
-- GPU 回测: `ssh -p 24090 linux@175.155.64.171` → `cd ~/websocket_new && env NOLAG_MODE=aligned VOLRAW_FEATS=1 FUND_FEATS=1 LONG_MOM_FILTER=0 SL_PCT=5 WINSOR_Q=0.001 python3 gpu_backtest_exp.py 180 1`
+- GPU 回测: `ssh -p 24127 linux@175.155.64.171` → `cd ~/websocket_new && env NOLAG_MODE=aligned VOLRAW_FEATS=1 FUND_FEATS=1 LONG_MOM_FILTER=0 SL_PCT=5 WINSOR_Q=0.001 python3 gpu_backtest_exp.py 180 1`
 - 生产=回测一致性重放校验: GPU 上 `python3 gpu_replay_prod.py`(见仓库, 对比当日 pred 存档)
 - 审计日志: `tail -20 /home/myuser/websocket_new/logs/audit.log`
-- 数据同步生产→GPU: `rsync -az --partial -e "sshpass -p '<密码>' ssh -p 24090" /home/myuser/backtester/data_cache/{notusdt_1d_full.json,oi_daily.json,funding_hist.json} linux@175.155.64.171:~/backtester/data_cache/` + 外部数据目录(见 DEPLOY.md §9)
+- 数据同步生产→GPU: `rsync -az --partial -e "sshpass -p '<密码>' ssh -p 24127" /home/myuser/backtester/data_cache/{notusdt_1d_full.json,oi_daily.json,funding_hist.json} linux@175.155.64.171:~/backtester/data_cache/` + 外部数据目录(见 DEPLOY.md §9)
