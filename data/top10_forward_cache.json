@@ -4030,5 +4030,131 @@
     "pnl": -5.0
    }
   ]
+ },
+ "2026-09-04": {
+  "long": [
+   {
+    "sym": "DUSKUSDT",
+    "prob": 89.0,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "GALAUSDT",
+    "prob": 88.6,
+    "state": "EXP48",
+    "pnl": 5.13
+   },
+   {
+    "sym": "4USDT",
+    "prob": 88.5,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "SANDUSDT",
+    "prob": 86.6,
+    "state": "EXP48",
+    "pnl": 0.65
+   },
+   {
+    "sym": "ENSUSDT",
+    "prob": 86.1,
+    "state": "EXP48",
+    "pnl": 1.94
+   },
+   {
+    "sym": "VIRTUALUSDT",
+    "prob": 85.6,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "AXSUSDT",
+    "prob": 84.6,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "ROSEUSDT",
+    "prob": 84.3,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "NEARUSDT",
+    "prob": 83.4,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "1000SHIBUSDT",
+    "prob": 82.8,
+    "state": "EXP48",
+    "pnl": 1.35
+   }
+  ],
+  "short": [
+   {
+    "sym": "CYSUSDT",
+    "prob": 89.7,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "PORTALUSDT",
+    "prob": 88.7,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "ONGUSDT",
+    "prob": 87.0,
+    "state": "EXP48",
+    "pnl": 5.14
+   },
+   {
+    "sym": "SKRUSDT",
+    "prob": 86.8,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "BULLAUSDT",
+    "prob": 86.6,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "USELESSUSDT",
+    "prob": 85.3,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "APRUSDT",
+    "prob": 83.1,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "HEMIUSDT",
+    "prob": 80.4,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "MUBARAKUSDT",
+    "prob": 80.0,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "SQDUSDT",
+    "prob": 78.7,
+    "state": "SL",
+    "pnl": -5.0
+   }
+  ]
  }
 }
