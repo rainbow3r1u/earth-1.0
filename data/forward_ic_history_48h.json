@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-06T08:50:02.820992",
+ "updated": "2026-09-07T08:50:02.450498",
  "days": [
   {
    "date": "2026-07-28",
@@ -702,6 +702,24 @@
    "top1_short": "CYSUSDT",
    "top1_short_ret": -10.35,
    "short5_avg_ret": 26.68
+  },
+  {
+   "date": "2026-09-05",
+   "dirty": false,
+   "n_sym": 510,
+   "n_liq": 510,
+   "ic_long": -0.1334,
+   "ic_short": -0.0711,
+   "auc_long": 0.4914,
+   "auc_short": 0.8697,
+   "ic_long_liq": -0.1334,
+   "ic_short_liq": -0.0711,
+   "top1_long": "ZROUSDT",
+   "top1_long_prob": 85.3,
+   "top1_long_ret": 6.45,
+   "top1_short": "USELESSUSDT",
+   "top1_short_ret": -18.59,
+   "short5_avg_ret": -4.31
   }
  ]
 }
