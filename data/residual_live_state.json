@@ -147,17 +147,6 @@
    "sl_price": 0.22509,
    "sl_algo_id": 2000001415341998,
    "tag": "260907"
-  },
-  "ENAUSDT": {
-   "symbol": "ENAUSDT",
-   "direction": "LONG",
-   "qty": 228.0,
-   "entry": 0.17548,
-   "open_time": 1788740607790,
-   "date": "2026-09-07",
-   "sl_price": 0.16670000000000001,
-   "sl_algo_id": 2000001415342095,
-   "tag": "260907"
   }
  },
  "history": [
@@ -817,6 +806,22 @@
    "exit_time": 1788759239916,
    "gross_pct": -5.09,
    "net_u": -2.0874
+  },
+  {
+   "symbol": "ENAUSDT",
+   "direction": "LONG",
+   "qty": 228.0,
+   "entry": 0.17548,
+   "open_time": 1788740607790,
+   "date": "2026-09-07",
+   "sl_price": 0.16670000000000001,
+   "sl_algo_id": 2000001415342095,
+   "tag": "260907",
+   "trigger": "止损",
+   "exit": 0.16667,
+   "exit_time": 1788766879221,
+   "gross_pct": -5.02,
+   "net_u": -2.0497
   }
  ],
  "days": {
