@@ -137,17 +137,6 @@
    "sl_algo_id": 2000001415341834,
    "tag": "260907"
   },
-  "TIAUSDT": {
-   "symbol": "TIAUSDT",
-   "direction": "LONG",
-   "qty": 85.0,
-   "entry": 0.4655,
-   "open_time": 1788740601071,
-   "date": "2026-09-07",
-   "sl_price": 0.44220000000000004,
-   "sl_algo_id": 2000001415341844,
-   "tag": "260907"
-  },
   "USUSDT": {
    "symbol": "USUSDT",
    "direction": "LONG",
@@ -797,6 +786,22 @@
    "exit_time": 1788740474537,
    "gross_pct": -0.68,
    "net_u": -0.5118
+  },
+  {
+   "symbol": "TIAUSDT",
+   "direction": "LONG",
+   "qty": 85.0,
+   "entry": 0.4655,
+   "open_time": 1788740601071,
+   "date": "2026-09-07",
+   "sl_price": 0.44220000000000004,
+   "sl_algo_id": 2000001415341844,
+   "tag": "260907",
+   "trigger": "止损",
+   "exit": 0.4422,
+   "exit_time": 1788742684932,
+   "gross_pct": -5.01,
+   "net_u": -2.0191
   }
  ],
  "days": {
