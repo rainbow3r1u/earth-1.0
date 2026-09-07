@@ -60,17 +60,6 @@
    "sl_algo_id": 2000001410239880,
    "tag": "260905"
   },
-  "CHIPUSDT": {
-   "symbol": "CHIPUSDT",
-   "direction": "LONG",
-   "qty": 676.0,
-   "entry": 0.05909,
-   "open_time": 1788654337831,
-   "date": "2026-09-06",
-   "sl_price": 0.056130000000000006,
-   "sl_algo_id": 2000001412792701,
-   "tag": "260906"
-  },
   "ZKCUSDT": {
    "symbol": "ZKCUSDT",
    "direction": "LONG",
@@ -812,6 +801,22 @@
    "exit_time": 1788751934723,
    "gross_pct": -5.01,
    "net_u": -2.0502
+  },
+  {
+   "symbol": "CHIPUSDT",
+   "direction": "LONG",
+   "qty": 676.0,
+   "entry": 0.05909,
+   "open_time": 1788654337831,
+   "date": "2026-09-06",
+   "sl_price": 0.056130000000000006,
+   "sl_algo_id": 2000001412792701,
+   "tag": "260906",
+   "trigger": "止损",
+   "exit": 0.05608,
+   "exit_time": 1788759239916,
+   "gross_pct": -5.09,
+   "net_u": -2.0874
   }
  ],
  "days": {
