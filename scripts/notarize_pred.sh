@@ -49,13 +49,14 @@ fi
 
 # 3) rebase 到远程最新; 内容冲突 -X theirs 一律取本地(最新真值)
 #    2026-09-08 补丁: add/add冲突(同名新文件两边都有, 如同步脚本已上传的.sh镜像)
-#    -X theirs 解不了 → 手动 git checkout --ours 取本地后 --continue, 重试一次
+#    -X theirs 解不了 → 手动 git checkout --theirs 取本地后 --continue, 重试一次
+#    (注意rebase语境: ours=远程基线, theirs=被重放的本地快照 — 与merge相反)
 if ! git rebase -X theirs "$REMOTE/$BRANCH" >> "$LOG" 2>&1; then
   # 收集冲突文件(add/add或UU), 一律取本地版
   CONFLICTS=$(git status --porcelain | grep -E '^(UU|AA|DD)' | awk '{print $2}')
   if [ -n "$CONFLICTS" ]; then
     echo "$(date +%F-%T) 检测到add/add级冲突, 取本地版重试: $CONFLICTS" >> "$LOG"
-    echo "$CONFLICTS" | xargs -I{} git checkout --ours {} >> "$LOG" 2>&1 || true
+    echo "$CONFLICTS" | xargs -I{} git checkout --theirs {} >> "$LOG" 2>&1 || true
     echo "$CONFLICTS" | xargs -I{} git add {} >> "$LOG" 2>&1 || true
     if GIT_EDITOR=true git rebase --continue >> "$LOG" 2>&1; then
       echo "$(date +%F-%T) 冲突自动解决, rebase 重试成功" >> "$LOG"
