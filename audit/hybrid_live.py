@@ -5,8 +5,8 @@ HYBRID 混合结构实盘执行器 (3.8板块结构, 2026-09-08 部署, 第二�
 =================================================================
 结构 (完全对齐 3.8 影子臂 hybrid_tracker 口径, 唯一差异=真金白银):
   LONG : TOP10 全开 · 无止盈 · SL-8% · 72h到期 · 市价开平
-  SHORT: TOP5 全开 · TP+10% · SL-5% · 72h到期 · 市价开平
-  资金 : 固定名义125U/笔 · 5x逐仓 · LONG≤10+SHORT≤5 · 72h · 最坏日全灭≈133U(9.2%权益) · 85%守卫(容量≈49笔)
+  SHORT: 已关闭(2026-09-08晚用户拍板; 代码保留, 影子S5继续跟踪, 证伪线见MAX_DAILY_SHORT注释)
+  资金 : 固定名义125U/笔 · 5x逐仓 · LONG≤10 · 72h · 最坏日全灭≈101U(7%权益) · 85%守卫(容量≈49笔)
 
 与影子臂的已知偏差:
   ① 实盘08:21~08:27市价入场 vs 影子00:21 UTC开盘价入场 (滑点差)
@@ -34,7 +34,7 @@ PRED_FIELD_SHORT = 'top10_short'
 NOTIONAL = 125.0      # 单笔名义U (2026-09-08晚用户拍板提额: 10单LONG止损≈101U=承受线; 双臂统一; 85%守卫容量≈19笔, 依据果并发账本峰值23笔)
 LEVERAGE = 5          # 逐仓杠杆 (2026-09-08晚二次拍板: SL8拉长持仓+双臂→并发峰值~35笔, 2x容量19笔不够; 镜像果5x+SL8已验证包络(51笔零强平), 爆仓距离≈-19%)
 MAX_DAILY_LONG = 10    # LONG每日上限(TOP10全开)
-MAX_DAILY_SHORT = 5    # SHORT每日上限(TOP5; 影子36天TOP5+177U vs 6-10名-380U)
+MAX_DAILY_SHORT = 0    # SHORT侧已关闭(2026-09-08晚用户拍板: 直觉+数据双确认)。依据: S5影子36天与LONG日相关+0.07无对冲价值/后半段E归零(前18天+3.9U→后19天+0.2U, 125U口径)/加SHORT使最差日-66→-88U回撤205→243U。证伪线(重开条件): S5滚动20天日均E>+2U(125U口径)持续, 或出现corr转负的崩盘regime; 10/23终审复核。TP/SL常量保留备重开。
 SL_PCT_LONG = 0.08    # LONG止损 8% (2026-09-08用户拍板对齐果账户; 依据9/7 TOP10模拟器1585笔网格: 胜率69→75%/右尾截杀96→56笔)
 SL_PCT_SHORT = 0.05   # SHORT止损 5% (保持3.8原版; TP10封顶卖右尾结构, 放宽到8%将使盈亏平衡TP率37%→45%, 高于影子36天实测命中36%)
 TP_PCT_SHORT = 0.10   # SHORT止盈 +10% (3.8口径)
@@ -444,7 +444,7 @@ def reconcile(st, close_expired=True):
         time.sleep(0.15)
 
 
-def wait_pred(today_str, timeout_s=900):
+def wait_pred(today_str, timeout_s=1800):
     pf = os.path.join(DATA_DIR, f'pred_{today_str}.json')
     t0 = time.time()
     while time.time() - t0 < timeout_s:
@@ -460,7 +460,7 @@ def wait_pred(today_str, timeout_s=900):
 
 def mode_trade(st, force=False):
     today_str = datetime.now(CST).date().isoformat()
-    # 1. 先对账+平到期 (08:27 cron, 3.8到期名义时点08:21已过)
+    # 1. 先对账+平到期 (08:23 cron, 3.8到期名义时点08:21已过)
     log('== 对账/到期平仓 ==')
     reconcile(st, close_expired=True)
     # 2. 时间窗守卫
@@ -534,8 +534,8 @@ def mode_trade(st, force=False):
 
 def mode_status(st):
     print(f'== HYBRID 3.8实盘执行器状态 (第二账户) ==')
-    print(f'配置: 名义{NOTIONAL}U/笔 {LEVERAGE}x逐仓 SL: LONG-{SL_PCT_LONG*100:.0f}%/SHORT-{SL_PCT_SHORT*100:.0f}% '
-          f'SHORT_TP+{TP_PCT_SHORT*100:.0f}% {HOLD_DAYS*24}h')
+    print(f'配置: 名义{NOTIONAL}U/笔 {LEVERAGE}x逐仓 SL: LONG-{SL_PCT_LONG*100:.0f}% '
+          f'(SHORT侧已关: SL-{SL_PCT_SHORT*100:.0f}%/TP+{TP_PCT_SHORT*100:.0f}%参数保留) {HOLD_DAYS*24}h')
     acct = signed('GET', '/fapi/v2/account')
     if isinstance(acct, dict):
         print(f'账户: 可用 {acct.get("availableBalance")}U | 总权益 {acct.get("totalMarginBalance")}U')
