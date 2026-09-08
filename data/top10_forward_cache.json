@@ -4156,5 +4156,257 @@
     "pnl": -5.0
    }
   ]
+ },
+ "2026-09-05": {
+  "long": [
+   {
+    "sym": "ZROUSDT",
+    "prob": 85.3,
+    "state": "EXP48",
+    "pnl": 5.67
+   },
+   {
+    "sym": "BIOUSDT",
+    "prob": 83.8,
+    "state": "EXP48",
+    "pnl": 2.51
+   },
+   {
+    "sym": "VELVETUSDT",
+    "prob": 78.5,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "GPSUSDT",
+    "prob": 78.1,
+    "state": "EXP48",
+    "pnl": 5.89
+   },
+   {
+    "sym": "STARUSDT",
+    "prob": 78.0,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "ONUSDT",
+    "prob": 77.8,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "PRLUSDT",
+    "prob": 77.6,
+    "state": "EXP48",
+    "pnl": 4.24
+   },
+   {
+    "sym": "QUSDT",
+    "prob": 77.6,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "CROSSUSDT",
+    "prob": 75.6,
+    "state": "EXP48",
+    "pnl": -1.06
+   },
+   {
+    "sym": "ARCUSDT",
+    "prob": 74.9,
+    "state": "EXP48",
+    "pnl": -3.7
+   }
+  ],
+  "short": [
+   {
+    "sym": "USELESSUSDT",
+    "prob": 87.8,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "ONGUSDT",
+    "prob": 84.0,
+    "state": "EXP48",
+    "pnl": 3.31
+   },
+   {
+    "sym": "UAIUSDT",
+    "prob": 83.8,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "BRUSDT",
+    "prob": 83.2,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "PORTALUSDT",
+    "prob": 83.1,
+    "state": "EXP48",
+    "pnl": -2.82
+   },
+   {
+    "sym": "BICOUSDT",
+    "prob": 81.6,
+    "state": "EXP48",
+    "pnl": 3.84
+   },
+   {
+    "sym": "SKRUSDT",
+    "prob": 78.6,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "龙虾USDT",
+    "prob": 78.1,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "4USDT",
+    "prob": 75.3,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "ZENUSDT",
+    "prob": 74.4,
+    "state": "SL",
+    "pnl": -5.0
+   }
+  ]
+ },
+ "2026-09-06": {
+  "long": [
+   {
+    "sym": "QUSDT",
+    "prob": 80.9,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "BTRUSDT",
+    "prob": 80.0,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "ZKCUSDT",
+    "prob": 77.5,
+    "state": "EXP48",
+    "pnl": -1.51
+   },
+   {
+    "sym": "CROSSUSDT",
+    "prob": 76.4,
+    "state": "EXP48",
+    "pnl": -0.81
+   },
+   {
+    "sym": "TURBOUSDT",
+    "prob": 73.0,
+    "state": "EXP48",
+    "pnl": -0.61
+   },
+   {
+    "sym": "ARBUSDT",
+    "prob": 72.8,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "UAIUSDT",
+    "prob": 72.7,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "CHIPUSDT",
+    "prob": 72.7,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "USUSDT",
+    "prob": 67.7,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "BTWUSDT",
+    "prob": 63.8,
+    "state": "SL",
+    "pnl": -5.0
+   }
+  ],
+  "short": [
+   {
+    "sym": "BULLAUSDT",
+    "prob": 90.5,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "AKEUSDT",
+    "prob": 89.4,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "USELESSUSDT",
+    "prob": 88.6,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "4USDT",
+    "prob": 87.4,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "SKRUSDT",
+    "prob": 84.7,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "JCTUSDT",
+    "prob": 84.0,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "龙虾USDT",
+    "prob": 83.6,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "PUMPUSDT",
+    "prob": 82.5,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "ZORAUSDT",
+    "prob": 81.1,
+    "state": "EXP48",
+    "pnl": 2.64
+   },
+   {
+    "sym": "MAGMAUSDT",
+    "prob": 79.4,
+    "state": "TP",
+    "pnl": 10.0
+   }
+  ]
  }
 }
