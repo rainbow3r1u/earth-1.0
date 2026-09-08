@@ -48,14 +48,35 @@ if ! git diff --cached --quiet; then
 fi
 
 # 3) rebase 到远程最新; 内容冲突 -X theirs 一律取本地(最新真值)
+#    2026-09-08 补丁: add/add冲突(同名新文件两边都有, 如同步脚本已上传的.sh镜像)
+#    -X theirs 解不了 → 手动 git checkout --ours 取本地后 --continue, 重试一次
 if ! git rebase -X theirs "$REMOTE/$BRANCH" >> "$LOG" 2>&1; then
-  git rebase --abort >> "$LOG" 2>&1 || true
-  if [ "$SNAP" -eq 1 ]; then
-    git reset --mixed HEAD~1 >> "$LOG" 2>&1
+  # 收集冲突文件(add/add或UU), 一律取本地版
+  CONFLICTS=$(git status --porcelain | grep -E '^(UU|AA|DD)' | awk '{print $2}')
+  if [ -n "$CONFLICTS" ]; then
+    echo "$(date +%F-%T) 检测到add/add级冲突, 取本地版重试: $CONFLICTS" >> "$LOG"
+    echo "$CONFLICTS" | xargs -I{} git checkout --ours {} >> "$LOG" 2>&1 || true
+    echo "$CONFLICTS" | xargs -I{} git add {} >> "$LOG" 2>&1 || true
+    if GIT_EDITOR=true git rebase --continue >> "$LOG" 2>&1; then
+      echo "$(date +%F-%T) 冲突自动解决, rebase 重试成功" >> "$LOG"
+    else
+      git rebase --abort >> "$LOG" 2>&1 || true
+      if [ "$SNAP" -eq 1 ]; then
+        git reset --mixed HEAD~1 >> "$LOG" 2>&1
+      fi
+      echo "$(date +%F-%T) ERROR: rebase 二次失败(已完整回滚), 放弃推送" >> "$LOG"
+      alert "notarize rebase 二次失败已回滚, 今日公证未完成, 请检查 logs/notarize.log"
+      exit 1
+    fi
+  else
+    git rebase --abort >> "$LOG" 2>&1 || true
+    if [ "$SNAP" -eq 1 ]; then
+      git reset --mixed HEAD~1 >> "$LOG" 2>&1
+    fi
+    echo "$(date +%F-%T) ERROR: rebase 失败(已完整回滚, 工作区无残留), 放弃推送" >> "$LOG"
+    alert "notarize rebase 失败已回滚, 今日公证未完成, 请检查 logs/notarize.log"
+    exit 1
   fi
-  echo "$(date +%F-%T) ERROR: rebase 失败(已完整回滚, 工作区无残留), 放弃推送" >> "$LOG"
-  alert "notarize rebase 失败已回滚, 今日公证未完成, 请检查 logs/notarize.log"
-  exit 1
 fi
 
 # 4) 解包: 快照提交还原为未提交改动(工作区文件内容不变)
