@@ -32,6 +32,7 @@ DATA_WHITELIST_PREFIX = (
     'data/hybrid_tracker',                  # 混合结构主臂影子结算
     'data/residual_tracker',                # RESIDUAL影子臂结算
     'data/residual_live_state',             # RESIDUAL实盘执行器持仓/历史
+    'data/hybrid_live_state',              # HYBRID 3.8实盘执行器(第二账户2026-09-08)
     'data/forward_ic_history',              # 前向IC/AUC史 (四灯数据源)
     'data/forward_tracker',                 # TOP1前向结算
 )
