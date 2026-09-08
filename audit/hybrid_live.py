@@ -4,9 +4,9 @@
 HYBRID 混合结构实盘执行器 (3.8板块结构, 2026-09-08 部署, 第二账户)
 =================================================================
 结构 (完全对齐 3.8 影子臂 hybrid_tracker 口径, 唯一差异=真金白银):
-  LONG : TOP10 全开 · 无止盈 · SL-5% · 48h到期 · 市价开平
-  SHORT: TOP10 全开 · TP+10% · SL-5% · 48h到期 · 市价开平
-  资金 : 固定名义45U/笔 · 2x逐仓 · LONG≤10+SHORT≤5 · 72h · 全灭≤100U · 85%守卫
+  LONG : TOP10 全开 · 无止盈 · SL-8% · 72h到期 · 市价开平
+  SHORT: TOP5 全开 · TP+10% · SL-5% · 72h到期 · 市价开平
+  资金 : 固定名义125U/笔 · 5x逐仓 · LONG≤10+SHORT≤5 · 72h · 最坏日全灭≈133U(9.2%权益) · 85%守卫(容量≈49笔)
 
 与影子臂的已知偏差:
   ① 实盘08:21~08:27市价入场 vs 影子00:21 UTC开盘价入场 (滑点差)
@@ -31,11 +31,12 @@ PRED_FIELD_LONG = 'top10_long'
 PRED_FIELD_SHORT = 'top10_short'
 
 # ==== 资金参数 (2026-09-08 用户部署: 10000CNY≈1400U, 3.8结构降档版) ====
-NOTIONAL = 45.0       # 单笔名义U (2026-09-08用户拍板: 15笔全开+全灭≤100U反算)
-LEVERAGE = 2          # 逐仓杠杆 (2026-09-08 用户指定; 影子无杠杆概念)
+NOTIONAL = 125.0      # 单笔名义U (2026-09-08晚用户拍板提额: 10单LONG止损≈101U=承受线; 双臂统一; 85%守卫容量≈19笔, 依据果并发账本峰值23笔)
+LEVERAGE = 5          # 逐仓杠杆 (2026-09-08晚二次拍板: SL8拉长持仓+双臂→并发峰值~35笔, 2x容量19笔不够; 镜像果5x+SL8已验证包络(51笔零强平), 爆仓距离≈-19%)
 MAX_DAILY_LONG = 10    # LONG每日上限(TOP10全开)
 MAX_DAILY_SHORT = 5    # SHORT每日上限(TOP5; 影子36天TOP5+177U vs 6-10名-380U)
-SL_PCT = 0.05         # 止损 5% (3.8原版口径)
+SL_PCT_LONG = 0.08    # LONG止损 8% (2026-09-08用户拍板对齐果账户; 依据9/7 TOP10模拟器1585笔网格: 胜率69→75%/右尾截杀96→56笔)
+SL_PCT_SHORT = 0.05   # SHORT止损 5% (保持3.8原版; TP10封顶卖右尾结构, 放宽到8%将使盈亏平衡TP率37%→45%, 高于影子36天实测命中36%)
 TP_PCT_SHORT = 0.10   # SHORT止盈 +10% (3.8口径)
 HOLD_DAYS = 3         # 72h到期 (2026-09-08用户拍板; 右尾敞口放大器, 预研+111%)
 BALANCE_BUF_RATIO = 0.85
@@ -101,7 +102,8 @@ def load_state():
         return json.load(open(STATE_FILE))
     except Exception:
         return {'config': {'notional': NOTIONAL, 'leverage': LEVERAGE,
-                           'sl_pct': SL_PCT, 'tp_short': TP_PCT_SHORT, 'hold_days': HOLD_DAYS},
+                           'sl_pct_long': SL_PCT_LONG, 'sl_pct_short': SL_PCT_SHORT,
+                           'tp_short': TP_PCT_SHORT, 'hold_days': HOLD_DAYS},
                 'open': {}, 'history': [], 'days': {}}
 
 
@@ -227,7 +229,7 @@ def entry_tag(d=None):
 
 
 def open_one(sym, direction):
-    """开一笔: 2x逐仓 市价150U + 挂条件单(LONG:SL / SHORT:SL+TP)"""
+    """开一笔: 逐仓市价开仓 + 挂条件单(LONG:SL / SHORT:SL+TP)"""
     exinfo = load_exinfo()
     fl = get_filters(sym, exinfo)
     if fl is None:
@@ -274,13 +276,13 @@ def open_one(sym, direction):
     # 条件单 (CONTRACT_PRICE口径, 与影子结算一致)
     close_side = 'SELL' if direction == 'LONG' else 'BUY'
     if direction == 'LONG':
-        sl_price = floor_step(entry * (1 - SL_PCT), fl['tick'])
+        sl_price = floor_step(entry * (1 - SL_PCT_LONG), fl['tick'])
         sl_id, so = place_cond_algo(sym, close_side, 'STOP_MARKET', sl_price, fl['tick'])
         if sl_id is None:
             log(f'  ⚠️ {sym} SL挂单失败: {str(so)[:120]} (reconcile会重挂)')
         tp_price, tp_id = None, None
     else:
-        sl_price = floor_step(entry * (1 + SL_PCT), fl['tick'])
+        sl_price = floor_step(entry * (1 + SL_PCT_SHORT), fl['tick'])
         tp_price = floor_step(entry * (1 - TP_PCT_SHORT), fl['tick'])
         sl_id, so = place_cond_algo(sym, close_side, 'STOP_MARKET', sl_price, fl['tick'])
         tp_id, to = place_cond_algo(sym, close_side, 'TAKE_PROFIT_MARKET', tp_price, fl['tick'])
@@ -419,7 +421,7 @@ def reconcile(st, close_expired=True):
         fl = get_filters(sym, load_exinfo())
         if fl:
             if pos.get('sl_algo_id') not in ids:
-                sl_price = floor_step(pos['entry'] * (1 - SL_PCT if pos['direction'] == 'LONG' else 1 + SL_PCT), fl['tick'])
+                sl_price = floor_step(pos['entry'] * (1 - SL_PCT_LONG if pos['direction'] == 'LONG' else 1 + SL_PCT_SHORT), fl['tick'])
                 close_side = 'SELL' if pos['direction'] == 'LONG' else 'BUY'
                 new_id, so = place_cond_algo(sym, close_side, 'STOP_MARKET', sl_price, fl['tick'])
                 if new_id:
@@ -532,7 +534,7 @@ def mode_trade(st, force=False):
 
 def mode_status(st):
     print(f'== HYBRID 3.8实盘执行器状态 (第二账户) ==')
-    print(f'配置: 名义{NOTIONAL}U/笔 {LEVERAGE}x逐仓 SL-{SL_PCT*100:.0f}% '
+    print(f'配置: 名义{NOTIONAL}U/笔 {LEVERAGE}x逐仓 SL: LONG-{SL_PCT_LONG*100:.0f}%/SHORT-{SL_PCT_SHORT*100:.0f}% '
           f'SHORT_TP+{TP_PCT_SHORT*100:.0f}% {HOLD_DAYS*24}h')
     acct = signed('GET', '/fapi/v2/account')
     if isinstance(acct, dict):
