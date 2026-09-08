@@ -1,0 +1,49 @@
+{
+ "config": {
+  "notional": 150.0,
+  "leverage": 2,
+  "sl_pct": 0.05,
+  "tp_short": 0.1,
+  "hold_days": 2
+ },
+ "open": {},
+ "history": [
+  {
+   "symbol": "BTCUSDT",
+   "direction": "LONG",
+   "qty": 0.001,
+   "entry": 78441.6,
+   "open_time": 1788859022546,
+   "date": "2026-09-08",
+   "sl_price": 74519.5,
+   "sl_algo_id": 2000001418919253,
+   "tp_price": null,
+   "tp_algo_id": null,
+   "tag": "260908",
+   "trigger": "到期",
+   "exit": 78437.1,
+   "exit_time": 1788859024548,
+   "gross_pct": -0.01,
+   "net_u": -0.0829
+  },
+  {
+   "symbol": "BTCUSDT",
+   "direction": "SHORT",
+   "qty": 0.001,
+   "entry": 78447.3,
+   "open_time": 1788859027783,
+   "date": "2026-09-08",
+   "sl_price": 82369.6,
+   "sl_algo_id": 2000001418919360,
+   "tp_price": 70602.5,
+   "tp_algo_id": 2000001418919362,
+   "tag": "260908",
+   "trigger": "到期",
+   "exit": 78444.4,
+   "exit_time": 1788859029785,
+   "gross_pct": 0.0,
+   "net_u": -0.0755
+  }
+ ],
+ "days": {}
+}
