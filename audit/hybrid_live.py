@@ -6,7 +6,7 @@ HYBRID 混合结构实盘执行器 (3.8板块结构, 2026-09-08 部署, 第二�
 结构 (完全对齐 3.8 影子臂 hybrid_tracker 口径, 唯一差异=真金白银):
   LONG : TOP10 全开 · 无止盈 · SL-5% · 48h到期 · 市价开平
   SHORT: TOP10 全开 · TP+10% · SL-5% · 48h到期 · 市价开平
-  资金 : 固定名义150U/笔 · 2x逐仓 · 每日≤10+10笔 · 85%权益守卫
+  资金 : 固定名义45U/笔 · 2x逐仓 · LONG≤10+SHORT≤5 · 72h · 全灭≤100U · 85%守卫
 
 与影子臂的已知偏差:
   ① 实盘08:21~08:27市价入场 vs 影子00:21 UTC开盘价入场 (滑点差)
@@ -31,12 +31,13 @@ PRED_FIELD_LONG = 'top10_long'
 PRED_FIELD_SHORT = 'top10_short'
 
 # ==== 资金参数 (2026-09-08 用户部署: 10000CNY≈1400U, 3.8结构降档版) ====
-NOTIONAL = 150.0      # 单笔名义U (3.8影子=300U, 本账户资本折半→名义折半)
+NOTIONAL = 45.0       # 单笔名义U (2026-09-08用户拍板: 15笔全开+全灭≤100U反算)
 LEVERAGE = 2          # 逐仓杠杆 (2026-09-08 用户指定; 影子无杠杆概念)
-MAX_DAILY_PER_SIDE = 10   # 每方向每日上限
-SL_PCT = 0.05         # 止损 5% (3.8口径; 注: 9/7网格显示LONG侧8%更优, 用户拍板保持3.8原版)
+MAX_DAILY_LONG = 10    # LONG每日上限(TOP10全开)
+MAX_DAILY_SHORT = 5    # SHORT每日上限(TOP5; 影子36天TOP5+177U vs 6-10名-380U)
+SL_PCT = 0.05         # 止损 5% (3.8原版口径)
 TP_PCT_SHORT = 0.10   # SHORT止盈 +10% (3.8口径)
-HOLD_DAYS = 2         # 48h到期 (3.8口径; 残差臂是72h勿混淆)
+HOLD_DAYS = 3         # 72h到期 (2026-09-08用户拍板; 右尾敞口放大器, 预研+111%)
 BALANCE_BUF_RATIO = 0.85
 BALANCE_MIN_ABORT = 30.0
 
@@ -477,8 +478,8 @@ def mode_trade(st, force=False):
         st['days'][today_str] = {'opened_long': None, 'opened_short': None, 'note': '无pred'}
         save_state(st)
         return
-    longs = pred.get(PRED_FIELD_LONG, [])[:MAX_DAILY_PER_SIDE]
-    shorts = pred.get(PRED_FIELD_SHORT, [])[:MAX_DAILY_PER_SIDE]
+    longs = pred.get(PRED_FIELD_LONG, [])[:MAX_DAILY_LONG]
+    shorts = pred.get(PRED_FIELD_SHORT, [])[:MAX_DAILY_SHORT]
     # 4. 余额守卫 (2x/150U: 峰值日会节流, 结构性非bug)
     acct = signed('GET', '/fapi/v2/account')
     avail = float(acct.get('availableBalance', 0) or 0) if isinstance(acct, dict) else 0.0
