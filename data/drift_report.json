@@ -1,21 +1,21 @@
 {
- "date": "2026-09-03",
- "status": "OK",
+ "date": "2026-09-08",
+ "status": "ALERT",
  "file_check": [
   {
    "file": "btc_chain.csv",
    "status": "OK",
-   "detail": "追加 1413 行 (163193→164606)"
+   "detail": "追加 1413 行 (170256→171669)"
   },
   {
    "file": "btc_dominance.json",
    "status": "OK",
-   "detail": "追加 1 行 (472→473)"
+   "detail": "追加 1 行 (477→478)"
   },
   {
    "file": "btc_mcap.json",
    "status": "OK",
-   "detail": "追加 1 行 (475→476)"
+   "detail": "追加 1 行 (480→481)"
   },
   {
    "file": "protocol_map.json",
@@ -25,37 +25,37 @@
   {
    "file": "btc_chain_tvl.json",
    "status": "OK",
-   "detail": "追加 1 行 (1992→1993)"
+   "detail": "追加 1 行 (1997→1998)"
   },
   {
    "file": "hashrate_history.json",
    "status": "OK",
-   "detail": "追加 1 行 (1747→1748)"
+   "detail": "追加 1 行 (1752→1753)"
   },
   {
    "file": "btc_coinbase_premium_gap.json",
    "status": "OK",
-   "detail": "追加 1 行 (1368→1369)"
+   "detail": "追加 1 行 (1373→1374)"
   },
   {
    "file": "btc_coinbase_premium_index.json",
    "status": "OK",
-   "detail": "追加 1 行 (1368→1369)"
+   "detail": "追加 1 行 (1373→1374)"
   },
   {
    "file": "btc_korea_premium_index.json",
    "status": "OK",
-   "detail": "追加 1 行 (1368→1369)"
+   "detail": "追加 1 行 (1373→1374)"
   },
   {
    "file": "stablecoin_exchange_netflow.json",
    "status": "OK",
-   "detail": "追加 1 行 (1369→1370)"
+   "detail": "追加 1 行 (1374→1375)"
   },
   {
    "file": "fear_greed_history.json",
    "status": "OK",
-   "detail": "追加 1 行 (469→470)"
+   "detail": "追加 1 行 (474→475)"
   },
   {
    "file": "macro_assets.json",
@@ -64,19 +64,24 @@
   },
   {
    "file": "etf_flow.json",
-   "status": "OK",
-   "detail": "追加 2 行 (61→63)"
+   "status": "ALERT",
+   "detail": "行数不变但MD5变 = 历史行被修订!"
   },
   {
    "file": "liq_daily.json",
    "status": "OK",
-   "detail": "追加 1 行 (86→87)"
+   "detail": "追加 1 行 (91→92)"
   }
  ],
  "replay": {
-  "status": "OK",
+  "status": "ALERT",
   "checked": 3,
-  "detail": "3探针一致(样本日 2026-09-03)"
+  "issues": [
+   "BTCUSDT: 列0漂移 存档=-0.5930 手算=-0.5316 Δ=0.0614 (>0.05, K线疑被修订)"
+  ]
  },
- "alerts": []
+ "alerts": [
+  "etf_flow.json: 历史修订(行数65不变)",
+  "BTCUSDT: 列0漂移 存档=-0.5930 手算=-0.5316 Δ=0.0614 (>0.05, K线疑被修订)"
+ ]
 }
