@@ -16,17 +16,6 @@
    "sl_algo_id": 2000001412792743,
    "tag": "260906"
   },
-  "ORCAUSDT": {
-   "symbol": "ORCAUSDT",
-   "direction": "LONG",
-   "qty": 26.3,
-   "entry": 1.522,
-   "open_time": 1788740599870,
-   "date": "2026-09-07",
-   "sl_price": 1.445,
-   "sl_algo_id": 2000001415341834,
-   "tag": "260907"
-  },
   "PROMUSDT": {
    "symbol": "PROMUSDT",
    "direction": "LONG",
@@ -961,6 +950,22 @@
    "exit_time": 1788826869299,
    "gross_pct": 1.03,
    "net_u": 0.3364
+  },
+  {
+   "symbol": "ORCAUSDT",
+   "direction": "LONG",
+   "qty": 26.3,
+   "entry": 1.522,
+   "open_time": 1788740599870,
+   "date": "2026-09-07",
+   "sl_price": 1.445,
+   "sl_algo_id": 2000001415341834,
+   "tag": "260907",
+   "trigger": "止损",
+   "exit": 1.45,
+   "exit_time": 1788836693463,
+   "gross_pct": -4.73,
+   "net_u": -1.1627
   }
  ],
  "days": {
