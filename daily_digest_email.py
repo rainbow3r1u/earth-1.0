@@ -770,6 +770,32 @@ def section_residual_survival():
         return f'<p style="color:#c00">(批次生存表生成失败: {e})</p>'
 
 
+def section_mi_equity():
+    """3.9e 米实盘权益 (2026-09-09 用户需求): 第二账户(纯LONG臂, 125U/5x/SL-8%/72h)总权益,
+    晨报直读。数据: HYBRID_BINANCE 凭证 /fapi/v2/account → totalMarginBalance(钱包+浮盈) + state账本。"""
+    try:
+        sys.path.insert(0, os.path.join(BASE, 'audit'))
+        import hybrid_live as hl
+        acct = hl.signed('GET', '/fapi/v2/account')
+        if not isinstance(acct, dict) or 'totalMarginBalance' not in acct:
+            return f"<div style='font-size:11px;color:#c00;'>(米权益获取失败: {str(acct)[:80]})</div>"
+        eq = float(acct['totalMarginBalance'])
+        avail = float(acct.get('availableBalance', 0))
+        st = json.load(open('/home/myuser/websocket_new/data/hybrid_live_state.json'))
+        n_open = len(st.get('open', {}))
+        realized = sum(h.get('net_u', 0) for h in st.get('history', []))
+        principal = 1448.22  # 本金1万CNY入金折算
+        pct = (eq / principal - 1) * 100
+        c = '#0a0' if pct >= 0 else '#c00'
+        return (f"<div style='font-size:13px;'><b>米总权益: <span style='color:{c};'>{eq:.2f}U</span></b>"
+                f" <span style='font-size:11px;color:#555;'>(本金1万CNY≈1448.22U, "
+                f"<span style='color:{c};'>{pct:+.2f}%</span>)"
+                f" | 可用 {avail:.2f}U | 在持 {n_open} 笔 | 累计已实现 {realized:+.2f}U"
+                f" <span style='color:#888;'>(含链路测试-0.16U)</span></span></div>")
+    except Exception as e:
+        return f'<div style="font-size:11px;color:#c00;">(米权益生成失败: {e})</div>'
+
+
 def section_short_top5():
     """3.9d SHORT TOP5 试盘时机 (2026-09-07 用户需求):
     每日SHORT prob前5的滚动胜率 vs 盈亏平衡线33.3%, 只输出一个结论:
@@ -1210,6 +1236,8 @@ def main():
 {section_residual_picks()}
 <b>3.9c 残差实盘批次生存表</b> <span style='{tag_style}background:#fff3e0;color:#e65100;'>每批开仓N笔 → 存活/止损/到期 · 存活率 · 批内净U</span>
 {section_residual_survival()}
+<b>3.9e 米实盘权益 (第二账户·纯LONG臂)</b> <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>125U/5x/SL-8%/72h · 08:23开仓 · SHORT已关</span>
+{section_mi_equity()}
 <b>3.9d SHORT TOP5 试盘时机</b> <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>滚动胜率 vs 盈亏线33.3% · 只输出一个结论: 适不适合小资金试盘</span>
 {section_short_top5()}
 <b>4. 强势股续涨 + 每日资金榜</b> {tag_none}
