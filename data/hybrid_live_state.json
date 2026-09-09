@@ -20,19 +20,6 @@
    "tp_algo_id": null,
    "tag": "260909"
   },
-  "STARUSDT": {
-   "symbol": "STARUSDT",
-   "direction": "LONG",
-   "qty": 1538.0,
-   "entry": 0.081279,
-   "open_time": 1788913543512,
-   "date": "2026-09-09",
-   "sl_price": 0.07477,
-   "sl_algo_id": 2000001420698117,
-   "tp_price": null,
-   "tp_algo_id": null,
-   "tag": "260909"
-  },
   "ZESTUSDT": {
    "symbol": "ZESTUSDT",
    "direction": "LONG",
@@ -174,6 +161,24 @@
    "exit_time": 1788859029785,
    "gross_pct": 0.0,
    "net_u": -0.0755
+  },
+  {
+   "symbol": "STARUSDT",
+   "direction": "LONG",
+   "qty": 1538.0,
+   "entry": 0.081279,
+   "open_time": 1788913543512,
+   "date": "2026-09-09",
+   "sl_price": 0.07477,
+   "sl_algo_id": 2000001420698117,
+   "tp_price": null,
+   "tp_algo_id": null,
+   "tag": "260909",
+   "trigger": "止损",
+   "exit": 0.07474,
+   "exit_time": 1788923968216,
+   "gross_pct": -8.05,
+   "net_u": -10.177
   }
  ],
  "days": {

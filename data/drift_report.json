@@ -1,21 +1,21 @@
 {
- "date": "2026-09-08",
+ "date": "2026-09-09",
  "status": "ALERT",
  "file_check": [
   {
    "file": "btc_chain.csv",
    "status": "OK",
-   "detail": "追加 1413 行 (170256→171669)"
+   "detail": "追加 1413 行 (171669→173082)"
   },
   {
    "file": "btc_dominance.json",
    "status": "OK",
-   "detail": "追加 1 行 (477→478)"
+   "detail": "追加 1 行 (478→479)"
   },
   {
    "file": "btc_mcap.json",
    "status": "OK",
-   "detail": "追加 1 行 (480→481)"
+   "detail": "追加 1 行 (481→482)"
   },
   {
    "file": "protocol_map.json",
@@ -25,37 +25,37 @@
   {
    "file": "btc_chain_tvl.json",
    "status": "OK",
-   "detail": "追加 1 行 (1997→1998)"
+   "detail": "追加 1 行 (1998→1999)"
   },
   {
    "file": "hashrate_history.json",
    "status": "OK",
-   "detail": "追加 1 行 (1752→1753)"
+   "detail": "追加 1 行 (1753→1754)"
   },
   {
    "file": "btc_coinbase_premium_gap.json",
    "status": "OK",
-   "detail": "追加 1 行 (1373→1374)"
+   "detail": "追加 1 行 (1374→1375)"
   },
   {
    "file": "btc_coinbase_premium_index.json",
    "status": "OK",
-   "detail": "追加 1 行 (1373→1374)"
+   "detail": "追加 1 行 (1374→1375)"
   },
   {
    "file": "btc_korea_premium_index.json",
    "status": "OK",
-   "detail": "追加 1 行 (1373→1374)"
+   "detail": "追加 1 行 (1374→1375)"
   },
   {
    "file": "stablecoin_exchange_netflow.json",
    "status": "OK",
-   "detail": "追加 1 行 (1374→1375)"
+   "detail": "追加 1 行 (1375→1376)"
   },
   {
    "file": "fear_greed_history.json",
    "status": "OK",
-   "detail": "追加 1 行 (474→475)"
+   "detail": "追加 1 行 (475→476)"
   },
   {
    "file": "macro_assets.json",
@@ -70,18 +70,15 @@
   {
    "file": "liq_daily.json",
    "status": "OK",
-   "detail": "追加 1 行 (91→92)"
+   "detail": "追加 1 行 (92→93)"
   }
  ],
  "replay": {
-  "status": "ALERT",
+  "status": "OK",
   "checked": 3,
-  "issues": [
-   "BTCUSDT: 列0漂移 存档=-0.5930 手算=-0.5316 Δ=0.0614 (>0.05, K线疑被修订)"
-  ]
+  "detail": "3探针一致(样本日 2026-09-09)"
  },
  "alerts": [
-  "etf_flow.json: 历史修订(行数65不变)",
-  "BTCUSDT: 列0漂移 存档=-0.5930 手算=-0.5316 Δ=0.0614 (>0.05, K线疑被修订)"
+  "etf_flow.json: 历史修订(行数65不变)"
  ]
 }

@@ -911,12 +911,22 @@
   },
   {
     "date": "2026-09-08",
-    "total_long_liq": 1632.29,
-    "total_short_liq": 1599.99,
-    "liq_ratio": 1.0202,
-    "long_peak_dist_pct": -1.6,
+    "total_long_liq": 1716.75,
+    "total_short_liq": 1709.48,
+    "liq_ratio": 1.0043,
+    "long_peak_dist_pct": -1.3,
     "short_peak_dist_pct": 1.4,
-    "funding_rate": 0.0001,
-    "long_ratio": 0.51
+    "funding_rate": 2.1e-05,
+    "long_ratio": 0.5
+  },
+  {
+    "date": "2026-09-09",
+    "total_long_liq": 1687.59,
+    "total_short_liq": 1664.33,
+    "liq_ratio": 1.014,
+    "long_peak_dist_pct": -1.3,
+    "short_peak_dist_pct": 1.1,
+    "funding_rate": 6.9e-05,
+    "long_ratio": 0.5
   }
 ]
