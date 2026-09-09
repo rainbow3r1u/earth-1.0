@@ -6,7 +6,138 @@
   "tp_short": 0.1,
   "hold_days": 2
  },
- "open": {},
+ "open": {
+  "ZKCUSDT": {
+   "symbol": "ZKCUSDT",
+   "direction": "LONG",
+   "qty": 2513.0,
+   "entry": 0.0497449,
+   "open_time": 1788913542350,
+   "date": "2026-09-09",
+   "sl_price": 0.04576,
+   "sl_algo_id": 2000001420698102,
+   "tp_price": null,
+   "tp_algo_id": null,
+   "tag": "260909"
+  },
+  "STARUSDT": {
+   "symbol": "STARUSDT",
+   "direction": "LONG",
+   "qty": 1538.0,
+   "entry": 0.081279,
+   "open_time": 1788913543512,
+   "date": "2026-09-09",
+   "sl_price": 0.07477,
+   "sl_algo_id": 2000001420698117,
+   "tp_price": null,
+   "tp_algo_id": null,
+   "tag": "260909"
+  },
+  "ZESTUSDT": {
+   "symbol": "ZESTUSDT",
+   "direction": "LONG",
+   "qty": 1012.0,
+   "entry": 0.1234214,
+   "open_time": 1788913544673,
+   "date": "2026-09-09",
+   "sl_price": 0.11354000000000002,
+   "sl_algo_id": 2000001420698126,
+   "tp_price": null,
+   "tp_algo_id": null,
+   "tag": "260909"
+  },
+  "KITEUSDT": {
+   "symbol": "KITEUSDT",
+   "direction": "LONG",
+   "qty": 1094.0,
+   "entry": 0.1142169,
+   "open_time": 1788913545829,
+   "date": "2026-09-09",
+   "sl_price": 0.10507000000000001,
+   "sl_algo_id": 2000001420698136,
+   "tp_price": null,
+   "tp_algo_id": null,
+   "tag": "260909"
+  },
+  "BTWUSDT": {
+   "symbol": "BTWUSDT",
+   "direction": "LONG",
+   "qty": 285.0,
+   "entry": 0.4387024,
+   "open_time": 1788913546990,
+   "date": "2026-09-09",
+   "sl_price": 0.4036,
+   "sl_algo_id": 2000001420698149,
+   "tp_price": null,
+   "tp_algo_id": null,
+   "tag": "260909"
+  },
+  "CHIPUSDT": {
+   "symbol": "CHIPUSDT",
+   "direction": "LONG",
+   "qty": 2328.0,
+   "entry": 0.05369,
+   "open_time": 1788913548147,
+   "date": "2026-09-09",
+   "sl_price": 0.04939,
+   "sl_algo_id": 2000001420698173,
+   "tp_price": null,
+   "tp_algo_id": null,
+   "tag": "260909"
+  },
+  "BRUSDT": {
+   "symbol": "BRUSDT",
+   "direction": "LONG",
+   "qty": 451.0,
+   "entry": 0.277136,
+   "open_time": 1788913549304,
+   "date": "2026-09-09",
+   "sl_price": 0.25496,
+   "sl_algo_id": 2000001420698194,
+   "tp_price": null,
+   "tp_algo_id": null,
+   "tag": "260909"
+  },
+  "MORPHOUSDT": {
+   "symbol": "MORPHOUSDT",
+   "direction": "LONG",
+   "qty": 52.8,
+   "entry": 2.36550038,
+   "open_time": 1788913550464,
+   "date": "2026-09-09",
+   "sl_price": 2.1762,
+   "sl_algo_id": 2000001420698217,
+   "tp_price": null,
+   "tp_algo_id": null,
+   "tag": "260909"
+  },
+  "COLLECTUSDT": {
+   "symbol": "COLLECTUSDT",
+   "direction": "LONG",
+   "qty": 4803.0,
+   "entry": 0.026012,
+   "open_time": 1788913551622,
+   "date": "2026-09-09",
+   "sl_price": 0.023930000000000003,
+   "sl_algo_id": 2000001420698329,
+   "tp_price": null,
+   "tp_algo_id": null,
+   "tag": "260909"
+  },
+  "TOSHIUSDT": {
+   "symbol": "TOSHIUSDT",
+   "direction": "LONG",
+   "qty": 1020408.0,
+   "entry": 0.0001225,
+   "open_time": 1788913552775,
+   "date": "2026-09-09",
+   "sl_price": 0.00011269999999999999,
+   "sl_algo_id": 2000001420698345,
+   "tp_price": null,
+   "tp_algo_id": null,
+   "tag": "260909"
+  }
+ },
  "history": [
   {
    "symbol": "BTCUSDT",
@@ -45,5 +176,24 @@
    "net_u": -0.0755
   }
  ],
- "days": {}
+ "days": {
+  "2026-09-09": {
+   "opened_long": [
+    "ZKCUSDT",
+    "STARUSDT",
+    "ZESTUSDT",
+    "KITEUSDT",
+    "BTWUSDT",
+    "CHIPUSDT",
+    "BRUSDT",
+    "MORPHOUSDT",
+    "COLLECTUSDT",
+    "TOSHIUSDT"
+   ],
+   "opened_short": [],
+   "skipped": [],
+   "avail_u": 1448.2,
+   "n_planned": 10
+  }
+ }
 }
