@@ -7,19 +7,6 @@
   "hold_days": 2
  },
  "open": {
-  "ZKCUSDT": {
-   "symbol": "ZKCUSDT",
-   "direction": "LONG",
-   "qty": 2513.0,
-   "entry": 0.0497449,
-   "open_time": 1788913542350,
-   "date": "2026-09-09",
-   "sl_price": 0.04576,
-   "sl_algo_id": 2000001420698102,
-   "tp_price": null,
-   "tp_algo_id": null,
-   "tag": "260909"
-  },
   "ZESTUSDT": {
    "symbol": "ZESTUSDT",
    "direction": "LONG",
@@ -59,19 +46,6 @@
    "tp_algo_id": null,
    "tag": "260909"
   },
-  "CHIPUSDT": {
-   "symbol": "CHIPUSDT",
-   "direction": "LONG",
-   "qty": 2328.0,
-   "entry": 0.05369,
-   "open_time": 1788913548147,
-   "date": "2026-09-09",
-   "sl_price": 0.04939,
-   "sl_algo_id": 2000001420698173,
-   "tp_price": null,
-   "tp_algo_id": null,
-   "tag": "260909"
-  },
   "BRUSDT": {
    "symbol": "BRUSDT",
    "direction": "LONG",
@@ -98,31 +72,122 @@
    "tp_algo_id": null,
    "tag": "260909"
   },
-  "COLLECTUSDT": {
-   "symbol": "COLLECTUSDT",
+  "VTHOUSDT": {
+   "symbol": "VTHOUSDT",
    "direction": "LONG",
-   "qty": 4803.0,
-   "entry": 0.026012,
-   "open_time": 1788913551622,
-   "date": "2026-09-09",
-   "sl_price": 0.023930000000000003,
-   "sl_algo_id": 2000001420698329,
+   "qty": 248558.0,
+   "entry": 0.0004997,
+   "open_time": 1788999963057,
+   "date": "2026-09-10",
+   "sl_price": 0.00045969999999999995,
+   "sl_algo_id": 2000001423361651,
    "tp_price": null,
    "tp_algo_id": null,
-   "tag": "260909"
+   "tag": "260910"
   },
-  "TOSHIUSDT": {
-   "symbol": "TOSHIUSDT",
+  "ARCUSDT": {
+   "symbol": "ARCUSDT",
    "direction": "LONG",
-   "qty": 1020408.0,
-   "entry": 0.0001225,
-   "open_time": 1788913552775,
-   "date": "2026-09-09",
-   "sl_price": 0.00011269999999999999,
-   "sl_algo_id": 2000001420698345,
+   "qty": 1735.0,
+   "entry": 0.07213,
+   "open_time": 1788999964228,
+   "date": "2026-09-10",
+   "sl_price": 0.06635,
+   "sl_algo_id": 2000001423361687,
    "tp_price": null,
    "tp_algo_id": null,
-   "tag": "260909"
+   "tag": "260910"
+  },
+  "CVXUSDT": {
+   "symbol": "CVXUSDT",
+   "direction": "LONG",
+   "qty": 57.7,
+   "entry": 2.1684298,
+   "open_time": 1788999965461,
+   "date": "2026-09-10",
+   "sl_price": 1.994,
+   "sl_algo_id": 2000001423361729,
+   "tp_price": null,
+   "tp_algo_id": null,
+   "tag": "260910"
+  },
+  "4USDT": {
+   "symbol": "4USDT",
+   "direction": "LONG",
+   "qty": 6805.0,
+   "entry": 0.0183899,
+   "open_time": 1788999966656,
+   "date": "2026-09-10",
+   "sl_price": 0.016918,
+   "sl_algo_id": 2000001423361759,
+   "tp_price": null,
+   "tp_algo_id": null,
+   "tag": "260910"
+  },
+  "INJUSDT": {
+   "symbol": "INJUSDT",
+   "direction": "LONG",
+   "qty": 20.6,
+   "entry": 6.041,
+   "open_time": 1788999967891,
+   "date": "2026-09-10",
+   "sl_price": 5.557,
+   "sl_algo_id": 2000001423361791,
+   "tp_price": null,
+   "tp_algo_id": null,
+   "tag": "260910"
+  },
+  "AKEUSDT": {
+   "symbol": "AKEUSDT",
+   "direction": "LONG",
+   "qty": 8001.0,
+   "entry": 0.015594,
+   "open_time": 1788999969058,
+   "date": "2026-09-10",
+   "sl_price": 0.014346,
+   "sl_algo_id": 2000001423361808,
+   "tp_price": null,
+   "tp_algo_id": null,
+   "tag": "260910"
+  },
+  "CHILLGUYUSDT": {
+   "symbol": "CHILLGUYUSDT",
+   "direction": "LONG",
+   "qty": 10008.0,
+   "entry": 0.0125042,
+   "open_time": 1788999970224,
+   "date": "2026-09-10",
+   "sl_price": 0.011503,
+   "sl_algo_id": 2000001423361843,
+   "tp_price": null,
+   "tp_algo_id": null,
+   "tag": "260910"
+  },
+  "SIRENUSDT": {
+   "symbol": "SIRENUSDT",
+   "direction": "LONG",
+   "qty": 5089.0,
+   "entry": 0.0245769,
+   "open_time": 1788999971383,
+   "date": "2026-09-10",
+   "sl_price": 0.02261,
+   "sl_algo_id": 2000001423361873,
+   "tp_price": null,
+   "tp_algo_id": null,
+   "tag": "260910"
+  },
+  "VELVETUSDT": {
+   "symbol": "VELVETUSDT",
+   "direction": "LONG",
+   "qty": 2035.0,
+   "entry": 0.0615,
+   "open_time": 1788999972539,
+   "date": "2026-09-10",
+   "sl_price": 0.0565,
+   "sl_algo_id": 2000001423361909,
+   "tp_price": null,
+   "tp_algo_id": null,
+   "tag": "260910"
   }
  },
  "history": [
@@ -179,6 +244,78 @@
    "exit_time": 1788923968216,
    "gross_pct": -8.05,
    "net_u": -10.177
+  },
+  {
+   "symbol": "COLLECTUSDT",
+   "direction": "LONG",
+   "qty": 4803.0,
+   "entry": 0.026012,
+   "open_time": 1788913551622,
+   "date": "2026-09-09",
+   "sl_price": 0.023930000000000003,
+   "sl_algo_id": 2000001420698329,
+   "tp_price": null,
+   "tp_algo_id": null,
+   "tag": "260909",
+   "trigger": "止损",
+   "exit": 0.0238957,
+   "exit_time": 1788964333101,
+   "gross_pct": -8.14,
+   "net_u": -10.3027
+  },
+  {
+   "symbol": "ZKCUSDT",
+   "direction": "LONG",
+   "qty": 2513.0,
+   "entry": 0.0497449,
+   "open_time": 1788913542350,
+   "date": "2026-09-09",
+   "sl_price": 0.04576,
+   "sl_algo_id": 2000001420698102,
+   "tp_price": null,
+   "tp_algo_id": null,
+   "tag": "260909",
+   "trigger": "止损",
+   "exit": 0.04576,
+   "exit_time": 1788991748439,
+   "gross_pct": -8.01,
+   "net_u": -10.1636
+  },
+  {
+   "symbol": "CHIPUSDT",
+   "direction": "LONG",
+   "qty": 2328.0,
+   "entry": 0.05369,
+   "open_time": 1788913548147,
+   "date": "2026-09-09",
+   "sl_price": 0.04939,
+   "sl_algo_id": 2000001420698173,
+   "tp_price": null,
+   "tp_algo_id": null,
+   "tag": "260909",
+   "trigger": "止损",
+   "exit": 0.04909,
+   "exit_time": 1788991710177,
+   "gross_pct": -8.57,
+   "net_u": -10.8614
+  },
+  {
+   "symbol": "TOSHIUSDT",
+   "direction": "LONG",
+   "qty": 1020408.0,
+   "entry": 0.0001225,
+   "open_time": 1788913552775,
+   "date": "2026-09-09",
+   "sl_price": 0.00011269999999999999,
+   "sl_algo_id": 2000001420698345,
+   "tp_price": null,
+   "tp_algo_id": null,
+   "tag": "260909",
+   "trigger": "止损",
+   "exit": 0.0001124,
+   "exit_time": 1788991758407,
+   "gross_pct": -8.24,
+   "net_u": -10.4567
   }
  ],
  "days": {
@@ -198,6 +335,25 @@
    "opened_short": [],
    "skipped": [],
    "avail_u": 1448.2,
+   "n_planned": 10
+  },
+  "2026-09-10": {
+   "opened_long": [
+    "VTHOUSDT",
+    "ARCUSDT",
+    "CVXUSDT",
+    "4USDT",
+    "INJUSDT",
+    "AKEUSDT",
+    "CHILLGUYUSDT",
+    "SIRENUSDT",
+    "VELVETUSDT"
+   ],
+   "opened_short": [],
+   "skipped": [
+    "KITEUSDT(LONG)(与在持重叠)"
+   ],
+   "avail_u": 1271.1,
    "n_planned": 10
   }
  }
