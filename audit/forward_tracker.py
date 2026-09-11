@@ -64,5 +64,12 @@ def main():
     save_tracker(tracker)
     print(f'[forward_tracker] 完成: 已到期日 {settled_days}, 未到期日 {pending_days}, 存档 {TRACKER}')
 
+    # 2026-09-11: 静默刷新 regime-MAE 融合数据 (不额外挂cron)
+    try:
+        import regime_ic_log
+        regime_ic_log.main(quiet=True)
+    except Exception as _e:
+        print(f'[forward_tracker] regime_ic_log 静默刷新失败: {_e}')
+
 if __name__ == '__main__':
     main()

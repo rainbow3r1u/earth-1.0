@@ -14,7 +14,7 @@
 用法: python3 forward_ic_check.py          # 幂等: 补评所有已兑现但未记录的预测日
 Cron: 50 8 * * *  (K线缓存8:05已刷新, 9:00晨报前)
 """
-import os, json, glob
+import os, sys, json, glob
 import numpy as np
 from datetime import date, datetime, timedelta, timezone
 
@@ -229,6 +229,14 @@ def main():
         verdict = '✅信号活着' if m >= 0.60 else ('⚠️转弱' if m >= 0.55 else '❌疑似失效')
         note = f' ⚠️IC方向异常(L={ml:+.2f}/S={ms:+.2f}), 头部选币质量需盯' if (ml < 0 or ms > 0) else ''
         log(f'干净期近{len(last5)}日 AUC均值: L={al:.3f}/S={ash:.3f}, IC: L={ml:+.3f}/S={ms:+.3f} → {verdict}{note}')
+
+    # 2026-09-11: 静默采集 regime-IC 对应关系, 不额外挂cron
+    try:
+        sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'audit'))
+        import regime_ic_log
+        regime_ic_log.main(quiet=True)
+    except Exception as _e:
+        log(f'regime_ic_log 静默采集失败: {_e}')
 
 if __name__ == '__main__':
     main()

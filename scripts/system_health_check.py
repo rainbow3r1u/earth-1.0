@@ -293,7 +293,9 @@ def chk_git(now_min, rd, pre8=False):
         behind = subprocess.run(['git', 'rev-list', '--count', 'main..xgboot/main'],
                                 cwd=BASE, capture_output=True, text=True, timeout=10).stdout.strip()
         if behind and behind != '0':
-            issues.append(f'本地落后远程 {behind} 个提交(08:50同步后未拉回, 正常; 次日公证自动rebase)')
+            # 2026-09-12 降级 FAIL->INFO: 08:50同步(Contents API)只在远程生成提交, 本地落后是设计内稳态,
+            # 次日08:30公证自动rebase. 按issue计分会让体检每天FAIL, 告警噪音淹没真故障.
+            infos.append(f'本地落后远程 {behind} 提交(08:50同步后未拉回, 正常; 次日公证自动rebase)')
     except Exception:
         infos.append('远程一致性检查跳过(网络)')
     try:
@@ -384,6 +386,63 @@ def chk_reconcile():
     return check('对账活性', OK, f'state {a:.0f}min 前有更新')
 
 
+def chk_regime_ic():
+    """Regime-IC 静默采集管道活性 (2026-09-12新增).
+
+    该管道无自身cron, 只靠 forward_ic_check(08:50) 和 forward_tracker(09:10) 两个钩子
+    每日触发 regime_ic_log.main(); 钩子失败只写各自日志 — 无体检项时停更无人知晓.
+    判定: updated 新鲜度(>26h=当日双钩子都未触发, >50h=连续2天失效) + 日期连续性 +
+    最后数据日 >= 昨日UTC + core/IC/MAE 字段覆盖.
+    """
+    p = os.path.join(DATA, 'regime_ic_history.json')
+    try:
+        with open(p) as f:
+            h = json.load(f)
+    except Exception as e:
+        return check('Regime-IC', FAIL, f'regime_ic_history.json 读取失败: {e}')
+    days = h.get('days', [])
+    if not days:
+        return check('Regime-IC', FAIL, 'days 为空(采集器从未成功运行或输出被清空)')
+    issues, infos = [], []
+    try:
+        u = datetime.datetime.fromisoformat(h.get('updated', ''))
+        age_h = (datetime.datetime.now(datetime.timezone.utc) - u).total_seconds() / 3600
+        if age_h > 50:
+            issues.append(f'数据 {age_h:.0f}h 未更新(双钩子连续2天失效?)')
+        elif age_h > 26:
+            issues.append(f'数据 {age_h:.0f}h 未更新(今日双钩子均未触发?)')
+        else:
+            infos.append(f'{age_h:.1f}h前更新')
+    except Exception:
+        issues.append(f'updated 字段异常: {h.get("updated")!r}')
+    ds = [d.get('date') for d in days if d.get('date')]
+    if len(ds) != len(days):
+        issues.append('存在无date的行')
+    if ds:
+        gaps = [ds[i] for i in range(1, len(ds))
+                if (datetime.date.fromisoformat(ds[i - 1]) + datetime.timedelta(days=1)).isoformat() != ds[i]]
+        if gaps:
+            issues.append(f'日期断档{len(gaps)}处(首处{gaps[0]})')
+        last_utc = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1)).date().isoformat()
+        if ds[-1] < last_utc:
+            issues.append(f'最后数据日{ds[-1]} < 昨日UTC {last_utc}(K线缓存停更或采集失败)')
+        miss_core = [d['date'] for d in days if d.get('btc_ret_1d') is None or d.get('alt_med_ret') is None]
+        if len(miss_core) > 2:
+            issues.append(f'core字段缺失{len(miss_core)}天: {miss_core[:3]}')
+        # IC/MAE 结算有滞后, 只查倒数第3天以前; MAE 覆盖自8/11起(此前 max_retrace_no_sl 无数据)
+        older = days[:-2]
+        no_ic = [d['date'] for d in older if d.get('ic_long') is None]
+        if len(no_ic) > 3:
+            issues.append(f'IC字段缺{len(no_ic)}天(IC源48h文件异常?): {no_ic[:3]}')
+        mae_days = [d for d in older if d['date'] >= '2026-08-11']
+        no_mae = [d['date'] for d in mae_days if d.get('mae_long_n') is None]
+        if len(no_mae) > 3:
+            issues.append(f'MAE字段缺{len(no_mae)}天(forward_tracker异常?): {no_mae[:3]}')
+    if issues:
+        return check('Regime-IC', WARN, '; '.join(issues) + (f' | {infos[0]}' if infos else ''))
+    return check('Regime-IC', OK, f'{len(days)}天 {ds[0]}~{ds[-1]} 连续, {infos[0]}')
+
+
 # ---------------- 主流程 ----------------
 
 def run_all():
@@ -397,6 +456,7 @@ def run_all():
         chk_collect(nm, rd, pre8), chk_train_pred(nm, rd, pre8), chk_trade(nm, rd, pre8),
         chk_git(nm, rd, pre8), chk_drift(nm, rd, pre8), chk_trackers(nm, rd, pre8),
         chk_sync(nm, rd, pre8), chk_digest(nm, rd, pre8), chk_reconcile(),
+        chk_regime_ic(),
     ]
     return results
 
