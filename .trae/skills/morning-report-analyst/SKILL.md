@@ -8,6 +8,7 @@ description: "Analyzes the daily morning report (晨报): section diagnosis, los
 > 创建: 2026-09-04 (基于当日 3.8 六连亏分解会话沉淀)
 > 适用目录: `/home/myuser/websocket_new/` (earth-1.0 仓库)
 > 角色: 晨报解读员 — 把晨报各板块数据 → 结构化诊断 → 趋势研判 → 向用户汇报
+> 更新: 2026-09-10 加入 LONG 四指标(到期率/到期单均/止损单均/LONG净盈亏)
 > 纪律: 遵守 AGENTS.md 铁律6(批判优先): 证据→正反两面→结论→证伪线; 不给无触发器的时间预测
 
 ---
@@ -19,7 +20,7 @@ description: "Analyzes the daily morning report (晨报): section diagnosis, los
 ### 标准执行序列
 1. **Step 0** 流水线核验: date / git冲突UU检查 / 当日auto_dual.log / residual_live.log / digest.log 发送记录
 2. **Step 1** 实盘状态: `python3 audit/residual_live.py status` (权益/在持/当日开仓/止损)
-3. **Step 2** 3.8+3.9 盈亏分解: 近7日 方向×离场结构×单币TOP坑; 止损单funding税抽检(超-15.5U的)
+3. **Step 2** 3.8+3.9 盈亏分解: 近7日 方向×离场结构×单币TOP坑; 止损单funding税抽检(超-15.5U的); **LONG四指标=到期率/到期单均/止损单均/LONG净盈亏**(见§4)
 4. **Step 3** IC时序: forward_ic_history_48h.json 近10日 IC_L/AUC_L 走势 + 四态链定位
 5. **Step 4** 市场regime双层判定: BTC(60日累计/MA20/高低点) + 山寨(翻转次数/广度/对BTC超额)
 6. **Step 5** 趋势研判输出(禁止裸预测): regime定性 + 触发器清单 + 推演 + 证伪线
@@ -28,7 +29,7 @@ description: "Analyzes the daily morning report (晨报): section diagnosis, los
 ```
 ## 晨报SKILL 诊断 (日期 时间)
 ### ① 系统健康: 流水线4环节表格(✅/❌) + 实盘权益/在持/净盈亏
-### ② 盈亏分解: 方向分布/离场结构/单币TOP3/funding税占比 + 对照§4正期望基准(到期胜率/到期单均值)
+### ② 盈亏分解: 方向分布/离场结构/单币TOP3/funding税占比 + LONG四指标(到期率/到期单均/止损单均/LONG净盈亏) + 对照§4正期望基准
 ### ③ IC与模型质量: IC_L轨迹 + 四态链当前状态 + 自愈进度(修复周期4~6天标尺)
 ### ④ 市场regime: BTC层(趋势/位置) + 山寨层(翻转/广度/超额) 双层定性
 ### ⑤ 趋势研判: 触发器清单(各带当前读数) + 最近验证点(哪个批次哪天结算) + 证伪线
@@ -145,12 +146,23 @@ vis = ic.get((datetime.date.fromisoformat(day) - datetime.timedelta(days=3)).iso
 - **72h滚动是放大器不产生期望**: 期望为正滚动复利化, 期望为负滚动加速亏; 期望来源 = 选币alpha + SL5%砍左尾/无TP放右尾的结构
 - 单笔止损基准 -15.5U(300U名义48h影子) / 实盘40U名义≈-2U; 到期盈利中位 +17.4U
 
+**LONG 结构体检四指标 (2026-09-10 加入, 每日必报)**:
+- **到期率** = 到期笔数 / 总结算笔数
+- **到期单均** = 到期单净盈亏 / 到期笔数
+- **止损单均** = 止损单净盈亏 / 止损笔数
+- **LONG 净盈亏** = 该窗口 LONG 侧总净盈亏
+- 期望公式: **LONG期望/笔 = 到期率 × 到期单均 + (1−到期率) × 止损单均**
+
+> ⚠️ 口径区分: **到期率 = 到期笔数 / 总结算**，衡量“有多少单活到时间终点”，不是“到期盈利占比”。  
+> **到期胜率 = 到期且 net_u>0 的笔数 / 到期笔数**，两者不要混用。
+
 **每日对照标尺** (3.8 LONG侧 + 3.9c实盘批次):
 | 指标 | 健康基准 | 预警线 |
 |---|---|---|
-| 到期胜率(到期笔数/总结算) | ~35% | <25%持续一周 → 正期望前提瓦解 |
+| 到期率(到期笔数/总结算) | ~35% | <25%连续10组 → 右尾结构瓦解 |
 | 到期单均net_u | +53.7U(影子300U) | 持续<+30U → 右尾衰竭 |
 | 止损单均net_u | ≈-15.5U | 持续<-20U → funding税恶化 |
+| LONG净盈亏 | 期望≥+8.8U/笔 | 连续10组≤0 → 正期望前提崩溃 |
 | 批次级"全存活但整批负" | 33天0次 | 出现即报(慢阴跌市特征) |
 | IC_L 5日均 | ≥0 | 周线持续负 → alpha衰减 |
 
@@ -181,6 +193,24 @@ for sym, bars in kl.items():
 BTC走势+5d vol: `GET https://fapi.binance.com/fapi/v1/klines?symbol=BTCUSDT&interval=1d&limit=25`
 
 IC↔批次盈亏对齐: forward_ic_history_48h.json (days[].date/ic_long/auc_long) × hybrid_tracker.json (day_pnl_u)
+
+LONG四指标 (到期率/到期单均/止损单均/LONG净盈亏) 计算:
+```python
+import json, statistics
+d = json.load(open('data/hybrid_tracker.json'))
+# 默认近7个已结算日; 也可按批次/日期区间传参
+days = sorted([k for k,v in d.items() if v.get('n_settled',0) == v.get('n_total',0)])[-7:]
+tr = [t for ds in days for t in d[ds].get('trades',[]) if t.get('direction')=='LONG' and t.get('net_u') is not None]
+sl = [t for t in tr if t.get('trigger')=='止损']
+exp = [t for t in tr if t.get('trigger')=='到期']
+def s(lst): return sum(t['net_u'] for t in lst)
+print('到期率', f'{len(exp)/max(len(tr),1)*100:.1f}%')
+print('到期单均', f'{s(exp)/max(len(exp),1):+.2f}U')
+print('止损单均', f'{s(sl)/max(len(sl),1):+.2f}U')
+print('LONG净盈亏', f'{s(tr):+.1f}U')
+print('LONG期望/笔', f'{s(tr)/max(len(tr),1):+.2f}U')
+print('到期胜率', f'{sum(1 for t in exp if t["net_u"]>0)/max(len(exp),1)*100:.1f}%')
+```
 
 
 ## 7. 环境依赖与跨设备迁移
