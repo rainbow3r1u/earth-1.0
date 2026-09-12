@@ -39,7 +39,7 @@ def build_metrics(kl):
     if len(btc_rows) < 65:
         raise SystemExit('BTC K线不足65根')
     dates = [_iso_day(r['t']) for r in btc_rows]
-    idx = {d: i for i, d in enumerate(dates)}
+    # 2026-09-12: 删除死变量 idx(建了但从未被使用, 实际按时间戳查 xs[ts]); dates 保留供下方按日索引
 
     # BTC daily returns / vol / trend
     closes = [r['c'] for r in btc_rows]
@@ -67,6 +67,8 @@ def build_metrics(kl):
 
         btc_ret = rets[i]
         btc_vol5 = float(np.std(rets[max(0, i - 4): i + 1]))
+        # 口径注记(2026-09-12): btc_cum60 = 近60日收益**简单加总**(%), 而下方 alt_excess_21d 用的是
+        # **复利**累计 —— 同一文件两种累计口径, 分析时不要直接相减/比较。
         btc_cum60 = float(sum(rets[max(0, i - 59): i + 1]))
         ma20 = float(np.mean(closes[max(0, i - 19): i + 1]))
         ma20_dev = (closes[i] / ma20 - 1) * 100 if ma20 else None

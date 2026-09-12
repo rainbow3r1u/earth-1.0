@@ -47,14 +47,19 @@ def derive():
                     'day_pnl_u': round(sum(t['net_u'] for t in ok), 1),
                     'n_settled': len(ok), 'n_total': len(s5_trades),
                     'trades': s5_trades}
-    with open(S5, 'w') as f:
+    # 2026-09-12: 原子写(tmp+os.replace), 避免中途被杀导致 JSON 截断、下次读取静默回退
+    tmp = S5 + '.tmp'
+    with open(tmp, 'w') as f:
         json.dump(out, f, ensure_ascii=False, indent=1)
+    os.replace(tmp, S5)
     settled = [d for d in out if out[d]['n_settled'] >= out[d]['n_total']]
-    tot = sum(out[d]['day_pnl_u'] for d in settled)
-    # 主臂对照
-    m_settled = [d for d in main if main[d].get('n_settled',0) >= main[d].get('n_total',99)]
-    m_tot = sum(main[d].get('day_pnl_u',0) for d in m_settled)
-    print(f'[S5臂] 已到期{len(settled)}天: S5 {tot:+.1f}U vs 主臂 {m_tot:+.1f}U '
+    # 2026-09-12 修: 原 S5 与主臂各算各的"已结算天集合"(主臂常因 rank6-10 币无数据而未结算),
+    # 日期集合不同却直接相减当 "SHORT6-10 贡献" → 对照失真。现取两臂交集后再比。
+    common = [d for d in settled
+              if d in main and main[d].get('n_settled', 0) >= main[d].get('n_total', 99)]
+    tot = sum(out[d]['day_pnl_u'] for d in common)
+    m_tot = sum(main[d].get('day_pnl_u', 0) for d in common)
+    print(f'[S5臂] 已到期{len(settled)}天(与主臂交集{len(common)}天): S5 {tot:+.1f}U vs 主臂 {m_tot:+.1f}U '
           f'(SHORT6-10贡献 {m_tot-tot:+.1f}U) → {S5}')
 
 if __name__ == '__main__':

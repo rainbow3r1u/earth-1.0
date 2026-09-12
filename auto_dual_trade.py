@@ -125,6 +125,10 @@ _DEFAULTS = {
      'TOP_N_SYMBOLS': 150, 'MIN_VOLUME_24H': 500000, 'TRAIN_DAYS': 180,
      'TRADING_ENABLED': True, 'DAILY_REPORT_EMAIL': True, 'LONG_MOM_FILTER': True,
      'SOUP_ON': True, 'ALLOW_SHORT': True,
+     # 2026-09-12: 这两项原先虽在 current_params.json 的 _live_trading 里, 却从未被加载/使用
+     # (get_margin_size 硬编码同名阶梯) → 改配置静默无效。现纳入配置加载, 数值与硬编码一致。
+     'MARGIN_STEPS': [5, 8, 10, 15, 20, 30],
+     'CAPITAL_BREAKPOINTS': [25, 50, 100, 200, 400],
 }
 try:
     with open(SHARED_CONFIG) as _cf:
@@ -659,20 +663,29 @@ def check_and_close(state):
 
 # ============ 仓位计算 ============
 def get_margin_size(capital):
+    """按资金阶梯返回单笔保证金。
+
+    2026-09-12 修: 原为硬编码阶梯, 配置里的 `_live_trading.MARGIN_STEPS/CAPITAL_BREAKPOINTS`
+    被完全忽略(改配置静默无效)。现改为读配置, 数值与原硬编码一致 → 行为不变; 配置缺失或
+    格式异常时回落到内置阶梯。
+    语义: capital < CAPITAL_BREAKPOINTS[i] → MARGIN_STEPS[i]; 超出最后一档 → MARGIN_STEPS[-1]。
+    """
+    steps = globals().get('MARGIN_STEPS') or [5, 8, 10, 15, 20, 30]
+    brks = globals().get('CAPITAL_BREAKPOINTS') or [25, 50, 100, 200, 400]
+    try:
+        steps = [float(x) for x in steps]
+        brks = [float(x) for x in brks]
+        if not steps or len(steps) != len(brks) + 1:
+            raise ValueError(f'阶梯长度不匹配 steps={len(steps)} breakpoints={len(brks)}')
+    except Exception as e:
+        log(f'[配置] MARGIN_STEPS/CAPITAL_BREAKPOINTS 不可用({e}), 回落到内置阶梯')
+        steps, brks = [5.0, 8.0, 10.0, 15.0, 20.0, 30.0], [25.0, 50.0, 100.0, 200.0, 400.0]
     if capital <= 0:
         return 0.0
-    if capital < 25:
-        return 5.0
-    elif capital < 50:
-        return 8.0
-    elif capital < 100:
-        return 10.0
-    elif capital < 200:
-        return 15.0
-    elif capital < 400:
-        return 20.0
-    else:
-        return 30.0
+    for i, brk in enumerate(brks):
+        if capital < brk:
+            return steps[i]
+    return steps[-1]
 
 # ============ 数据获取 ============
 def get_funding_rate(symbol):
@@ -941,6 +954,9 @@ def _build_feat_impl(sym, kls, oi_map, btc_rets, sector_map, sector_heats_all):
                 continue  # 标签需 closes[i+2] 已收盘, i∈{n-3,n-2} 跳过
             else:
                 next_ret = (closes[i+2] - opens[i]) / opens[i] if opens[i] > 0 else 0
+            # 注(2026-09-12): next_ret 是**小数**口径(0.05=5%), 而这里阈值 5.0 = 500% →
+            #   该"异常值过滤"实际永不触发(样本内最大约 418%)。GPU 侧同源同一写法, 故 A/B 相对排序不受影响。
+            #   若要真正生效须先定阈值口径(0.5=50%? 还是按百分比写 5.0?), 那会改变训练数据分布 = 铁律1范围, 故未改。
             if abs(next_ret) > 5.0:
                 continue
             label_long = 1 if next_ret > 0.05 else 0

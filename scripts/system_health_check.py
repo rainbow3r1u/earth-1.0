@@ -87,14 +87,17 @@ def chk_cron():
         ('audit_snapshot.py', '08:04 审计快照'),
         ('data_versions_snapshot.py', '08:02 数据版本快照'),
         ('auto_dual_trade.py', '08:05 训练+预测'),
-        ('residual_live.py trade', '08:21 实盘开仓'),
-        ('residual_live.py reconcile', '每小时:31 对账'),
+        ('residual_live.py trade', '08:21 果账户开仓'),
+        ('residual_live.py reconcile', '每小时:31 果账户对账'),
+        ('hybrid_live.py trade', '08:23 米账户开仓'),
+        ('hybrid_live.py reconcile', '每小时:41 米账户对账'),
         ('audit_verify.py', '08:25 审计校验'),
         ('notarize_pred.sh', '08:30 预测公证'),
         ('data_drift_monitor.py', '08:30 数据漂移'),
         ('replay_verify.py', '08:30 重放校验'),
         ('cron_monitor.py', '08:40 失败重试'),
         ('hybrid_tracker.py', '08:45 主臂影子'),
+        ('SHADOW_VARIANT', '08:46 影子2×2变体档(sl8/h72/sl8h72)'),
         ('trading_system_github_sync.py', '08:50 GitHub同步'),
         ('forward_ic_check.py', '08:50 前向IC'),
         ('hybrid_s5.py', '08:50 S5对照臂'),
@@ -220,7 +223,7 @@ def chk_train_pred(now_min, rd, pre8=False):
 
 
 def chk_trade(now_min, rd, pre8=False):
-    """下单+挂止损层: residual_live 开仓记录 + 在持SL完整性."""
+    """下单+挂止损层(果账户): residual_live 开仓记录 + 在持SL完整性. 米账户见 chk_trade_mi."""
     if not due(now_min, '08:21', 15, pre8):
         return check('实盘开仓', NOT_DUE, '08:36后判定')
     sp = os.path.join(DATA, 'residual_live_state.json')
@@ -253,6 +256,44 @@ def chk_trade(now_min, rd, pre8=False):
     if issues:
         return check('实盘开仓', FAIL, '; '.join(issues))
     return check('实盘开仓', OK, '; '.join(infos))
+
+
+def chk_trade_mi(now_min, rd, pre8=False):
+    """下单+挂止损层(米账户/第二账户 1448U): hybrid_live 开仓记录 + 在持SL完整性.
+    2026-09-12 新增: 此前体检只覆盖果账户(residual_live), 米账户 9/8 上线后无任何自动监控 —
+    其 cron 被删/凭证失效(hybrid_live.py 缺凭证直接 exit 1)/state 损坏都不会被发现."""
+    if not due(now_min, '08:23', 15, pre8):
+        return check('米实盘开仓', NOT_DUE, '08:38后判定')
+    sp = os.path.join(DATA, 'hybrid_live_state.json')
+    issues, infos = [], []
+    try:
+        st = json.load(open(sp))
+    except Exception as e:
+        return check('米实盘开仓', FAIL, f'state 损坏: {e}')
+    day = st.get('days', {}).get(rd, {})
+    opened = day.get('opened_long') or []
+    if day.get('note'):
+        infos.append(f"{rd}: 未开仓({day.get('note')})")
+    elif opened:
+        infos.append(f"{rd} 开{len(opened)}笔 {','.join(opened[:3])}{'...' if len(opened) > 3 else ''}")
+    else:
+        # 日志兜底(幂等跳过/已完成等场景 state 可能无 opened_long)
+        lg = [l for l in tail(os.path.join(LOGS, 'hybrid_live.log'), 200)
+              if rd in l and ('完成: LONG' in l or '已开过仓' in l)]
+        if lg:
+            infos.append(f'{rd} 有开仓/幂等记录')
+        else:
+            issues.append(f'{rd} 无开仓记录(08:23任务失效? 查 logs/hybrid_live.log)')
+    o = st.get('open', {})
+    no_sl = [sym for sym, p in o.items() if not p.get('sl_algo_id') and not p.get('sl_price')]
+    if no_sl:
+        issues.append(f'在持无SL: {",".join(no_sl[:5])}')
+    if len(o) > 55:
+        issues.append(f'在持 {len(o)} 笔超过55上限(125U/5x下85%守卫容量约49)')
+    infos.append(f'在持 {len(o)} 笔')
+    if issues:
+        return check('米实盘开仓', FAIL, '; '.join(issues))
+    return check('米实盘开仓', OK, '; '.join(infos))
 
 
 def chk_git(now_min, rd, pre8=False):
@@ -327,12 +368,16 @@ def chk_drift(now_min, rd, pre8=False):
 
 
 def chk_trackers(now_min, rd, pre8=False):
-    """影子臂结算层: hybrid/residual/s5 当日入册."""
+    """影子臂结算层: hybrid/residual/s5 当日入册 + 2×2 对照档(2026-09-12 新增)."""
     if not due(now_min, '08:55', 15, pre8):
         return check('影子结算', NOT_DUE, '09:10后判定')
     issues, infos = [], []
     for f, label in (('hybrid_tracker.json', '主臂'), ('residual_tracker.json', '残差臂'),
-                     ('hybrid_tracker_s5.json', 'S5臂')):
+                     ('hybrid_tracker_s5.json', 'S5臂'),
+                     # 2×2 对照档(SL5/SL8 × 48h/72h): 主档=SL5/48h, 其余三档由 08:46 cron 生成
+                     ('hybrid_tracker_sl8.json', '变体SL8/48h'),
+                     ('hybrid_tracker_h72.json', '变体SL5/72h'),
+                     ('hybrid_tracker_sl8h72.json', '变体SL8/72h')):
         p = os.path.join(DATA, f)
         try:
             d = json.load(open(p))
@@ -379,11 +424,19 @@ def chk_digest(now_min, rd, pre8=False):
 
 
 def chk_reconcile():
-    """对账活性(软检查): state 26h内有落笔即可(无事件时不写日志, 不可强检)."""
-    a = age_min(os.path.join(DATA, 'residual_live_state.json'))
-    if a > 60 * 26:
-        return check('对账活性', WARN, f'state {a/60:.0f}h 未落笔(每小时:31对账失效?)')
-    return check('对账活性', OK, f'state {a:.0f}min 前有更新')
+    """对账活性(软检查): 两账户 state 26h内有落笔即可(无事件时不写日志, 不可强检).
+    2026-09-12: 扩展覆盖米账户(此前只看果 state)."""
+    out, issues = [], []
+    for label, fname, cron in (('果', 'residual_live_state.json', '每小时:31'),
+                               ('米', 'hybrid_live_state.json', '每小时:41')):
+        a = age_min(os.path.join(DATA, fname))
+        if a > 60 * 26:
+            issues.append(f'{label}state {a/60:.0f}h未落笔({cron}对账失效?)')
+        else:
+            out.append(f'{label}{a:.0f}min前更新')
+    if issues:
+        return check('对账活性', WARN, '; '.join(issues + out))
+    return check('对账活性', OK, '; '.join(out))
 
 
 def chk_regime_ic():
@@ -391,8 +444,10 @@ def chk_regime_ic():
 
     该管道无自身cron, 只靠 forward_ic_check(08:50) 和 forward_tracker(09:10) 两个钩子
     每日触发 regime_ic_log.main(); 钩子失败只写各自日志 — 无体检项时停更无人知晓.
-    判定: updated 新鲜度(>26h=当日双钩子都未触发, >50h=连续2天失效) + 日期连续性 +
-    最后数据日 >= 昨日UTC + core/IC/MAE 字段覆盖.
+    判定 FAIL级(2026-09-12 补齐, 原实现只 append 到 issues 恒返回 WARN, 与文档不符):
+      - updated > 50h(双钩子连续≥2天失效)
+      - 最后数据日 < 昨日UTC(漏一天; 这是当日钩子失效的主检测器, 也可能是K线缓存停更)
+    判定 WARN级: updated > 26h / 日期断档 / core字段缺>2天 / IC字段缺>3天 / MAE字段缺>3天.
     """
     p = os.path.join(DATA, 'regime_ic_history.json')
     try:
@@ -403,12 +458,12 @@ def chk_regime_ic():
     days = h.get('days', [])
     if not days:
         return check('Regime-IC', FAIL, 'days 为空(采集器从未成功运行或输出被清空)')
-    issues, infos = [], []
+    issues, fails, infos = [], [], []
     try:
         u = datetime.datetime.fromisoformat(h.get('updated', ''))
         age_h = (datetime.datetime.now(datetime.timezone.utc) - u).total_seconds() / 3600
         if age_h > 50:
-            issues.append(f'数据 {age_h:.0f}h 未更新(双钩子连续2天失效?)')
+            fails.append(f'数据 {age_h:.0f}h 未更新(双钩子连续≥2天失效)')
         elif age_h > 26:
             issues.append(f'数据 {age_h:.0f}h 未更新(今日双钩子均未触发?)')
         else:
@@ -417,7 +472,7 @@ def chk_regime_ic():
         issues.append(f'updated 字段异常: {h.get("updated")!r}')
     ds = [d.get('date') for d in days if d.get('date')]
     if len(ds) != len(days):
-        issues.append('存在无date的行')
+        issues.append(f'存在无date的行{len(days) - len(ds)}条')
     if ds:
         gaps = [ds[i] for i in range(1, len(ds))
                 if (datetime.date.fromisoformat(ds[i - 1]) + datetime.timedelta(days=1)).isoformat() != ds[i]]
@@ -425,19 +480,23 @@ def chk_regime_ic():
             issues.append(f'日期断档{len(gaps)}处(首处{gaps[0]})')
         last_utc = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1)).date().isoformat()
         if ds[-1] < last_utc:
-            issues.append(f'最后数据日{ds[-1]} < 昨日UTC {last_utc}(K线缓存停更或采集失败)')
-        miss_core = [d['date'] for d in days if d.get('btc_ret_1d') is None or d.get('alt_med_ret') is None]
+            fails.append(f'最后数据日{ds[-1]} < 昨日UTC {last_utc}(K线缓存停更或采集失败)')
+        # 2026-09-12 修: 以下四处原为 d['date'] 直接索引 → 出现无date行时 KeyError 使
+        # **整个体检崩掉(连告警邮件都不发)**; 上面 466-468 行已承认这种行可能存在, 故改为安全取值。
+        miss_core = [d.get('date', '?') for d in days if d.get('btc_ret_1d') is None or d.get('alt_med_ret') is None]
         if len(miss_core) > 2:
             issues.append(f'core字段缺失{len(miss_core)}天: {miss_core[:3]}')
         # IC/MAE 结算有滞后, 只查倒数第3天以前; MAE 覆盖自8/11起(此前 max_retrace_no_sl 无数据)
         older = days[:-2]
-        no_ic = [d['date'] for d in older if d.get('ic_long') is None]
+        no_ic = [d.get('date', '?') for d in older if d.get('ic_long') is None]
         if len(no_ic) > 3:
             issues.append(f'IC字段缺{len(no_ic)}天(IC源48h文件异常?): {no_ic[:3]}')
-        mae_days = [d for d in older if d['date'] >= '2026-08-11']
-        no_mae = [d['date'] for d in mae_days if d.get('mae_long_n') is None]
+        mae_days = [d for d in older if (d.get('date') or '') >= '2026-08-11']
+        no_mae = [d.get('date', '?') for d in mae_days if d.get('mae_long_n') is None]
         if len(no_mae) > 3:
             issues.append(f'MAE字段缺{len(no_mae)}天(forward_tracker异常?): {no_mae[:3]}')
+    if fails:
+        return check('Regime-IC', FAIL, '; '.join(fails + issues) + (f' | {infos[0]}' if infos else ''))
     if issues:
         return check('Regime-IC', WARN, '; '.join(issues) + (f' | {infos[0]}' if infos else ''))
     return check('Regime-IC', OK, f'{len(days)}天 {ds[0]}~{ds[-1]} 连续, {infos[0]}')
@@ -454,6 +513,7 @@ def run_all():
         check('基准日', OK, f'{rd} (现在 {n:%m-%d %H:%M} CST)'),
         chk_cron(), chk_processes(), chk_disk(),
         chk_collect(nm, rd, pre8), chk_train_pred(nm, rd, pre8), chk_trade(nm, rd, pre8),
+        chk_trade_mi(nm, rd, pre8),
         chk_git(nm, rd, pre8), chk_drift(nm, rd, pre8), chk_trackers(nm, rd, pre8),
         chk_sync(nm, rd, pre8), chk_digest(nm, rd, pre8), chk_reconcile(),
         chk_regime_ic(),

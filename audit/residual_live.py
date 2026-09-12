@@ -108,11 +108,31 @@ def signed(method, endpoint, params=None, max_retries=3):
 
 # ==== 状态 ====
 def load_state():
-    try:
-        return json.load(open(STATE_FILE))
-    except Exception:
+    """读 state。
+
+    2026-09-12 加固: 原实现把"文件不存在"和"文件损坏"一起吞掉、统一返回**空 state**。
+    空 state 的后果是不对称的: reconcile 因 st['open'] 为空直接 return → 在持仓位彻底失管
+    (不重挂SL、不平到期), 且 mode_trade 的重叠保护失效(会重复开同币)。
+    现在: 文件不存在(首次运行) → 全新 state; 文件存在但读不出 → 告警 + 中止, 绝不静默失忆。
+    """
+    if not os.path.exists(STATE_FILE):
         return {'config': {'notional': NOTIONAL, 'leverage': LEVERAGE, 'max_daily': MAX_DAILY},
                 'open': {}, 'history': [], 'days': {}}
+    try:
+        return json.load(open(STATE_FILE))
+    except Exception as e:
+        log(f'❌ {STATE_FILE} 读取失败: {e}')
+        log('   拒绝以空 state 运行(=全部在持仓位失管), 已中止。人工确认/修复该文件后再跑。')
+        try:
+            sys.path.insert(0, BASE)
+            from alert_monitor import send_email
+            send_email('[果]实盘state损坏-执行器已中止',
+                       f'{STATE_FILE} 读取失败: {e}\n\n'
+                       '执行器已中止: 期间不会开仓/平仓/重挂止损。\n'
+                       '交易所侧在持仓位与条件单需人工确认(可用 residual_live.py status 查看)。')
+        except Exception as _e:
+            log(f'   (告警邮件发送失败: {_e})')
+        sys.exit(1)
 
 
 def save_state(st):
@@ -323,8 +343,8 @@ def close_one(sym, st, reason, exit_price=None, exit_time=None):
         return
     exit_time = exit_time or int(time.time() * 1000)
     if reason == '到期':
-        # 撤SL algo单
-        cancel_sl(sym, pos.get('sl_algo_id'))
+        # 2026-09-12 改序: 先平仓、确认成交后再撤SL。原实现"先撤SL再平仓", 若平仓下单失败或
+        # 未确认成交就 return(state保留、下轮重试), 该窗口内仓位**裸奔**, 且到期单重试路径不会补挂SL。
         fl = get_filters(sym, load_exinfo())
         if fl is None:
             log(f'  ⚠️ {sym} 无法平仓(过滤器缺失), 下轮重试')
@@ -335,7 +355,7 @@ def close_one(sym, st, reason, exit_price=None, exit_time=None):
             'reduceOnly': 'true',
             'newClientOrderId': safe_cid(f'rl-{sym[:12]}-x-{entry_tag()}')})
         if o.get('orderId') is None:
-            log(f'  ⚠️ {sym} 平仓下单失败: {str(o)[:120]}, 下轮重试')
+            log(f'  ⚠️ {sym} 平仓下单失败: {str(o)[:120]}, 下轮重试 (SL仍在, 未裸奔)')
             return
         time.sleep(0.8)
         _final = None
@@ -350,10 +370,12 @@ def close_one(sym, st, reason, exit_price=None, exit_time=None):
         if _final != 'FILLED':
             # 市价单未确认成交(被拒/异常): 保留state下轮重试, 防孤儿仓失去管理
             # (部分成交残余由下轮reduceOnly兜底, income窗口从open_time起算不会漏记)
-            log(f'  ⚠️ {sym} 平仓未确认({_final}), 保留state下轮重试')
+            log(f'  ⚠️ {sym} 平仓未确认({_final}), 保留state下轮重试 (SL仍在, 未裸奔)')
             return
         if exit_price is None:
             exit_price = get_price(sym) or pos['entry']
+        # 成交已确认 → 撤SL algo单(若SL恰好在平仓期间触发, 撤单会失败, 属正常)
+        cancel_sl(sym, pos.get('sl_algo_id'))
     gross_pct = (exit_price / pos['entry'] - 1) if exit_price else 0.0
     time.sleep(1.5)  # 等income落账
     # income时间戳为秒级截断且开仓手续费早于open_time → 窗口两侧各加缓冲; 同币上一笔仓位间隔≥2分钟不会串单
@@ -418,6 +440,11 @@ def reconcile(st, close_expired=True):
             else:
                 exit_price, exit_time = get_price(sym), int(time.time() * 1000)
                 reason = '离场(未知)'
+            # 2026-09-12 修: 本分支原先不撤条件单 → 手动/异常离场后会留下**僵尸 SL**。
+            # (hybrid_live.py 同一分支早已 cancel_all_algos, 此处属遗漏)
+            # 危害: 该币后续被重新开仓时会同币两张 closePosition SL, 旧单可能在错误价位平掉新仓,
+            # 并把平仓记成"止损"。止损单已触发时撤单失败属正常, 按 algoId→symbol 兜底撤。
+            cancel_sl(sym, pos.get('sl_algo_id'))
             close_one(sym, st, reason, exit_price=exit_price, exit_time=exit_time)
             continue
         # 仍在场: 到期? (72h名义到期=开仓日+3天08:21 CST; 08:21 trade cron主平, hourly兜底)
@@ -495,6 +522,13 @@ def mode_trade(st, force=False):
     n_target = min(len(cands), MAX_DAILY, n_afford)
     log(f'== 开仓: 候选{len(cands)}笔, 权益{equity:.1f}U 可用{avail:.1f}U 已占用{used:.1f}U '
         f'→ 计划{n_target}笔 (每笔保证金{margin_per:.0f}U/名义{NOTIONAL:.0f}U/{LEVERAGE}x逐仓) ==')
+    # 2026-09-12 修: BALANCE_MIN_ABORT 此前只出现在日志文案里、从未参与判定(死常量)。
+    # 现按常量注释口径真正生效: 可用余额低于缓冲下限(1笔保证金×2)直接中止, 不靠"刚好开得起1笔"硬撑。
+    if avail < BALANCE_MIN_ABORT:
+        log(f'⚠️ 可用余额 {avail:.1f}U 低于缓冲下限 {BALANCE_MIN_ABORT:.0f}U, 中止')
+        st['days'][today_str] = {'opened': [], 'note': f'余额低于缓冲下限 avail={avail:.1f}'}
+        save_state(st)
+        return
     if n_target < 1:
         log(f'⚠️ 可用余额不足以开1笔 (需≥{BALANCE_MIN_ABORT:.0f}U缓冲), 中止')
         st['days'][today_str] = {'opened': [], 'note': f'余额不足 avail={avail:.1f}'}

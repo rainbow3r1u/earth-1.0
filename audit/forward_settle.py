@@ -27,18 +27,45 @@ def ts_utc(y, m, d, h=0, mi=0):
 def fmt(ms):
     return datetime.fromtimestamp(ms/1000, tz=timezone.utc).strftime('%m-%d %H:%M')
 
-def fetch_1m(sym, start_ms, end_ms):
+def fetch_1m(sym, start_ms, end_ms, max_tries=3):
+    """分页拉取1m K线。数据不完整时返回 None(调用方按"无数据"处理, 绝不用残缺窗口结算)。
+
+    2026-09-12 加固(两处):
+      ① 原实现非200只 sleep+continue 且无重试上限 → 下架合约(400)/持续网络故障会**死循环挂起**,
+         09:10 cron 永不结束, forward_tracker 与其 regime_ic 钩子连带停更。现每页最多重试 max_tries 次。
+      ② 中途失败原返回已取部分 → 截断窗口被当完整窗口算 SL/到期价, 静默错账且该日永久标记已结算。
+         现增加覆盖度校验, 不达标即返回 None。
+    """
     out = []; s = start_ms
     while s < end_ms:
-        r = requests.get('https://fapi.binance.com/fapi/v1/klines',
-            params={'symbol': sym, 'interval': '1m', 'startTime': s,
-                    'endTime': min(end_ms, s + 999*60000), 'limit': 1000}, timeout=15)
-        if r.status_code != 200:
-            time.sleep(2); continue
-        b = r.json()
+        b = None
+        for _attempt in range(max_tries):
+            try:
+                r = requests.get('https://fapi.binance.com/fapi/v1/klines',
+                    params={'symbol': sym, 'interval': '1m', 'startTime': s,
+                            'endTime': min(end_ms, s + 999*60000), 'limit': 1000}, timeout=15)
+                if r.status_code == 200:
+                    b = r.json(); break
+                if 400 <= r.status_code < 500 and r.status_code != 429:
+                    print(f'[fetch_1m] {sym} HTTP {r.status_code}, 不重试', flush=True)
+                    return None
+            except Exception as _e:
+                if _attempt >= max_tries - 1:
+                    print(f'[fetch_1m] {sym} 请求异常: {_e}', flush=True)
+            time.sleep(2)
+        if b is None:
+            print(f'[fetch_1m] {sym} 重试{max_tries}次仍失败(已取{len(out)}根), 判为不完整', flush=True)
+            return None
         if not b: break
         out.extend(b); s = b[-1][0] + 60000
         time.sleep(0.12)
+    if not out:
+        return out
+    # 覆盖度校验: 最后一根须到"应到位置"(窗口已走完→end_ms; 未走完→now); 容忍3分钟以内
+    expect_end = min(end_ms, int(time.time() * 1000))
+    if out[-1][0] < expect_end - 3 * 60000:
+        print(f'[fetch_1m] {sym} 覆盖不足(最后 {fmt(out[-1][0])} vs 应到 {fmt(expect_end)}), 判为不完整', flush=True)
+        return None
     return out
 
 def _adverse_pct(entry, direction, bars):
@@ -60,9 +87,12 @@ def settle(sym, date_str, direction, prob):
     t0 = ts_utc(*map(int, date_str.split('-')), 0, 21)
     t_end = t0 + 3 * 86400000
     k = fetch_1m(sym, t0, t_end)
-    if len(k) < 3:
+    if k is None or len(k) < 3:
+        # 2026-09-12 修: 原分支漏了 trigger/time/price 三个键, 而 forward_tracker.py 直接取 r['trigger']
+        # → KeyError 使整个前向结算崩死, 且该日不入 tracker, 每日复发。
         return {'sym': sym, 'date': date_str, 'direction': direction, 'prob': prob,
-                'result': '无数据', 'entry': None, 'dir_ok': None, 'dir_ret': None,
+                'result': '无数据', 'trigger': '无数据', 'time': '-', 'price': None,
+                'entry': None, 'dir_ok': None, 'dir_ret': None,
                 'max_retrace': None, 'max_retrace_no_sl': None}
     expiry_ms = t0 + 2 * 86400000
     now_ms = datetime.now(timezone.utc).timestamp() * 1000

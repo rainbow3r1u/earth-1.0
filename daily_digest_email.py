@@ -560,6 +560,86 @@ def section_hybrid():
         return f'<p style="color:#c00">(混合结构影子臂生成失败: {e})</p>'
 
 
+def section_2x2():
+    """3.8b 影子臂 2×2 结构对照 (2026-09-12 用户批准加入晨报).
+
+    为什么需要它: 实盘 9/3(果)/9/8(米) 把「持有时长 48h→72h」与「止损 5%→8%」**同时**改了,
+    而原影子对照臂两项都没动 → 10/23 终审做 "72h vs 48h" 对比时 SL 变量未被控制(归因被污染)。
+    本表把 (SL5/SL8)×(48h/72h) 四档并排: 主档=SL5/48h, 另三档由 08:46 cron 与主档同源同日生成,
+    因此"每笔U"之差**只**来自结构参数, 并给出单变量增量, 直接回答"收益提升来自哪一项"。
+
+    口径: LONG 侧(实盘为纯LONG臂)、300U 名义、08:21 入场、1m 全费用、已含修正后资金费口径。
+    缺档/读取失败均优雅降级, 不影响晨报其余部分。
+    """
+    try:
+        D = '/home/myuser/websocket_new/data'
+        files = [('base',   'SL-5%/48h <b>(原基线)</b>', 'hybrid_tracker.json'),
+                 ('sl8',    'SL-8%/48h',                 'hybrid_tracker_sl8.json'),
+                 ('h72',    'SL-5%/72h',                 'hybrid_tracker_h72.json'),
+                 ('sl8h72', 'SL-8%/72h <b>(实盘现行)</b>', 'hybrid_tracker_sl8h72.json')]
+        cell = "style='padding:2px 8px;border:1px solid #ccc;font-size:12px;'"
+        hd = "style='padding:2px 8px;border:1px solid #ccc;font-size:12px;background:#f0f0f0;'"
+        stats, missing = {}, []
+        for key, label, fn in files:
+            p = os.path.join(D, fn)
+            if not os.path.exists(p):
+                missing.append(fn)
+                continue
+            try:
+                d = json.load(open(p))
+            except Exception as e:
+                missing.append(f'{fn}(读取失败:{e})')
+                continue
+            tr = [t for day in d for t in d[day].get('trades', [])
+                  if t.get('direction') == 'LONG' and t.get('net_u') is not None]
+            if not tr:
+                continue
+            sl = [t for t in tr if t.get('trigger') == '止损']
+            ex = [t for t in tr if t.get('trigger') == '到期']
+            tot = sum(t['net_u'] for t in tr)
+            stats[key] = {'label': label, 'n': len(tr), 'tot': tot, 'per': tot / len(tr),
+                          'exp': len(ex) / len(tr) * 100,
+                          'slm': sum(t['net_u'] for t in sl) / max(len(sl), 1),
+                          'exm': sum(t['net_u'] for t in ex) / max(len(ex), 1)}
+        if not stats:
+            return '<p style="color:#c00">(2×2对照: 四档均不可读, 检查 data/hybrid_tracker*.json)</p>'
+        rows = []
+        for key, label, _ in files:
+            s = stats.get(key)
+            if not s:
+                continue
+            c = '#0a0' if s['per'] >= 0 else '#c00'
+            rows.append(f"<tr><td {cell}>{label}</td><td {cell}>{s['n']}</td>"
+                        f"<td {cell}>{s['tot']:+.1f}</td>"
+                        f"<td {cell}><b style='color:{c}'>{s['per']:+.2f}</b></td>"
+                        f"<td {cell}>{s['exp']:.1f}%</td><td {cell}>{s['slm']:+.2f}</td>"
+                        f"<td {cell}>{s['exm']:+.2f}</td></tr>")
+        dlt = ''
+        b = stats.get('base')
+        if b and b['per']:
+            parts = []
+            for key, tag in (('sl8', '仅改止损'), ('h72', '仅改持有'), ('sl8h72', '两者同时')):
+                s = stats.get(key)
+                if s:
+                    parts.append(f"{tag} <b>{s['per'] - b['per']:+.2f}U/笔({(s['per'] / b['per'] - 1) * 100:+.0f}%)</b>")
+            if parts:
+                dlt = ("<div style='font-size:11px;color:#333;margin-top:3px;'>"
+                       "<b>单变量增量(vs 原基线)</b>: " + ' | '.join(parts) + "</div>")
+        table = ("<table style='border-collapse:collapse;'>"
+                 f"<tr><th {hd}>结构(LONG侧 · 300U名义)</th><th {hd}>笔数</th><th {hd}>累计U</th>"
+                 f"<th {hd}>每笔U</th><th {hd}>到期率</th><th {hd}>止损单均</th><th {hd}>到期单均</th></tr>"
+                 + ''.join(rows) + "</table>")
+        note = ("<div style='font-size:10px;color:#666;'>同源同日(同一批pred、同一天08:21入场) → "
+                "差异<b>只</b>来自结构参数 | 变体档由 08:46 cron 与主档同源维护(独立文件, 不覆盖主档) | "
+                "到期率≠到期胜率 | 单变量读数: 仅改持有(72h)≈全部收益提升, 仅放宽止损为次要放大器</div>")
+        if missing:
+            note = (f"<div style='font-size:10px;color:#c00;'>⚠️ 缺档: {', '.join(missing)}"
+                    "(08:46 cron 未跑/失败? 查 logs/hybrid_tracker_variants.log)</div>") + note
+        return table + dlt + note
+    except Exception as e:
+        return f'<p style="color:#c00">(2×2对照生成失败: {e})</p>'
+
+
 def section_residual():
     """RESIDUAL影子臂 3.9: LONG残差标签模型TOP10 vs 主臂LONG 同规则对照 (2026-09-01上线).
     治LONG标签beta假阳性: 残差标签=币48hret-当日宇宙中位>5pp (GPU 180d双窗 Sharpe 32.75/26.89 vs 基线21.33/22.12).
@@ -601,8 +681,15 @@ def section_residual():
             if not done:
                 pending_note.append(f"{d[5:]} 在持{e.get('n_total',0)-e.get('n_settled',0)}笔")
                 continue
+            # 2026-09-12 修: 原只要求**残差臂**当天已盖棺 —— 主臂未盖棺时下面的 h_u 只累加已结算部分,
+            # 差额会被静默扭曲(主臂每日 20 笔 vs 残差 10 笔, 结算更易滞后)。改为与 S5 节同款闸门:
+            # 两侧当天都盖棺才进对照表, 否则记入表注。
+            _hb_day = hb.get(d, {})
+            if not _hb_day or _hb_day.get('n_settled', 0) < _hb_day.get('n_total', 99):
+                pending_note.append(f"{d[5:]} 主臂未盖棺({_hb_day.get('n_settled', 0)}/{_hb_day.get('n_total', 0)}), 暂不入对照")
+                continue
             r_u = e.get('day_pnl_u', 0)
-            h_u = sum(t['net_u'] for t in hb.get(d, {}).get('trades', [])
+            h_u = sum(t['net_u'] for t in _hb_day.get('trades', [])
                       if t.get('net_u') is not None and t.get('direction') == 'LONG')
             cum_r += r_u
             cum_h += h_u
@@ -763,7 +850,7 @@ def section_residual_survival():
                 f"<th {hd}>到期平</th><th {hd}>其他</th><th {hd}>存活率</th>"
                 f"<th {hd}>止损净U</th><th {hd}>到期净U</th></tr>"
                 + ''.join(rows) + "</table>"
-                + "<div style='font-size:10px;color:#666;'>残差实盘每批生存动态 (9/2起正式批; 72h持有, SL-5%盘中触发) | "
+                + "<div style='font-size:10px;color:#666;'>残差实盘每批生存动态 (9/2起正式批; 72h持有, SL-8%盘中触发[9/7起由5%调]) | "
                 "存活率配色: 绿≥70%/黄40~70%/红<40% | 止损净U=该批已止损单的真实净亏损合计 | "
                 "存活=本批持仓仍在等待72h到期(按批次标签归属, 币被后续批次重开计入新批) | '其他'=手动/异常离场</div>")
     except Exception as e:
@@ -1087,17 +1174,21 @@ def section_health():
     except Exception as e:
         parts.append(f'(健康检查执行失败: {e})')
     # 4a2. SAMPLECHK 特征体检(幽灵防复发): 显示今日探针值 + 数量检查
+    # 2026-09-12 修: 原取全历史最后3条 -> 当日训练未跑时会把昨日探针渲染成今日"✅3/3"(哨兵假绿,
+    #   正是该探针要防的失效形态); 改为按当日日期过滤, 无当日记录即明示.
     try:
         log_file = '/home/myuser/.local/share/auto_trade/trade.log'
+        today_str = datetime.date.today().isoformat()
         with open(log_file) as f:
-            slines = [l.split('] ', 1)[-1].strip() for l in f if '[SAMPLECHK]' in l]
+            slines = [l.split('] ', 1)[-1].strip() for l in f
+                      if '[SAMPLECHK]' in l and today_str in l]
         if slines:
             slines = slines[-3:]
             parts.append('[SAMPLECHK 特征体检] ' + ('✅ 3/3' if len(slines) == 3 else f'⚠️ 仅{len(slines)}/3'))
             for s in slines:
                 parts.append('  ' + s)
         else:
-            parts.append('[SAMPLECHK 特征体检] ⚠️ 今日无记录(构建异常?)')
+            parts.append(f'[SAMPLECHK 特征体检] ⚠️ {today_str} 无记录(当日训练未跑或探针缺失?)')
     except Exception as e:
         parts.append(f'(SAMPLECHK读取失败: {e})')
     # 4a3. 数据漂移监控(8/5 新增): 外部数据修订 + 重放探针校验 (data_drift_monitor.py)
@@ -1193,10 +1284,12 @@ def main():
     # 文本节转 pre; 第2节(前向结算)为 HTML 表格
     pre_style = ("style=\"white-space:pre-wrap;font-size:11px;"
                  "font-family:'SimHei','Microsoft YaHei','PingFang SC',Consolas,monospace;line-height:1.5;\"")
-    # 口径标签: 绿=48h逻辑(与生产执行一致), 橙=72h逻辑(老日线口径, 仅参考)
+    # 口径标签: 绿=48h影子/前向口径(3.8影子臂/前向结算), 橙=72h逻辑(老日线口径, 仅参考)
+    # ⚠️ 2026-09-12 更正: 绿标签原注释为"与生产执行一致"已失效 — 实盘 9/3(果)/9/8(米)起为 72h+SL-8%,
+    #    仅影子臂与前向结算仍走 48h/SL-5%。实盘规则标签见 tag48_exec。
     tag_style = ("font-size:11px;padding:1px 6px;border-radius:3px;"
                  "font-family:'SimHei','Microsoft YaHei';")
-    tag48_exec = f"<span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>实盘执行规则: SL-5%/TP+10%/48h到期, 08:21开仓</span>"
+    tag48_exec = f"<span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>实盘执行规则(9/7~9/8起): LONG无止盈 · SL-8% · 72h · 果08:21/米08:23开仓 · 米SHORT已关</span>"
     tag48 = f"<span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>48h逻辑 · 1m口径 · 08:21开仓 · SL-5%/TP+10%/48h到期</span>"
     tag72 = f"<span style='{tag_style}background:#fff3e0;color:#e65100;'>72h逻辑 · 日线口径(老) · open[T]入场 · 扫T~T+2三根日线 · 与实盘口径不同仅参考</span>"
     tag_none = f"<span style='{tag_style}background:#eee;color:#666;'>无结算口径</span>"
@@ -1230,6 +1323,8 @@ def main():
 {section_top10_forward_u()}
 <b>3.8 混合结构影子臂 每日U盈亏 (LONG无止盈+SHORT现行TP/SL)</b> <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>影子验证 · 08:21开仓 · strict48 · 1m全费用 · 60天验证期至~10/23</span>
 {section_hybrid()}
+<b>3.8b 影子臂 2×2 结构对照 (SL档位 × 持有时长)</b> <span style='{tag_style}background:#e3f2fd;color:#1565c0;'>变量受控 · LONG侧 · 同源同日 · 为10/23终审提供拆分证据</span>
+{section_2x2()}
 <b>3.9 RESIDUAL影子臂 LONG对照 (残差标签: 币ret-宇宙中位>5pp)</b> <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>影子验证 · 残差标签LONG模型 · 出场同3.8主臂LONG · 纯旁路不影响实盘</span>
 {section_residual()}
 <b>3.9b 主LONG vs 残差LONG 当日选币差异</b> <span style='{tag_style}background:#e3f2fd;color:#1565c0;'>重合币/独有币对照 · 双方概率 · 近7日重合度趋势</span>

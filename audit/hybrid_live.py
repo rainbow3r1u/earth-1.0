@@ -98,13 +98,33 @@ def now_cst_min():
 
 # ==== 状态 ====
 def load_state():
-    try:
-        return json.load(open(STATE_FILE))
-    except Exception:
+    """读 state。
+
+    2026-09-12 加固: 原实现把"文件不存在"和"文件损坏"一起吞掉、统一返回**空 state**。
+    后果不对称: reconcile 因 st['open'] 为空直接 return → 在持仓位彻底失管(不重挂SL/不平到期),
+    且 mode_trade 的重叠保护失效(会重复开同币)。
+    现在: 文件不存在(首次运行) → 全新 state; 文件存在但读不出 → 告警 + 中止。
+    """
+    if not os.path.exists(STATE_FILE):
         return {'config': {'notional': NOTIONAL, 'leverage': LEVERAGE,
                            'sl_pct_long': SL_PCT_LONG, 'sl_pct_short': SL_PCT_SHORT,
                            'tp_short': TP_PCT_SHORT, 'hold_days': HOLD_DAYS},
                 'open': {}, 'history': [], 'days': {}}
+    try:
+        return json.load(open(STATE_FILE))
+    except Exception as e:
+        log(f'❌ {STATE_FILE} 读取失败: {e}')
+        log('   拒绝以空 state 运行(=全部在持仓位失管), 已中止。人工确认/修复该文件后再跑。')
+        try:
+            sys.path.insert(0, BASE_DIR)
+            from alert_monitor import send_email
+            send_email('[米]实盘state损坏-执行器已中止',
+                       f'{STATE_FILE} 读取失败: {e}\n\n'
+                       '执行器已中止: 期间不会开仓/平仓/重挂止损。\n'
+                       '交易所侧在持仓位与条件单需人工确认(可用 hybrid_live.py status 查看)。')
+        except Exception as _e:
+            log(f'   (告警邮件发送失败: {_e})')
+        sys.exit(1)
 
 
 def save_state(st):
@@ -320,7 +340,8 @@ def close_one(sym, st, reason, exit_price=None, exit_time=None):
         return
     exit_time = exit_time or int(time.time() * 1000)
     if reason in ('到期',):
-        cancel_all_algos(sym, pos)
+        # 2026-09-12 改序: 先平仓、确认成交后再撤条件单。原实现开头就 cancel_all_algos,
+        # 若平仓下单失败/未确认成交就 return(state保留、下轮重试), 该窗口内仓位**裸奔**。
         fl = get_filters(sym, load_exinfo())
         if fl is None:
             log(f'  ⚠️ {sym} 无法平仓(过滤器缺失), 下轮重试')
@@ -332,7 +353,7 @@ def close_one(sym, st, reason, exit_price=None, exit_time=None):
             'reduceOnly': 'true',
             'newClientOrderId': safe_cid(f'hl-{sym[:12]}-x-{entry_tag()}')})
         if o.get('orderId') is None:
-            log(f'  ⚠️ {sym} 平仓下单失败: {str(o)[:120]}, 下轮重试')
+            log(f'  ⚠️ {sym} 平仓下单失败: {str(o)[:120]}, 下轮重试 (条件单仍在, 未裸奔)')
             return
         time.sleep(0.8)
         _final = None
@@ -345,9 +366,9 @@ def close_one(sym, st, reason, exit_price=None, exit_time=None):
                 break
             time.sleep(0.4)
         if _final != 'FILLED':
-            log(f'  ⚠️ {sym} 平仓未确认({_final}), 保留state下轮重试')
+            log(f'  ⚠️ {sym} 平仓未确认({_final}), 保留state下轮重试 (条件单仍在, 未裸奔)')
             return
-        # 平完撤残余条件单(TP/SL另一张孤儿)
+        # 平完撤残余条件单(TP/SL另一张孤儿; 若恰在平仓期间触发, 撤单失败属正常)
         cancel_all_algos(sym, pos)
     if exit_price is None:
         exit_price = get_price(sym) or pos['entry']
@@ -368,13 +389,15 @@ def close_one(sym, st, reason, exit_price=None, exit_time=None):
 
 
 def nominal_expiry_ms(pos):
-    """48h到期 = 开仓日+2天的 00:21 UTC (=08:21 CST)。3.8口径strict48。"""
+    """到期时点 = 开仓日 + HOLD_DAYS(3)天 的 00:21 UTC (=08:21 CST), 即 72h 持有。
+    2026-09-12 修正注释: 原文写"48h到期 = 开仓日+2天 / 3.8口径strict48"与代码不符
+    (HOLD_DAYS 自 9/8 部署起即为 3=72h), 该错误注释与日志文案会误导运维判断持有期。"""
     d0 = datetime.strptime(pos['date'], '%Y-%m-%d').replace(tzinfo=timezone.utc)
     return int((d0 + timedelta(days=HOLD_DAYS, minutes=21)).timestamp() * 1000)
 
 
 def reconcile(st, close_expired=True):
-    """对账: 条件单触发落账 / 48h到期兜底平仓 / SL/TP单丢失重挂"""
+    """对账: 条件单触发落账 / 到期兜底平仓(HOLD_DAYS=3 → 72h) / SL/TP单丢失重挂"""
     if not st['open']:
         return
     pr = signed('GET', '/fapi/v2/positionRisk')
@@ -413,7 +436,7 @@ def reconcile(st, close_expired=True):
             continue
         # 仍在场: 到期?
         if close_expired and now_ms >= nominal_expiry_ms(pos):
-            log(f'  {sym} 48h到期, 平仓')
+            log(f'  {sym} {HOLD_DAYS * 24}h到期, 平仓')
             close_one(sym, st, '到期')
             continue
         # 条件单在交易所吗? 缺则重挂 (SL必挂; SHORT的TP也必挂)
@@ -445,13 +468,22 @@ def reconcile(st, close_expired=True):
 
 
 def wait_pred(today_str, timeout_s=1800):
+    """等 pred 文件。2026-09-12 修: 原无条件要求 top10_long **和** top10_short 同时非空,
+    而 SHORT 侧自 9/8 起已关闭(MAX_DAILY_SHORT=0) —— 一旦某天 pred 缺 SHORT 字段
+    (如空头模型训练失败), 米账户会白等 1800s 后**当天零开仓**。这个依赖对当前策略
+    零收益、纯风险。现: SHORT 仅在启用时(MAX_DAILY_SHORT>0)才作为必要条件。"""
     pf = os.path.join(DATA_DIR, f'pred_{today_str}.json')
     t0 = time.time()
+    _warned = False
     while time.time() - t0 < timeout_s:
         try:
             d = json.load(open(pf))
-            if d.get(PRED_FIELD_LONG) and d.get(PRED_FIELD_SHORT):
+            need_short = MAX_DAILY_SHORT > 0
+            if d.get(PRED_FIELD_LONG) and (not need_short or d.get(PRED_FIELD_SHORT)):
                 return d
+            if d.get(PRED_FIELD_LONG) and not d.get(PRED_FIELD_SHORT) and not _warned:
+                log(f'pred 已落地但无 {PRED_FIELD_SHORT} 字段 (SHORT侧已关闭, 不影响开仓)')
+                _warned = True
         except Exception:
             pass
         time.sleep(20)
@@ -494,6 +526,14 @@ def mode_trade(st, force=False):
     n_total = min(len(longs) + len(shorts), n_afford)
     log(f'== 开仓: LONG候选{len(longs)} + SHORT候选{len(shorts)}, 权益{equity:.1f}U 可用{avail:.1f}U '
         f'已占用{used:.1f}U → 计划{n_total}笔 (每笔保证金{margin_per:.0f}U/名义{NOTIONAL:.0f}U/{LEVERAGE}x逐仓) ==')
+    # 2026-09-12 修: BALANCE_MIN_ABORT 此前是全库无引用的死常量(仅定义未使用)。
+    # 现按同款口径生效: 可用余额低于缓冲下限直接中止, 不靠"刚好开得起1笔"硬撑。
+    if avail < BALANCE_MIN_ABORT:
+        log(f'⚠️ 可用余额 {avail:.1f}U 低于缓冲下限 {BALANCE_MIN_ABORT:.0f}U, 中止')
+        st['days'][today_str] = {'opened_long': [], 'opened_short': [],
+                                 'note': f'余额低于缓冲下限 avail={avail:.1f}'}
+        save_state(st)
+        return
     if n_total < 1:
         log(f'⚠️ 可用余额不足以开1笔, 中止')
         st['days'][today_str] = {'opened_long': [], 'opened_short': [], 'note': f'余额不足 avail={avail:.1f}'}

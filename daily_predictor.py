@@ -1356,6 +1356,9 @@ def train(klines_all, oi_data):
                         beta, alpha, r2, residual, rsi7, rsi14, rsi30] + rsi_div + sector_feats + macro_feats
                 # 标签: 2日收益 = (day i+1 close - day j close) / day j close, j=i-1
                 next_ret = (closes[i+1]-closes[j])/closes[j] if closes[j]>0 else 0
+                # 注(2026-09-12): next_ret 为小数口径, 阈值 5.0=500% → 过滤器永不触发(死过滤)。
+                #   本文件 train()/predict()/backtest() 为**非生产遗留路径**(生产走 auto_dual_trade._build_samples),
+                #   故未改动行为, 仅标注。
                 if abs(next_ret) > 5.0: continue
                 label = 1 if next_ret > 0.05 else 0
                 Xall.append(feat); yall.append(label)
@@ -1917,7 +1920,7 @@ def backtest(stride=5):
                 feat = [ret_1d_norm, ret_3d_norm, ret_5d_norm, volatility, vol_ratio, price_position, amplitude, streak, div_sign, oi_chg] + vol_col + [
                         beta, alpha, r2, residual, rsi7, rsi14, rsi30] + rsi_div + sector_feats + macro_feats
                 next_ret = (closes[i+2]-closes[i])/closes[i] if closes[i] > 0 and i+2 < n else 0
-                if abs(next_ret) > 5.0: continue  # 过滤异常值
+                if abs(next_ret) > 5.0: continue  # 过滤异常值 (注: 小数口径下 5.0=500%, 实际永不触发)
                 label = 1 if next_ret > 0.05 else 0
                 all_samples.append((ts, sym, feat, label, next_ret*100))
             except Exception: continue
@@ -2153,6 +2156,7 @@ def dual_backtest(days=90, stride=1):
                 feat = [ret_1d_norm, ret_3d_norm, ret_5d_norm, volatility, vol_ratio, price_position, amplitude, streak, div_sign, oi_chg] + vol_col + [
                         beta, alpha, r2, residual, rsi7, rsi14, rsi30] + rsi_div + sector_feats + macro_feats
                 next_ret = (closes[i+2]-closes[i])/closes[i] if closes[i] > 0 and i+2 < n else 0
+                # 注(2026-09-12): 同 1359 行 —— 小数口径下阈值 5.0=500%, 死过滤; 非生产遗留路径, 未改行为。
                 if abs(next_ret) > 5.0:
                     continue
                 label_long = 1 if next_ret > 0.05 else 0

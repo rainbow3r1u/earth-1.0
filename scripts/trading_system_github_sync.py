@@ -29,7 +29,11 @@ EXCLUDE_DIRS = {
 DATA_WHITELIST_PREFIX = (
     'data/pred_',                          # 每日预测公证 (主臂+残差臂TOP10, 事前不可篡改)
     'data/top10_forward_cache',             # TOP10前向结算缓存
-    'data/hybrid_tracker',                  # 混合结构主臂影子结算
+    'data/hybrid_tracker',                  # 混合结构主臂影子结算 (+ s5/变体档, 见下)
+    # 2×2 对照档 (2026-09-12 用户批准): 显式列出, 避免日后"整理"前缀时被静默漏掉同步
+    'data/hybrid_tracker_sl8.json',         #   SL-8%/48h
+    'data/hybrid_tracker_h72.json',         #   SL-5%/72h
+    'data/hybrid_tracker_sl8h72.json',      #   SL-8%/72h (对齐实盘)
     'data/residual_tracker',                # RESIDUAL影子臂结算
     'data/residual_live_state',             # RESIDUAL实盘执行器持仓/历史
     'data/hybrid_live_state',              # HYBRID 3.8实盘执行器(第二账户2026-09-08)
@@ -192,9 +196,18 @@ def main():
             old = json.load(open(MANIFEST, encoding='utf-8'))
         except Exception:
             old = {}
-    branch = default_branch(REPO)
+    try:
+        branch = default_branch(REPO)
+    except Exception as e:
+        # 2026-09-12: 原无保护 → 启动即网络故障时脚本崩、status 文件不更新,
+        # 只能靠次日体检间接发现。现落盘 ERROR 状态并正常返回。
+        log(f'default_branch 获取失败: {e}')
+        status_payload['message'] = f'ERROR default_branch: {e}'
+        write_status(status_payload)
+        return
     current = {}
     changed, removed = [], []
+    ok_files, fail_files, ok_del, fail_del = set(), set(), set(), set()
     for rel, path in files.items():
         digest = md5_file(path)
         current[rel] = digest
@@ -215,28 +228,47 @@ def main():
             with open(path, 'rb') as f:
                 content = f.read()
             status = upload_file(REPO, branch, rel, content, f'sync trading system: {rel}')
+            ok_files.add(rel)
             log(f'  uploaded {rel} ({status}) [{i}/{len(changed)}]')
         except Exception as e:
+            fail_files.add(rel)
             log(f'  FAIL upload {rel}: {e}')
     for rel in removed:
         sha = file_sha(REPO, branch, rel)
         if sha:
             try:
                 status = delete_file(REPO, branch, rel, sha)
+                ok_del.add(rel)
                 log(f'  deleted {rel} ({status})')
             except Exception as e:
+                fail_del.add(rel)
                 log(f'  FAIL delete {rel}: {e}')
-    with open(MANIFEST, 'w', encoding='utf-8') as f:
+    # 2026-09-12 修(静默漏同步): 原实现无条件把**本地**新 md5 写进 manifest, 上传失败的文件
+    # 下次比对即"无变化" → 永不重试; 且 status 里 'failed' 恒为 0, 晨报/体检看不到失败。
+    # 现: 失败文件在 manifest 中保留旧 md5(新文件则移除条目) → 下次仍判为 changed 并重试;
+    # 失败删除同理保留条目; failed 计数如实上报。
+    for rel in sorted(fail_files):
+        if rel in old:
+            current[rel] = old[rel]          # 保留旧值 → 下次仍 changed → 重试
+        else:
+            current.pop(rel, None)           # 新文件失败 → 不入册 → 下次仍为新增 → 重试
+    for rel in sorted(fail_del):
+        if rel in old:
+            current[rel] = old[rel]          # 删除失败 → 保留 → 下次仍判 removed → 重试
+    with open(MANIFEST + '.tmp', 'w', encoding='utf-8') as f:
         json.dump(current, f, ensure_ascii=False, indent=2)
+    os.replace(MANIFEST + '.tmp', MANIFEST)
     status_payload.update({
         'status': 'CHANGED' if changed else ('NO_CHANGE' if not removed else 'CHANGED'),
         'changed': len(changed),
-        'uploaded': len(changed) - sum(1 for _, p in changed if not os.path.exists(p)),
-        'failed': 0,
+        'uploaded': len(ok_files),
+        'failed': len(fail_files) + len(fail_del),
+        'failed_files': sorted(fail_files | fail_del)[:20],
         'removed': len(removed),
         'files': [rel for rel, _ in changed],
         'repo_mb': repo_mb,
-        'message': f'changed={len(changed)} removed={len(removed)} repo={repo_mb}MB',
+        'message': f'changed={len(changed)} uploaded={len(ok_files)} failed={len(fail_files) + len(fail_del)} '
+                   f'removed={len(removed)} repo={repo_mb}MB',
     })
     write_status(status_payload)
     log('=== trading system github sync done ===')

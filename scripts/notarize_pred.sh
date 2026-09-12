@@ -86,9 +86,25 @@ if [ "$SNAP" -eq 1 ]; then
 fi
 
 # 5) 只提交预测相关文件
-git add data/pred_*.json data/daily_predictions.json \
-        data/universe/ data/forward_ic_history.json \
-        data/forward_ic_history_48h.json >> "$LOG" 2>&1
+#    2026-09-12 修: 原固定 git add 5 个路径, 配合 set -euo pipefail —— 任一路径不存在即
+#    git add 返回 128 → 脚本静默中止(此路径原本无 alert), 公证无声失败。
+#    现只 add 实际存在的路径, 缺失项记日志; 若 add 本身失败则告警退出。
+ADD_PATHS=()
+for p in data/pred_*.json data/daily_predictions.json data/universe/ \
+         data/forward_ic_history.json data/forward_ic_history_48h.json; do
+  if [ -e "$p" ]; then
+    ADD_PATHS+=("$p")
+  else
+    echo "$(date +%F-%T) WARN: 公证待提交路径缺失, 已跳过: $p" >> "$LOG"
+  fi
+done
+if [ ${#ADD_PATHS[@]} -gt 0 ]; then
+  if ! git add "${ADD_PATHS[@]}" >> "$LOG" 2>&1; then
+    echo "$(date +%F-%T) ERROR: git add 失败, 今日公证未完成" >> "$LOG"
+    alert "notarize git add 失败, 今日公证未完成, 请检查 logs/notarize.log"
+    exit 1
+  fi
+fi
 if ! git diff --cached --quiet; then
   git commit -m "pred: $(date +%F) 每日预测公证(预测先于结果)" >> "$LOG" 2>&1
 fi
