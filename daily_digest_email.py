@@ -1165,6 +1165,183 @@ def section_forward_ic():
         return f'<p style="color:#c00">(前向批作业读取失败: {e})</p>'
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+# 5.6 BTC EMA7/EMA28 纠缠闸门 (2026-09-13 用户要求加入晨报, 用于盯一条待验证线索)
+#
+# 线索(用户 2026-09-13 提出)的最终裁定 —— ⚠️ 2026-09-13 当日已用 649 笔/65 日复核, 结论=未证实:
+#   ⚠️ **效果量测不出来, 不是"没有"**: 点估计方向一直为正(批级 +9.6U/笔、币级 +1.1pp),
+#      但 t=1.23 / 95%CI 跨零。批级每笔 PnL 标准差 ≈24U, 效果量 9.6U → 信噪比 0.4;
+#      需每组 ≈99 批 ≈99 个交易日 才能分辨。→ 本项=零成本观察, 不投入实验成本。
+#   ⚠️ **用户提的三个机制全部被否**: ① 纠缠期山寨独立波动反而更小(t=-4.15) ② "BTC平静→山寨起飞"
+#      无效(t=+0.08) ③ 纠缠期上榜币止损率无差别(四档 43.5%~47.9%)。
+#      → 方向(点估计)对, 但原因全不对 = 典型的"巧合未被排除"。
+#
+# 仍保留的历史点估计(仅供追踪, 不可当证据):
+#   批收益: 纠缠 +11.80U vs 分离 +2.11U 每笔(基线48h档, 18/21批); 中位批 +7.50U vs -2.93U
+#   跨结构复现: 官方72h档 +19.49U vs +10.03U (差同为 ~+9.5U)
+#   500天事件研究(11次"从分离压缩进入贴近"): 持续≥5天 82%、≥10天 55%、中位 10 天 (底率 43%)
+#
+# 用途(用户定调 2026-09-13): **不是交易信号, 是降低回测成本的预筛观察项** —
+#   若日后证实分离期为负期望, 可据此推迟 GPU A/B 省 ~2h/轮; 目前在证实前不据它做决策.
+# 证伪线: ① 下次纠缠重现后批每笔未回到 +10U 量级 → 归为巧合
+#         ② 累计 ~99 个交易日样本后仍 t<1.96 → 判为不可测, 长期摘除
+#         ③ TOP10 模拟器(须 SL_PCT=8)在其他历史纠缠段不改善 → 判为行情指纹
+#
+# ⚠️ 本函数纯只读展示, 不参与任何交易决策, 失败自动降级为一行提示, 不影响晨报其余部分.
+# ══════════════════════════════════════════════════════════════════════════════
+EMA_NEAR = 1.75      # |gap| <= 该值 = 贴近区(纠缠)
+EMA_SEP = 2.75       # |gap| >  该值 = 分离区
+
+
+def _btc_ema_gap_state():
+    """BTC EMA7/EMA28 纠缠状态(纯只读). 数据源=生产同款日K缓存, 排除今日未收盘bar.
+    返回 dict 或 None(失败时)."""
+    btck = _btc_klines()
+    if btck is None or len(btck) < 40:
+        return None
+    try:
+        # ⚠️ 2026-09-13 修正: 必须排除"未收盘"的当日 bar. 缓存由 websocket/采集写入,
+        # 当日那根的 c 是盘中中间值(实测 9/12 缓存 77239.9 vs 实际收盘 77159.2, 差 0.10%),
+        # 若纳入会让 gap 偏移 ~0.03pp 并与事件研究口径不符.
+        # 日K t 为 UTC 00:00, 收盘时刻 = t + 86400000; 只保留 t+DAY <= now 的已收盘 bar.
+        now_ms = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
+        DAY = 86400000
+        rows = [r for r in btck if r['t'] + DAY <= now_ms]
+        if len(rows) < 40:
+            return None
+        closes = [r['c'] for r in rows]
+        dates = [datetime.datetime.fromtimestamp(r['t'] / 1000,
+                     datetime.timezone.utc).strftime('%Y-%m-%d') for r in rows]
+        # 与本地核算脚本同口径: k=2/(n+1), 首值以首个close为种子
+        def _ema(vals, n):
+            k = 2.0 / (n + 1)
+            out, prev = [], None
+            for v in vals:
+                prev = v if prev is None else v * k + prev * (1 - k)
+                out.append(prev)
+            return out
+        e7, e28 = _ema(closes, 7), _ema(closes, 28)
+        gap = [(e7[i] - e28[i]) / e28[i] * 100 for i in range(len(closes))]
+        g = gap[-1]
+        state = '贴近(纠缠)' if abs(g) <= EMA_NEAR else ('过渡带' if abs(g) <= EMA_SEP else '分离')
+        # 当前状态已持续天数(含今日)
+        thr = EMA_NEAR if state == '贴近(纠缠)' else (None if state == '过渡带' else EMA_SEP)
+        held = 0
+        if thr is not None:
+            for x in reversed(gap):
+                if (abs(x) <= thr) if state == '贴近(纠缠)' else (abs(x) > thr):
+                    held += 1
+                else:
+                    break
+        # 过渡带(已跌破分离边界但未达贴近区)已持续天数
+        held_trans = 0
+        if state == '过渡带':
+            for x in reversed(gap):
+                if abs(x) <= EMA_SEP:
+                    held_trans += 1
+                else:
+                    break
+        # 最近一次"进入贴近区"的日期(与事件研究同定义: 且此前10日内曾处分离区)
+        enter_date = None
+        last = -999
+        for i in range(len(gap)):
+            if abs(gap[i]) > EMA_NEAR:
+                continue
+            if i - last < 10:
+                continue
+            win = [abs(x) for x in gap[max(0, i - 10):i]]
+            if not win or max(win) <= EMA_SEP:
+                continue
+            enter_date, last = dates[i], i
+        # 最近一次"跌破分离边界"的日期: 取当前 |gap|<=EMA_SEP 连续段的起点.
+        # (原写法找"单日跨过边界"的跃变, 若边界当日即序列端点或中间缺 bar 会漏 → 已改稳健写法)
+        break_date = None
+        if abs(g) <= EMA_SEP:
+            j = len(gap) - 1
+            while j > 0 and abs(gap[j - 1]) <= EMA_SEP:
+                j -= 1
+            break_date = dates[j]
+        # 当前"分离段"的起点(用于分离态展示): 取当前 |gap|>EMA_SEP 连续段的起点
+        sep_start = None
+        if abs(g) > EMA_SEP:
+            j = len(gap) - 1
+            while j > 0 and abs(gap[j - 1]) > EMA_SEP:
+                j -= 1
+            sep_start = dates[j]
+        # 压缩速度 + 线性外推到 0 的天数.
+        # ⚠️ 用**近5日窗口**, 不用"整段起算": 分离段往往先扩张后收缩(如 8/20 起先冲到 +10.07 再回落),
+        #    整段均值会互相抵消得到 ≈0 的速度 → 外推出荒谬的天数(实测曾得 178 天). 近5日才反映"当前速度".
+        rate = days_to_zero = None
+        span = 5 if len(gap) > 6 else len(gap) - 1
+        if span >= 1:
+            rate = (gap[-1] - gap[-1 - span]) / span
+            if rate != 0 and (gap[-1 - span] > 0) == (gap[-1] > 0) and abs(gap[-1]) < abs(gap[-1 - span]):
+                days_to_zero = abs(gap[-1] / rate)
+        # 贴近区内穿越零线次数(近 40 天, 衡量"是否在反复纠缠")
+        win40 = gap[-40:]
+        crossings = sum(1 for i in range(1, len(win40)) if win40[i] * win40[i - 1] < 0)
+        return dict(date=dates[-1], gap=g, prev_gap=gap[-2], state=state, held=held,
+                    held_trans=held_trans, sep_start=sep_start,
+                    enter_date=enter_date, break_date=break_date, rate=rate,
+                    days_to_zero=days_to_zero, crossings=crossings,
+                    n_bars=len(rows),
+                    gap_series=[(dates[i], gap[i]) for i in range(len(gap) - 20, len(gap))])
+    except Exception:
+        return None
+
+
+def section_ema_gate():
+    """5.6 BTC EMA7/EMA28 纠缠闸门(只读观察项; 未证实, 见上方裁定注释)."""
+    s = _btc_ema_gap_state()
+    if not s:
+        return ("<div style='font-size:11px;color:#999;'>(5.6 纠缠闸门: BTC日K缓存不可用或计算失败, 略过)</div>")
+    g, st = s['gap'], s['state']
+    color = {'贴近(纠缠)': '#1b5e20', '过渡带': '#e65100', '分离': '#b71c1c'}.get(st, '#333')
+    bg = {'贴近(纠缠)': '#e8f5e9', '过渡带': '#fff3e0', '分离': '#ffebee'}.get(st, '#eee')
+    chg = g - s['prev_gap']
+    arrow = '↓' if chg < 0 else ('↑' if chg > 0 else '→')
+    # 历史参考常数(500天事件研究 11 次压缩事件, 固定值不重算以保持轻量)
+    hist = ('历史同类事件 11 次: 落入贴近后持续 ≥5天 <b>82%</b>(底率43%) · ≥10天 <b>55%</b> · '
+            '中位持续 <b>10 天</b>; 从跌破 2.75% 到进入贴近区 中位 <b>2 天</b>(91% 在5天内)')
+    extra = ''
+    if st == '贴近(纠缠)':
+        extra = (f"已持续第 <b>{s['held']}</b> 天 | 近40日穿越零线 <b>{s['crossings']}</b> 次"
+                 f"(反复穿越=真纠缠) | 最近进入 <b>{s['enter_date'] or '—'}</b>")
+    elif st == '过渡带':
+        e = f"，已 {s['held_trans']} 天" if s.get('held_trans') else ''
+        extra = (f"⚠️ 已跌破分离边界但尚未进入贴近区{e}"
+                 f" | 历史 91% 在 5 天内进入贴近区, 中位 2 天")
+    else:
+        extra = f"已连续分离 <b>{s['held']}</b> 天" + (
+            f" (本段自 <b>{s.get('sep_start') or '—'}</b> 起)" if s.get('sep_start') else '') + (
+            f" | 日压 {s['rate']:+.3f}pp, 外推贴零还需 ~<b>{s['days_to_zero']:.0f}</b> 天"
+            if s.get('days_to_zero') else '')
+    # 近 20 日 sparkline(文字条)
+    rows = s['gap_series']
+    mx = max(abs(x[1]) for x in rows) or 1.0
+    spark = ''
+    if rows:
+        cells = []
+        for d, v in rows:
+            blk = int(min(abs(v) / mx, 1.0) * 6)
+            ch = '█' * blk if blk else '·'
+            c = '#b71c1c' if abs(v) > EMA_SEP else ('#1b5e20' if abs(v) <= EMA_NEAR else '#e65100')
+            cells.append(f"<span style='display:inline-block;color:{c}'>{ch}</span>")
+        spark = (f"<div style='font-size:10px;font-family:Consolas,monospace;line-height:1.2;'>"
+                 f"{''.join(cells)}<br><span style='color:#888'>"
+                 f"{rows[0][0]} → {rows[-1][0]} (条越高=分离越远; 绿=贴近 橙=过渡 红=分离)</span></div>")
+    return f"""<div style="font-size:12px;line-height:1.7;">
+<span style='background:{bg};color:{color};padding:2px 8px;border-radius:3px;font-weight:bold;'>{st}</span>
+&nbsp; {s['date']} BTC EMA7−EMA28 gap = <b>{g:+.3f}%</b> <span style='color:{color}'>{arrow}{abs(chg):.3f}</span>
+<div style='font-size:11px;color:#555;'>{extra}</div>
+<div style='font-size:11px;color:#777;margin-top:3px;'>{hist}</div>
+{spark}
+<div style='font-size:10px;color:#999;'>⚠️ <b>已终审(2026-09-13): 对系统收益无效应, 保留为纯观察项</b> — 350天walk-forward(3480笔)
++ 468天市场结构检验, 三组检验(阈值/中位分割/纯态月)全部CI含0。真实关系 = 纠缠期山寨"动得更小"(离散度−0.9pp显著),
+但不增加共振、不改变方向、不转化为收益优势。<b>不是交易信号, 不参与任何决策</b>。详见 Hindsight 归档 + AGENTS.md §8.2。</div>
+</div>"""
+
+
 def section_health():
     parts = []
     # 4a. 每日健康检查 4 项(原 daily_health_check.py; MD5同步检查已随观察端下线移除)
@@ -1357,6 +1534,8 @@ def main():
 <pre {pre_style}>{section_health()}</pre>
 <b>5.5 前向批作业 · 模型质量与BTC波动 regime</b> <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>公证预测对答案 · 48h日线口径 · D+2确认</span>
 {section_forward_ic()}
+<b>5.6 BTC EMA7/EMA28 纠缠闸门 (只读观察 · ⚠️未证实)</b> <span style='{tag_style}background:#ffebee;color:#b71c1c;'>效果量测不出来(t=1.23/CI跨零), 三个机制均被否 · 只作零成本追踪 · 不参与交易决策, 暂不作回测预筛依据 · 2026-09-13 加</span>
+{section_ema_gate()}
 {chart_html}
 <b>6. GitHub 同步</b> {tag_none}
 <pre {pre_style}>{section_github_sync()}</pre>"""
