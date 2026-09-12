@@ -796,13 +796,13 @@ def section_residual_picks():
                 + ''.join(rows) + "</table>" + trend_html
                 + "<div style='font-size:10px;color:#666;'>重合币=两模型共识(自身动量强); 残差独有币=已证明相对强度"
                 "(跑赢宇宙中位)但绝对涨幅未达标主臂阈值的币 | 重合度>70%=两模型同源边际改进有限; 40~60%=在看不同的东西 | "
-                "残差实盘持仓=重合币+残差独有币</div>")
+                "果实盘持仓=主LONG榜(2026-09-13起由残差榜切换); 残差臂转为纯影子采集</div>")
     except Exception as e:
         return f'<p style="color:#c00">(选币差异生成失败: {e})</p>'
 
 
 def section_residual_survival():
-    """3.9c 残差实盘批次生存表 (2026-09-03 用户需求):
+    """3.9c 果实盘批次生存表 (2026-09-03 用户需求; 2026-09-13 起选币由残差榜切换为主LONG榜):
     每批'开仓N笔→存活/止损/到期'动态 + 存活率%。直观看出每批选币的成色衰减速度。
     数据: residual_live_state.json 的 days(开仓名单)/open(在持)/history(已离场, 含trigger)。"""
     try:
@@ -850,7 +850,7 @@ def section_residual_survival():
                 f"<th {hd}>到期平</th><th {hd}>其他</th><th {hd}>存活率</th>"
                 f"<th {hd}>止损净U</th><th {hd}>到期净U</th></tr>"
                 + ''.join(rows) + "</table>"
-                + "<div style='font-size:10px;color:#666;'>残差实盘每批生存动态 (9/2起正式批; 72h持有, SL-8%盘中触发[9/7起由5%调]) | "
+                + "<div style='font-size:10px;color:#666;'>果实盘每批生存动态 (9/2起正式批; 72h持有, SL-8%盘中触发[9/7起由5%调]; 9/13起选币=主LONG榜) | "
                 "存活率配色: 绿≥70%/黄40~70%/红<40% | 止损净U=该批已止损单的真实净亏损合计 | "
                 "存活=本批持仓仍在等待72h到期(按批次标签归属, 币被后续批次重开计入新批) | '其他'=手动/异常离场</div>")
     except Exception as e:
@@ -1345,7 +1345,7 @@ def main():
 {section_residual()}
 <b>3.9b 主LONG vs 残差LONG 当日选币差异</b> <span style='{tag_style}background:#e3f2fd;color:#1565c0;'>重合币/独有币对照 · 双方概率 · 近7日重合度趋势</span>
 {section_residual_picks()}
-<b>3.9c 残差实盘批次生存表</b> <span style='{tag_style}background:#fff3e0;color:#e65100;'>每批开仓N笔 → 存活/止损/到期 · 存活率 · 批内净U</span>
+<b>3.9c 果实盘批次生存表</b> <span style='{tag_style}background:#fff3e0;color:#e65100;'>每批开仓N笔 → 存活/止损/到期 · 存活率 · 批内净U · 9/13起选币=主LONG榜</span>
 {section_residual_survival()}
 <b>3.9e 米实盘权益 (第二账户·纯LONG臂)</b> <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>125U/5x/SL-8%/72h · 08:23开仓 · SHORT已关</span>
 {section_mi_equity()}

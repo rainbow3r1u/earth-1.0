@@ -1,23 +1,28 @@
 #!/usr/bin/env python3
-"""RESIDUAL 残差模型 小资金实盘执行器 (2026-09-01, 2000 CNY≈280U 测试)
+"""果实盘·小资金实盘执行器 (2026-09-01 建, 2000 CNY≈280U 测试)
+   ⚠️ 2026-09-13 起**选币来源换成主LONG榜** (top10_long), 不再用残差榜 (top10_long_residual)。
+      文件名与 state 名保留 "residual" 仅为不断历史/cron/体检/同步白名单; 残差臂转为纯影子继续采集。
+      切换依据(生产级8天对照, 两模型真实选币 × 官方1m × SL-8%/72h, 300U名义, 2026-09-02~09-09):
+        主LONG +3.04U/笔  vs  残差 -0.68U/笔  (主赢 7/8 天; 逐笔配对残差仅35%占优)
+      结论: 残差臂的"防守型"优势扛不住执行结构(SL+持有), 在真金白银结构下主模型更优。
 
 资金方案 (2026-09-01 确认, 2026-09-03 迁移72h):
-  杠杆 5x 逐仓 | 单笔名义 40U | 单笔保证金 8U | 每日最多 10 笔 (影子臂top10)
+  杠杆 5x 逐仓 | 单笔名义 40U | 单笔保证金 8U | 每日最多 10 笔
   持仓 72h (开仓日+3天08:21到期市价平) | 稳态 3 批共存, 峰值 ~30 笔
   峰值 30 笔×8U=240U (81%资金, 守卫放宽至85%支持满配, 用户确认可承受)
   爆仓距离≈19% | SL-8%(2026-09-07由5%调) | 30笔全灭理论上限≈-99U(-35%), 实际因每日止损很难满配
-  2026-09-03 前为 48h/2批; 迁移依据: 9/2 预研 29天580笔 72h 多赚+3101U(+111%)
+  2026-09-03 前为 48h/2批; 迁移依据: 9/2 预研 29天580笔 72h 多赚+3101U(+111%); 2026-09-07 起 SL-8%
 
 与影子臂结算 (audit/residual_tracker.py) 的对齐与已知偏差:
-  - ⚠️ 2026-09-03 起实盘为 72h 活体实验臂, 影子结算链维持 48h 至 10/23 终审 → 两口径分叉期
-    (实盘收益预期应参考 72h 语义; 与影子对照时注意窗口差 24h)
+  - ⚠️ 2026-09-13 起**选币不同源**: 本执行器用 top10_long(主LONG), 而 residual_tracker 影子继续结算
+    top10_long_residual(残差榜) → 影子已不再是本账户的对照, 仅作残差模型的数据采集
+  - ⚠️ 2026-09-03 起实盘为 72h, 影子结算链维持 48h 至 10/23 终审 → 持有窗口亦分叉
   - SL规则一致: SL-8% / CONTRACT_PRICE 触发 (K线low口径, 非主程序的MARK_PRICE)
-  - 已知偏差①: 实盘入场≈08:23-08:26 (pred落地后), 影子名义入场08:21 → 入场价差=执行滞后, 正是本测试要量的
-  - 已知偏差②: 实盘SL挂在实盘成交价×0.95, 影子按其名义入场价×0.95 → ±0.0x%级, 可忽略
-  - 已知偏差③: top10与在持仓位重叠的币跳过开仓(净持仓无法分批挂SL), 差异记录在 state.days.skipped_overlap
+  - 已知偏差①: 实盘入场≈08:23-08:26 (pred落地后), 影子名义入场08:21 → 入场价差=执行滞后
+  - 已知偏差③: 榜单与在持仓位重叠的币跳过开仓(净持仓无法分批挂SL), 差异记录在 state.days.skipped
 
 安全边界 (独立于主系统, 不碰 state.json / TRADING_ENABLED):
-  - 只做 LONG, 只用 pred 文件 top10_long_residual 字段, 每日≤10笔
+  - 只做 LONG, 选币字段见 PRED_FIELD (2026-09-13: top10_long_residual → top10_long), 每日≤10笔
   - 开仓时间窗 08:20~10:00 CST 之外拒绝开仓 (--force 才能越过, 防止对历史pred误开)
   - 文件锁防并发; 当日已开过则跳过 (幂等)
   - 余额不足自动减笔数, <1笔则中止
@@ -40,7 +45,11 @@ DATA_DIR = 'data'
 STATE_FILE = os.path.join(DATA_DIR, 'residual_live_state.json')
 EXINFO_CACHE = os.path.join(DATA_DIR, 'residual_live_exinfo.json')
 LOCK_FILE = '/tmp/residual_live.lock'
-PRED_FIELD = 'top10_long_residual'
+# ==== 选币来源 (2026-09-13 用户拍板切换) ====
+# 'top10_long'           = 主LONG模型榜 (现行; 与米账户同源, 米仍用此榜)
+# 'top10_long_residual'  = 残差模型榜 (2026-09-02~09-12 曾用; 残差臂已转纯影子, 见文件头说明)
+# 回退方法: 把本行改回 'top10_long_residual' 即可(历史 state 兼容, 不影响在持仓位管理)
+PRED_FIELD = 'top10_long'
 
 # ==== 资金参数 (2000 CNY ≈ 280U 测试) ====
 NOTIONAL = 40.0      # 单笔名义U (2026-09-01 用户确认上调: 20笔全灭≈-41U/-15%可接受)
@@ -470,7 +479,7 @@ def reconcile(st, close_expired=True):
 
 
 def wait_pred(today_str, timeout_s=900):
-    """等 pred 文件 + top10_long_residual 字段 (流水线≈08:22-08:25落地)"""
+    """等 pred 文件 + PRED_FIELD 字段 (流水线≈08:22-08:25落地; 字段名见文件头 PRED_FIELD)"""
     pf = os.path.join(DATA_DIR, f'pred_{today_str}.json')
     t0 = time.time()
     while time.time() - t0 < timeout_s:
@@ -561,7 +570,7 @@ def mode_trade(st, force=False):
 
 
 def mode_status(st):
-    print(f'== RESIDUAL 实盘执行器状态 ==')
+    print(f'== 果实盘 实盘执行器状态 (选币={PRED_FIELD}) ==')
     print(f'配置: 名义{NOTIONAL}U/笔 {LEVERAGE}x逐仓 SL-{SL_PCT*100:.0f}% {HOLD_DAYS*24}h')
     acct = signed('GET', '/fapi/v2/account')
     if isinstance(acct, dict):

@@ -47,7 +47,7 @@ description: "Analyzes the daily morning report (晨报): section diagnosis, los
 | **3.8b** | **2×2 结构对照 (SL5/SL8)×(48h/72h) LONG侧** | **data/hybrid_tracker{,_sl8,_h72,_sl8h72}.json** |
 | 3.9 | 残差影子臂 vs 主臂LONG对照 | data/residual_tracker.json |
 | 3.9b | 主vs残差当日选币重合度 | data/pred_YYYY-MM-DD.json (top10_long vs top10_long_residual) |
-| 3.9c | 实盘批次生存表 | data/residual_live_state.json |
+| 3.9c | **果实盘**实盘批次生存表 (**9/13起选币=主LONG榜**, 不再是残差榜) | data/residual_live_state.json |
 | 5.5 | 四灯驾驶舱 + IC状态四态链 | data/forward_ic_history_48h.json |
 | 5.5b | BTC vs 山寨三panel图 | /home/myuser/backtester/data_cache/notusdt_1d_full.json |
 | 6 | GitHub同步+仓库体积灯 | logs/trading_system_sync_status.json |
@@ -141,6 +141,12 @@ vis = ic.get((datetime.date.fromisoformat(day) - datetime.timedelta(days=3)).iso
 - 实盘 funding 由交易所真实结算(income API 逐笔记账), 不存在"未发生却被扣"的问题(影子臂 2026-09-12 前有这个口径缺陷, 已修)
 - 震荡市中影子臂SHORT侧大亏是"只记账的免费样本", 为10/23终审积累证据, 不要建议关停
 - 关键节点: **10/23 的 48h-vs-72h 终审必须用 §4.5 的 2×2 做变量受控对比** —— 不要再拿"实盘(72h+SL8) vs 影子主臂(48h+SL5)"直接相减, 那是两个变量同时不同, 归因会被污染; 另有残差60天评审
+
+> ⚠️ **2026-09-13 起的重要口径变化(读 3.9/3.9c 时必须知道)**:
+> **果实盘(果)的选币已由残差榜(top10_long_residual)切换为主LONG榜(top10_long)** —— 依据生产级8天对照(两模型真实选币 × 官方1m × SL-8%/72h, 300U名义): 主LONG +3.04U/笔 vs 残差 -0.68U/笔(主赢7/8天)。
+> 因此: ① **3.9c 是果实盘(=主LONG模型)的实盘批次表, 不再是残差臂的实盘成绩**, 不要把它与 3.9 的影子残差臂混读;
+> ② 残差臂**只存在于影子(3.9/residual_tracker)** 继续采集数据, 其"防守型"性质(上涨日输/下跌日赢)与9天绝对落后−190U 的归因见项目记忆(止损结构吃掉防守优势);
+> ③ 果与米**选币同源**(都 top10_long) → 两账户是同一策略的大小两档, 别再当作 A/B 对照; 米(125U)+果(40U) 同步涨跌, 集中度已上升。
 
 ## 4. LONG 正期望对照基准 (2026-09-04 会话确立, 每日晨报对照用)
 
