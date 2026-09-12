@@ -883,11 +883,26 @@ def section_mi_equity():
         return f'<div style="font-size:11px;color:#c00;">(米权益生成失败: {e})</div>'
 
 
+def _short_breakeven_wr():
+    """SHORT TOP5 的**含费**盈亏平衡胜率 (与 audit/hybrid_tracker.settle_hybrid 同一费用模型)。
+
+    2026-09-12 修: 原页脚与红/黄灯分界都用理想化的 33.3%(=2:1赔率), 未计手续费与滑点,
+    比含费真值低约 1.1pp → "33~34.4%" 这一段会被误读成"还没到危险线"。
+    赢 = +10% −0.12%(taker×2) −0.02%(出场滑点) ; 亏 = −5% −0.12% −0.05%(止损滑点)。
+    ⚠️ **未计资金费** —— 空头在挤压行情还要倒付 funding, 故真实平衡线只会更高。
+    """
+    fee = 0.001 + 0.0002          # 与 settle_hybrid 的 FEE 一致
+    win = 0.10 - fee - 0.0002     # TP 出场滑点
+    loss = 0.05 + fee + 0.0005    # SL 出场滑点
+    return loss / (loss + win) * 100.0
+
+
 def section_short_top5():
     """3.9d SHORT TOP5 试盘时机 (2026-09-07 用户需求):
-    每日SHORT prob前5的滚动胜率 vs 盈亏平衡线33.3%, 只输出一个结论:
+    每日SHORT prob前5的滚动胜率 vs **含费盈亏平衡线**(≈34.4%, 见 _short_breakeven_wr), 只输出一个结论:
     当前适不适合小资金试盘。判定规则见 ~/.trae/skills/short-top5-timing/SKILL.md
-    红灯: 滚动胜率<33% | 黄灯: 33~40%无资金面配合 | 绿灯: ≥40%且放量潮/BTC破位。
+    红灯: 滚动胜率<含费平衡线 | 黄灯: 平衡线~40%无资金面配合 | 绿灯: ≥40%且放量潮/BTC破位。
+    (2026-09-12 修: 原用理想化 33.3%, 未计手续费/滑点 → 边界偏低 1.1pp, 已改为含费口径)
     数据: hybrid_tracker.json SHORT侧; 生成失败自动降级, 不影响晨报。"""
     try:
         d = json.load(open('/home/myuser/websocket_new/data/hybrid_tracker.json'))
@@ -912,10 +927,11 @@ def section_short_top5():
         all_wr = alltp / alln * 100 if alln else 0
         # 资金面信号: 山寨放量潮口径(非TOP50放量币数>150 — 简化版: 用近3日hybrid在SHORT侧
         # 止盈占比代理脉冲形态; 完整口径以山寨资金SKILL判定为准, 此处只做胜率主判)
-        if wr < 33:
-            color, bg, verdict = '#c00', '#ffebee', '🔴 不适合 — 滚动胜率低于盈亏平衡线33.3%'
+        BE = _short_breakeven_wr()   # 含费平衡线(未计funding), 见函数注释
+        if wr < BE:
+            color, bg, verdict = '#c00', '#ffebee', f'🔴 不适合 — 滚动胜率低于含费盈亏平衡线{BE:.1f}%'
         elif wr < 40:
-            color, bg, verdict = '#b8860b', '#fffde7', '🟡 观察 — 线上但未达40%, 且无资金面配合'
+            color, bg, verdict = '#b8860b', '#fffde7', f'🟡 观察 — 高于平衡线{BE:.1f}%但未达40%, 且无资金面配合'
         else:
             color, bg, verdict = '#1b5e20', '#e8f5e9', '🟢 数据条件满足 — 是否试盘由用户拍板'
         cell = "style='padding:2px 8px;border:1px solid #ccc;font-size:12px;'"
@@ -924,7 +940,7 @@ def section_short_top5():
             f"<table style='border-collapse:collapse;'><tr>"
             f"<td {cell_bg}><b style='color:{color};'>{verdict}</b></td></tr>"
             f"<tr><td {cell}>近10日已结算 {rn}笔: 胜率<b>{wr:.0f}%</b> ({rtp}止盈) | "
-            f"8/3以来全程 {alln}笔: {all_wr:.0f}% | 盈亏平衡线=33.3%(TP10/SL5赔率2:1) | "
+            f"8/3以来全程 {alln}笔: {all_wr:.0f}% | 含费盈亏平衡线={BE:.1f}%(TP10/SL5, 未计funding) | "
             f"绿灯另需: 放量潮(>150币放量/总额>75亿)或BTC破位 | 近10日批次多数T+2才结算, 滚动值有滞后</td></tr></table>"
             f"<div style='font-size:10px;color:#666;'>SHORT TOP5=每日prob最高5笔做空(TP10/SL5/48h影子口径) | "
             f"历史锚: 8月脉冲市38%/日均+12.6U, 8/23后存量市32%/日均-4.8U | 试盘规格与停止线见 short-top5-timing SKILL §3</div>")
@@ -1333,7 +1349,7 @@ def main():
 {section_residual_survival()}
 <b>3.9e 米实盘权益 (第二账户·纯LONG臂)</b> <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>125U/5x/SL-8%/72h · 08:23开仓 · SHORT已关</span>
 {section_mi_equity()}
-<b>3.9d SHORT TOP5 试盘时机</b> <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>滚动胜率 vs 盈亏线33.3% · 只输出一个结论: 适不适合小资金试盘</span>
+<b>3.9d SHORT TOP5 试盘时机</b> <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>滚动胜率 vs 含费盈亏线34.4%(未计funding) · 只输出一个结论: 适不适合小资金试盘</span>
 {section_short_top5()}
 <b>4. 强势股续涨 + 每日资金榜</b> {tag_none}
 <pre {pre_style}>{section_momentum()}</pre>
