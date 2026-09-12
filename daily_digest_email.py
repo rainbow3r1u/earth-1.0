@@ -364,7 +364,10 @@ def section_verify():
 
 def section_long_top10():
     """LONG TOP10 列表 + 成交额(2026-08-08 用户新增).
-    2026-09-06 修: 优先今日pred文件, 缺失时明示'旧数据'而非静默冒充今日; glob 去2026死锁."""
+    2026-09-06 修: 优先今日pred文件, 缺失时明示'旧数据'而非静默冒充今日; glob 去2026死锁.
+    2026-09-13 加: 量能分位影子采集(用户批准) — C远×V高金矿格假设的前向验证, 至10/23终审.
+      定义: 昨日完整bar成交额 在 自身前20根完整bar(含昨日) 中的分位; 无前视(只用已收盘bar).
+      V高>0.70 / V中>0.30~0.70 / V低≤0.30; 落盘 data/volq_shadow.json 供前向对账."""
     try:
         import glob
         today = datetime.date.today().isoformat()
@@ -383,8 +386,45 @@ def section_long_top10():
         # K线缓存成交额(最后1根 q = 24h 成交额 U)
         kl = json.load(open('/home/myuser/backtester/data_cache/notusdt_1d_full.json'))['klines']
         stale_tag = ' ⚠️旧数据(今日预测尚未生成!)' if stale else ''
+        # ── 量能分位(无前视): 只用已收盘bar; 昨日在自身前20根中的分位 ──
+        now_ms = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
+
+        def _volq(sym):
+            done = [r for r in kl.get(sym, []) if r['t'] + 86400000 <= now_ms]
+            if len(done) < 20:
+                return None
+            qs = [float(r.get('q', 0)) for r in done[-20:]]
+            return sum(1 for x in qs if x <= qs[-1]) / 20.0
+
+        def _vtag(v):
+            if v is None:
+                return '--'
+            return 'V高' if v > 0.70 else ('V中' if v > 0.30 else 'V低')
+
+        # ── 金矿格判定(2026-09-13): C远×V高 = 距前低>33% 且 量能分位>0.70 ──
+        #    依据: 8/03~9/12 影子归因, 格内59笔(15%)贡献81%的LONG盈利(+74.4U/笔 vs 格外+3.1U);
+        #    ⚠️ 回测 t=1.23 未显著, 本标签仅追踪提醒, 不改开仓行为
+        today0 = int(datetime.datetime.combine(datetime.date.today(), datetime.time(),
+                        tzinfo=datetime.timezone.utc).timestamp() * 1000)
+
+        def _dist_low(sym):
+            done = [r for r in kl.get(sym, []) if r['t'] + 86400000 <= now_ms]
+            if len(done) < 20:
+                return None
+            lo = min(float(r.get('l', 0)) for r in done[-20:])
+            tb = [r for r in kl.get(sym, []) if r['t'] >= today0]
+            if not tb:
+                return None
+            e = float(tb[0].get('o', 0))
+            if not e or e <= 0:
+                return None
+            return (e - lo) / e * 100
+
         lines = [f"=== LONG TOP10 ({pred.get('date', '')[:10]}){stale_tag} ===",
-                 f"{'#':>2} {'币种':<16} {'概率':>6} {'24h成交额':>10}"]
+                 f"{'#':>2} {'币种':<16} {'概率':>6} {'24h成交额':>10} {'量能分位':>10}"]
+        rec_coins = []
+        n_h = n_m = n_l = 0
+        cell_syms = []
         for i, item in enumerate(top10[:10], 1):
             sym = item['symbol']
             p = float(item['prob'])
@@ -397,7 +437,40 @@ def section_long_top10():
                 qs = f'{q/1e8:.2f}亿'
             else:
                 qs = f'{q/1e6:.0f}M'
-            lines.append(f'{i:>2} {sym:<16} {p*100:5.1f}% {qs:>10}')
+            vq = _volq(sym)
+            vt = _vtag(vq)
+            dist = _dist_low(sym)
+            cell = (vq is not None and dist is not None and vq > 0.70 and dist > 33.0)
+            if cell:
+                cell_syms.append(sym)
+            if vt == 'V高':
+                n_h += 1
+            elif vt == 'V中':
+                n_m += 1
+            elif vt == 'V低':
+                n_l += 1
+            rec_coins.append({'sym': sym, 'volq': round(vq, 3) if vq is not None else None,
+                              'dist': round(dist, 1) if dist is not None else None, 'cell': cell})
+            vs = f'{vt}({vq:.2f})' if vq is not None else '--'
+            if cell:
+                vs += '🎯'
+            lines.append(f'{i:>2} {sym:<16} {p*100:5.1f}% {qs:>10} {vs:>10}')
+        if cell_syms:
+            lines.insert(2, f'🎯 金矿格候选(C远×V高, 历史均值+74U/笔·回测未显著): {", ".join(cell_syms)}')
+        lines.append(f'量能分布: V高 {n_h} · V中 {n_m} · V低 {n_l} · 格内 {len(cell_syms)}'
+                     f'  (影子假设: 格内15%笔数贡献81%盈利但t=1.23未显著; 只提醒不干预开仓)')
+        # ── 影子落盘(仅当日预测已生成时; 按pred日期去重, 保留180天) ──
+        if not stale:
+            try:
+                sf = f'{BASE}/data/volq_shadow.json'
+                hist = json.load(open(sf)) if os.path.exists(sf) else []
+                pd_ = pred.get('date', '')[:10]
+                hist = [h for h in hist if h.get('date') != pd_]
+                hist.append({'date': pd_, 'coins': rec_coins})
+                hist = sorted(hist, key=lambda h: h.get('date', ''))[-180:]
+                json.dump(hist, open(sf, 'w'), ensure_ascii=False)
+            except Exception:
+                pass
         return '\n'.join(lines)
     except Exception as e:
         return f'(LONG TOP10 读取失败: {e})'
@@ -1508,7 +1581,7 @@ def main():
 {section_forward()}
 <b>3. TOP10全开近7天趋势 (48h 1m口径)</b> {tag48}
 <pre {pre_style}>{section_verify()}</pre>
-<b>3.5 LONG TOP10 列表 + 成交额</b> <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>今日预测 → 08:21已开仓(48h逻辑), 结算见3.6</span>
+<b>3.5 LONG TOP10 列表 + 成交额 + 量能分位(影子)</b> <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>今日预测 → 08:21已开仓(48h逻辑), 结算见3.6 · 量能分位=C远×V高假设前向采集(至10/23), 只读不干预开仓</span>
 <pre {pre_style}>{section_long_top10()}</pre>
 <b>3.6 TOP10全开前向结算 (8/3起)</b> {tag48}
 {section_top10_forward()}
