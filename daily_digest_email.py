@@ -5,7 +5,7 @@
   3) 强势股续涨 + 每日资金榜                [原 8:27 daily_momentum_email]
   4) 系统健康(5项检查 + 服务健康报告)       [原 8:30 daily_health_check + 9:00 alert_monitor --report]
 """
-import os, sys, json, datetime
+import os, sys, json, datetime, glob
 
 BASE = '/home/myuser/websocket_new'
 os.chdir(BASE)
@@ -1487,6 +1487,161 @@ def section_health():
     return '\n'.join(parts)
 
 
+def section_tail_ability():
+    """3.4 右尾能力仪表盘 (2026-09-13 用户批准加入晨报, 要求「醒目+三个参数意思写清楚").
+
+    回答什么问题: "模型抓肥尾的能力还在不在? 若不在, 是模型退化还是市场没给?"
+    三个参数(都在同一口径下算: 入场=T0开盘, 出场=T2收盘, 即实盘 72h 结构对应的自然2日窗口):
+      ① 宇宙底率  = 全宇宙(约540币)中, 2日涨幅≥阈值 的币占比 → **市场供给**: 这段行情里「有多少币能跑出大涨幅"
+      ② 顶部命中率 = 我们 TOP10 选币中, 2日涨幅≥阈值 的占比 → **实际抓到多少**
+      ③ lift      = ② ÷ ①  → **模型相对能力**: 我们的榜单比「随机抓一个币「强多少倍
+    判读(2026-09-13 实测确立):
+      lift ≥3x = 模型尾部能力完好(全期 3.68x); 底率高低只反映行情, 不是模型的错
+      底率 ≥1.5% 但 lift <2.5x → 🔴 模型尾部能力真的退化 → 需查模型层
+      底率 <1% → 市场无大跑者, 谁都抓不到, 与模型无关(等行情)
+    关键: **IC 不是右尾的先行指标**(实测: 9/6 IC−0.149 而 lift 9.1x, 9/7 IC−0.186 而 lift 13.7x)
+          → 要盯右尾能力, 就看这三个数, 不看 IC。
+    """
+    try:
+        NOW = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
+        kl = json.load(open(_KLINE_CACHE))['klines']
+        K = {}
+        for s, rows in kl.items():
+            if len(rows) >= 60:
+                K[s] = {datetime.datetime.fromtimestamp(r['t'] / 1000, tz=datetime.timezone.utc).strftime('%Y-%m-%d'): r
+                        for r in rows}
+
+        def fwd2(s, d):
+            """标定口径: T0开盘 → T2收盘(%), 需T2已收盘(无前视)"""
+            m = K.get(s)
+            if not m or d not in m:
+                return None
+            o = sorted(m)
+            i = o.index(d)
+            if i + 2 >= len(o):
+                return None
+            if m[o[i + 2]]['t'] + 86400000 > NOW:
+                return None
+            e = m[o[i]]['o']
+            return (m[o[i + 2]]['c'] / e - 1) * 100 if e > 0 else None
+
+        THS = [(33.0, '≥+33%'), (16.7, '≥+16.7%(≈+50U/300U)')]
+        rows = []
+        for f in sorted(glob.glob(f'{BASE}/data/pred_2026-*.json')):
+            d = os.path.basename(f)[5:15]
+            try:
+                tl = [x['symbol'] for x in (json.load(open(f)).get('top10_long') or [])]
+            except Exception:
+                continue
+            if len(tl) < 5:
+                continue
+            top = [x for x in (fwd2(s, d) for s in tl) if x is not None]
+            uni = [x for x in (fwd2(s, d) for s in K) if x is not None]
+            if len(top) < 5 or len(uni) < 300:
+                continue
+            rows.append({'d': d, 'n': len(top), 'uni': len(uni),
+                         'th': {t: (sum(1 for x in top if x >= t) / len(top),
+                                   sum(1 for x in uni if x >= t) / len(uni)) for t, _ in THS}})
+        if not rows:
+            return '<p style="color:#c00">(3.4 右尾能力: 无可算窗口, 检查 pred 存档/K线)</p>'
+        rows = [r for r in rows if r['d'] >= '2026-08-03']   # 干净模型纪元(幽灵修复日)起, 全量保留
+
+        def agg(sub, t):
+            n = sum(r['n'] for r in sub)
+            top = sum(r['th'][t][0] * r['n'] for r in sub) / n
+            base = sum(r['th'][t][1] for r in sub) / len(sub)
+            return top, base, (top / base if base > 0 else 0.0), n
+
+        w7 = rows[-7:]
+        card = "display:inline-block;vertical-align:top;width:31%;min-width:150px;margin:4px 1% 4px 0;padding:8px 10px;border-radius:6px;background:#fff;border:1px solid #cfd8dc;"
+        big = "font-size:30px;font-weight:bold;line-height:1.1;"
+        lab = "font-size:14px;font-weight:bold;color:#263238;margin-top:2px;"
+        dfn = "font-size:11.5px;color:#546e7a;line-height:1.45;margin-top:3px;"
+
+        def cards(t, tname):
+            t7, b7, l7, n7 = agg(w7, t)
+            ta, ba, la, na = agg(rows, t)
+            # 判读以"该档自身全期 lift"为基线(两档量级不同, 绝对阈值不通用)
+            ratio = (l7 / la) if la > 0 else 0.0
+            supply_ok = b7 >= ba * 0.8          # 供给恢复到全期八成以上 → 有资格判模型
+            if ratio >= 0.8:
+                vc, vt = '#2e7d32', f'✅ 模型尾部能力完好(为自身基线的 {ratio*100:.0f}%) — 缺右尾是市场没给, 不是模型问题'
+            elif ratio >= 0.65:
+                vc, vt = '#ef6c00', f'🟡 相对能力偏弱({ratio*100:.0f}%基线)但未破线 — 继续观察'
+            elif supply_ok:
+                vc, vt = '#c62828', f'🔴 模型尾部能力退化(供给已恢复但只达基线 {ratio*100:.0f}%) — 需查模型层'
+            else:
+                vc, vt = '#ef6c00', f'🟡 暂无法判定({ratio*100:.0f}%基线): 底率 {b7*100:.2f}% 仍低于全期 {ba*100:.2f}% 的八成, 供给不足时 lift 统计噪声大'
+            h = (f"<div style='margin:8px 0 4px;font-size:15px;'><b>阈值 {tname}</b> "
+                 f"<span style='color:#78909c;font-size:12px;'>(近7个可算窗口, {n7}笔选币)</span></div>"
+                 "<div>"
+                 f"<div style='{card}'><div style='{big}color:#1565c0;'>{b7*100:.2f}%</div>"
+                 f"<div style='{lab}'>① 宇宙底率</div>"
+                 f"<div style='{dfn}'>全宇宙 {rows[-1]['uni']} 个币里, 2日涨幅达标的占比。<br>"
+                 f"<b>市场供给</b> — 这段行情里能跑出大涨幅的币有多密。</div></div>"
+                 f"<div style='{card}'><div style='{big}color:#6a1b9a;'>{t7*100:.2f}%</div>"
+                 f"<div style='{lab}'>② 顶部命中率</div>"
+                 f"<div style='{dfn}'>我们 TOP10 选币里, 涨幅达标的占比。<br>"
+                 f"<b>实际抓到</b> — 榜单有多少笔真的吃到大涨。</div></div>"
+                 f"<div style='{card}'><div style='{big}color:{vc};'>{l7:.2f}x</div>"
+                 f"<div style='{lab}'>③ lift = ②÷①</div>"
+                 f"<div style='{dfn}'>我们的榜单比「随机抓一个币」强多少倍。<br>"
+                 f"<b>模型相对能力</b> — 与行情无关, 掉下来才是模型的问题。</div></div>"
+                 "</div>"
+                 f"<div style='margin:6px 0 2px;font-size:15px;font-weight:bold;color:{vc};'>{vt}</div>"
+                 f"<div style='font-size:12px;color:#37474f;'>自身基线对照({rows[0]['d']}~{rows[-1]['d']}, {len(rows)}个窗口/{na}笔): "
+                 f"底率 <b>{ba*100:.2f}%</b> · 命中率 <b>{ta*100:.2f}%</b> · lift <b>{la:.2f}x</b></div>")
+            return h
+
+        # 逐日 mini 表
+        _la33 = agg(rows, 33.0)[2] or 1.0          # ≥33%档的全期 lift, 作小表配色基线
+        cell = "style='padding:3px 8px;border:1px solid #ddd;font-size:12.5px;text-align:center;'"
+        hd = "style='padding:3px 8px;border:1px solid #ddd;font-size:12.5px;background:#eceff1;text-align:center;'"
+        body = []
+        for r in rows[-7:]:
+            tp, bp = r['th'][33.0]
+            lf = tp / bp if bp > 0 else 0
+            if bp * 100 < 1.0:                 # 低供给日: lift 无统计意义, 标灰
+                cl, lf_txt = '#9e9e9e', f'{lf:.2f}x*'
+            else:
+                cl = '#2e7d32' if lf >= _la33 * 0.8 else ('#ef6c00' if lf >= _la33 * 0.65 else '#c62828')
+                lf_txt = f'{lf:.2f}x'
+            body.append(f"<tr><td {cell}>{r['d']}</td><td {cell}>{bp*100:.2f}%</td>"
+                        f"<td {cell}>{tp*100:.2f}% <span style='color:#90a4ae;'>"
+                        f"({round(tp*r['n'])}/{r['n']}笔)</span></td>"
+                        f"<td {cell}><b style='color:{cl}'>{lf_txt}</b></td>"
+                        f"<td {cell}>{r['n']}</td></tr>")
+        mini = ("<div style='margin-top:8px;font-size:13px;font-weight:bold;'>近 7 个可算窗口逐日(阈值 ≥+33%)</div>"
+                "<table style='border-collapse:collapse;margin-top:3px;'>"
+                f"<tr><th {hd}>预测日</th><th {hd}>① 宇宙底率</th><th {hd}>② 顶部命中率</th>"
+                f"<th {hd}>③ lift</th><th {hd}>选币数</th></tr>" + ''.join(body) + "</table>"
+                "<div style='font-size:11.5px;color:#8d6e63;margin-top:3px;line-height:1.5;'>"
+                "⚠️ <b>单日只有 10 个选币 → ②命中率只能取 0%/10%/20%…</b>(10.00% = 恰好 1 个币, 不是「稳定10%概率」); "
+                "<b>逐日表只看 ①底率 的供给趋势, 不要用单日②③下结论</b> — 结论看上方近7窗口汇总。<br>"
+                "* 底率&lt;1% 的窗口 lift 分母太小=噪声, 标灰不作判读。</div>")
+
+        note = ("<div style='font-size:11.5px;color:#546e7a;margin-top:6px;line-height:1.5;'>"
+                "<b>怎么读</b>: ③lift 是「模型能力」, ①②是「行情供给」。<b>lift 掉了才是模型的事</b>; "
+                "底率低只是行情没给大跑者(此时命中率低属正常, 不要据此改模型)。<br>"
+                "<b>⚠️ 结构门槛(为什么\u201c抓到1个\u201d也常常亏)</b>: 300U名义下 1 笔 +33% 尾部 ≈ <b>+99U</b>, "
+                "而当日其余 9 笔若止损(SL-5% 每笔 −15.5U)= <b>−139.5U</b> → "
+                "<b>只抓到 1 个 +33% 仍不足以让当日转正, 尾部需 ≥+47%(≈+140U)</b>。"
+                "所以要看的不只是\u201c抓到几个\u201d, 更是<b>尾巴够不够肥</b>(对应 §4 的到期单均)。<br>"
+                "<b>判读线</b>(用该档自己的全期 lift 当尺子, 两档量级不同不能共用绝对阈值): ""近7窗口 lift ≥ 自身基线×0.8 → ✅完好 / ×0.65~0.8 → 🟡偏弱观察 / ""<b>&lt;×0.65 且底率已恢复到全期八成 → 🔴模型退化警报</b>; 底率不到八成时不给结论(噪声)。<br>"
+                "<b>为什么不用 IC 判</b>: IC 量全宇宙排序质量, 与实际抓尾经常背离 — 实测 9/06 IC_L=−0.149 而 lift=9.1x, "
+                "9/07 IC_L=−0.186 而 lift=13.7x(IC深负但顶部照样抓到)。<b>右尾能力看这三个数, 看 IC 会误判。</b><br>"
+                "口径: 入场=T0开盘, 出场=T2收盘(实盘72h结构的自然2日窗), 无前视(需T2已收盘); "
+                "宇宙=K线≥60根的notusdt全宇宙(约540币); lift=②÷①。<br>"
+                "证伪线: 底率回升≥1.5% 而 lift 仍 <2.5x → 模型层问题; 底率持续 <1% → 行情问题, 等即可。"
+                "</div>")
+        return ("<div style='border:1px solid #90caf9;border-left:6px solid #1565c0;border-radius:6px;"
+                "background:#f5faff;padding:10px 12px;margin:6px 0;'>"
+                + cards(33.0, '≥+33% 右尾') + cards(16.7, '≥+16.7%(≈+50U/300U档)')
+                + mini + note + "</div>")
+    except Exception as e:
+        return f'<p style="color:#c00">(3.4 右尾能力仪表盘生成失败: {e})</p>'
+
+
 def section_github_sync():
     """读取交易系统每日 GitHub 同步状态，写入晨报。"""
     try:
@@ -1581,6 +1736,8 @@ def main():
 {section_forward()}
 <b>3. TOP10全开近7天趋势 (48h 1m口径)</b> {tag48}
 <pre {pre_style}>{section_verify()}</pre>
+<b>3.4 🎯 右尾能力仪表盘 (模型抓肥尾的能力还在不在)</b> <span style='{tag_style}background:#e3f2fd;color:#1565c0;'>规则: lift 掉了才是模型的事; 底率低只是行情没给 · 看这三个数, 不看 IC · 2026-09-13 加</span>
+{section_tail_ability()}
 <b>3.5 LONG TOP10 列表 + 成交额 + 量能分位(影子)</b> <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>今日预测 → 08:21已开仓(48h逻辑), 结算见3.6 · 量能分位=C远×V高假设前向采集(至10/23), 只读不干预开仓</span>
 <pre {pre_style}>{section_long_top10()}</pre>
 <b>3.6 TOP10全开前向结算 (8/3起)</b> {tag48}
