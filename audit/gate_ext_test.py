@@ -9,7 +9,7 @@
     cd ~/websocket_new && env NOLAG_MODE=aligned VOLRAW_FEATS=1 FUND_FEATS=1 \\
         LONG_MOM_FILTER=0 SL_PCT=8 TOP10_LONG=1 GATE_DUMP=/tmp/gate_cands.json \\
         python3 gpu_backtest_exp.py 350 1
-    然后取回: scp -P 22172 linux@175.155.64.171:/tmp/gate_cands.json .
+    然后取回: scp -P <GPU_PORT> <GPU_USER>@<GPU_HOST>:/tmp/gate_cands.json .  (连接见 SKILL「仪器标定」)
 
 用法: python3 audit/gate_ext_test.py --cands gate_cands.json [--btc /tmp/btc_1d.json]
 

@@ -118,7 +118,7 @@ def load_state():
         try:
             sys.path.insert(0, BASE_DIR)
             from alert_monitor import send_email
-            send_email('[米]实盘state损坏-执行器已中止',
+            send_email('[刘]实盘state损坏-执行器已中止',
                        f'{STATE_FILE} 读取失败: {e}\n\n'
                        '执行器已中止: 期间不会开仓/平仓/重挂止损。\n'
                        '交易所侧在持仓位与条件单需人工确认(可用 hybrid_live.py status 查看)。')
@@ -470,7 +470,7 @@ def reconcile(st, close_expired=True):
 def wait_pred(today_str, timeout_s=1800):
     """等 pred 文件。2026-09-12 修: 原无条件要求 top10_long **和** top10_short 同时非空,
     而 SHORT 侧自 9/8 起已关闭(MAX_DAILY_SHORT=0) —— 一旦某天 pred 缺 SHORT 字段
-    (如空头模型训练失败), 米账户会白等 1800s 后**当天零开仓**。这个依赖对当前策略
+    (如空头模型训练失败), 刘账户会白等 1800s 后**当天零开仓**。这个依赖对当前策略
     零收益、纯风险。现: SHORT 仅在启用时(MAX_DAILY_SHORT>0)才作为必要条件。"""
     pf = os.path.join(DATA_DIR, f'pred_{today_str}.json')
     t0 = time.time()

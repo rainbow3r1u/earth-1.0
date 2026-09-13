@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""米账户总权益查询 — 只输出权益金额(U + CNY), 其他什么都不输出。
+"""刘账户总权益查询 — 只输出权益金额(U + CNY), 其他什么都不输出。
 数据源: HYBRID_BINANCE 凭证 → fapi.binance.com /fapi/v2/account → totalMarginBalance
         (总权益 = 钱包余额 + 未实现盈亏)
 汇率:   open.er-api.com (主) / frankfurter.app (备), USD→CNY 实时
@@ -9,7 +9,7 @@ import hmac, hashlib, os, time
 from urllib.parse import urlencode
 import requests
 
-# 仓库根: 脚本位于 <root>/.agents/skills/mi-equity/, 兜底写死本机部署路径
+# 仓库根: 脚本位于 <root>/.agents/skills/liu-equity/, 兜底写死本机部署路径
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 if not os.path.isfile(os.path.join(ROOT, '.env')):
     ROOT = '/home/myuser/websocket_new'

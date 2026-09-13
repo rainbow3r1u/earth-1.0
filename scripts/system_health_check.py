@@ -89,8 +89,8 @@ def chk_cron():
         ('auto_dual_trade.py', '08:05 训练+预测'),
         ('residual_live.py trade', '08:21 果账户开仓'),
         ('residual_live.py reconcile', '每小时:31 果账户对账'),
-        ('hybrid_live.py trade', '08:23 米账户开仓'),
-        ('hybrid_live.py reconcile', '每小时:41 米账户对账'),
+        ('hybrid_live.py trade', '08:23 刘账户开仓'),
+        ('hybrid_live.py reconcile', '每小时:41 刘账户对账'),
         ('audit_verify.py', '08:25 审计校验'),
         ('notarize_pred.sh', '08:30 预测公证'),
         ('data_drift_monitor.py', '08:30 数据漂移'),
@@ -223,7 +223,7 @@ def chk_train_pred(now_min, rd, pre8=False):
 
 
 def chk_trade(now_min, rd, pre8=False):
-    """下单+挂止损层(果账户): residual_live 开仓记录 + 在持SL完整性. 米账户见 chk_trade_mi."""
+    """下单+挂止损层(果账户): residual_live 开仓记录 + 在持SL完整性. 刘账户见 chk_trade_mi."""
     if not due(now_min, '08:21', 15, pre8):
         return check('实盘开仓', NOT_DUE, '08:36后判定')
     sp = os.path.join(DATA, 'residual_live_state.json')
@@ -259,17 +259,17 @@ def chk_trade(now_min, rd, pre8=False):
 
 
 def chk_trade_mi(now_min, rd, pre8=False):
-    """下单+挂止损层(米账户/第二账户 1448U): hybrid_live 开仓记录 + 在持SL完整性.
-    2026-09-12 新增: 此前体检只覆盖果账户(residual_live), 米账户 9/8 上线后无任何自动监控 —
+    """下单+挂止损层(刘账户/第二账户 1448U): hybrid_live 开仓记录 + 在持SL完整性.
+    2026-09-12 新增: 此前体检只覆盖果账户(residual_live), 刘账户 9/8 上线后无任何自动监控 —
     其 cron 被删/凭证失效(hybrid_live.py 缺凭证直接 exit 1)/state 损坏都不会被发现."""
     if not due(now_min, '08:23', 15, pre8):
-        return check('米实盘开仓', NOT_DUE, '08:38后判定')
+        return check('刘实盘开仓', NOT_DUE, '08:38后判定')
     sp = os.path.join(DATA, 'hybrid_live_state.json')
     issues, infos = [], []
     try:
         st = json.load(open(sp))
     except Exception as e:
-        return check('米实盘开仓', FAIL, f'state 损坏: {e}')
+        return check('刘实盘开仓', FAIL, f'state 损坏: {e}')
     day = st.get('days', {}).get(rd, {})
     opened = day.get('opened_long') or []
     if day.get('note'):
@@ -292,8 +292,8 @@ def chk_trade_mi(now_min, rd, pre8=False):
         issues.append(f'在持 {len(o)} 笔超过55上限(125U/5x下85%守卫容量约49)')
     infos.append(f'在持 {len(o)} 笔')
     if issues:
-        return check('米实盘开仓', FAIL, '; '.join(issues))
-    return check('米实盘开仓', OK, '; '.join(infos))
+        return check('刘实盘开仓', FAIL, '; '.join(issues))
+    return check('刘实盘开仓', OK, '; '.join(infos))
 
 
 def chk_git(now_min, rd, pre8=False):
@@ -425,10 +425,10 @@ def chk_digest(now_min, rd, pre8=False):
 
 def chk_reconcile():
     """对账活性(软检查): 两账户 state 26h内有落笔即可(无事件时不写日志, 不可强检).
-    2026-09-12: 扩展覆盖米账户(此前只看果 state)."""
+    2026-09-12: 扩展覆盖刘账户(此前只看果 state)."""
     out, issues = [], []
     for label, fname, cron in (('果', 'residual_live_state.json', '每小时:31'),
-                               ('米', 'hybrid_live_state.json', '每小时:41')):
+                               ('刘', 'hybrid_live_state.json', '每小时:41')):
         a = age_min(os.path.join(DATA, fname))
         if a > 60 * 26:
             issues.append(f'{label}state {a/60:.0f}h未落笔({cron}对账失效?)')

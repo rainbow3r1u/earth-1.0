@@ -27,7 +27,7 @@ CORE_FILES = [
     'guardian.py',                   # 守护 + 周期任务
     '/home/myuser/backtester/config/current_params.json',   # 实盘参数(仓库外! 覆盖代码默认)
     'audit/residual_live.py',        # 果实盘执行器
-    'audit/hybrid_live.py',          # 米执行器
+    'audit/hybrid_live.py',          # 刘执行器
 ]
 
 

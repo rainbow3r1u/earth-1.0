@@ -1,9 +1,9 @@
 ---
-name: "mi-equity"
-description: "查米账户(币安#2)总权益。当用户说'米权益'/'查米权益'/'米总权益'/'米的总资金'/'米还有多少钱'时触发。只输出一行: 权益U+折合CNY+汇率。不做任何分析、不附持仓明细。"
+name: "liu-equity"
+description: "查刘账户(币安#2)总权益。当用户说'刘权益'/'查刘权益'/'刘总权益'/'刘的总资金'/'刘还有多少钱'时触发。只输出一行: 权益U+折合CNY+汇率。不做任何分析、不附持仓明细。"
 ---
 
-# 米权益SKILL
+# 刘权益SKILL
 
 > 创建: 2026-09-09 (用户要求: "其他都不要, 只要总权益, 那个金额就好")
 > 适用目录: `/home/myuser/websocket_new/` (earth-1.0 仓库)
@@ -11,7 +11,7 @@ description: "查米账户(币安#2)总权益。当用户说'米权益'/'查米�
 ## 一键执行
 
 ```bash
-cd /home/myuser/websocket_new && python3 .agents/skills/mi-equity/equity.py
+cd /home/myuser/websocket_new && python3 .agents/skills/liu-equity/equity.py
 ```
 
 ## 输出规范

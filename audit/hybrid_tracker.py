@@ -25,7 +25,7 @@ S = requests.Session()
 DAY_MS = 86400000
 
 # ==== 影子变体档 (2×2 对照用, 2026-09-12 新增; 默认关闭) ====
-# 背景: 实盘已改为 72h+SL-8%(果 9/3、米 9/8), 而本影子臂固定 48h+SL-5% —— 两个变量**同时**不同,
+# 背景: 实盘已改为 72h+SL-8%(果 9/3、刘 9/8), 而本影子臂固定 48h+SL-5% —— 两个变量**同时**不同,
 # 导致 10/23 终审做 "72h vs 48h" 时 SL 变量未被控制(归因被污染)。
 # 主档 = SL-5%/48h(不变); 设 SHADOW_VARIANT 可另存一个**独立**对照档补齐 2×2 网格:
 #   SHADOW_VARIANT=sl8    python3 audit/hybrid_tracker.py   → data/hybrid_tracker_sl8.json    (SL8/48h)
@@ -90,7 +90,7 @@ def fetch_funding(sym, start_ms, end_ms):
 def settle_hybrid(sym, date_str, direction, prob, sl_pct=0.05, hold_days=2):
     """混合结构结算: LONG 无TP(SL/到期平) / SHORT TP10%/SL。默认 SL-5% / 48h —— 与原口径一致。
 
-    2026-09-12 参数化(sl_pct/hold_days): 实盘自 9/3(果)/9/8(米) 起为 72h+SL-8%, 而本影子臂固定
+    2026-09-12 参数化(sl_pct/hold_days): 实盘自 9/3(果)/9/8(刘) 起为 72h+SL-8%, 而本影子臂固定
     48h+SL-5%, 两个变量同时不同 → 10/23 终审做 "72h vs 48h" 时 SL 变量未被控制(归因被污染)。
     参数化后可输出独立的 2×2 对照档(见文件头 SHADOW_VARIANT 说明); 默认参数与旧行为逐位一致。
     返回 dict: entry/result/trigger/net_pnl_u(300U名义)
@@ -188,7 +188,7 @@ def is_all_settled(day_entry):
 
 def main():
     # ==== 2×2 对照档(可选, 默认关闭) ====
-    # 背景: 实盘 9/3(果)/9/8(米) 起 72h+SL-8%, 影子臂固定 48h+SL-5% → 10/23 终审做
+    # 背景: 实盘 9/3(果)/9/8(刘) 起 72h+SL-8%, 影子臂固定 48h+SL-5% → 10/23 终审做
     # "72h vs 48h" 时 SL 变量未被控制。为补对照, 支持输出**独立**变体档(不覆盖现有 hybrid_tracker.json):
     #   用法: SHADOW_VARIANT=sl8h72 python3 audit/hybrid_tracker.py
     #   输出: data/hybrid_tracker_sl8h72.json (SL-8%/72h; 与现有档同源同日, 可直接 2×2 比较)

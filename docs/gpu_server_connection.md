@@ -1,5 +1,13 @@
 # GPU 服务器连接文档
 
+> ⚠️ **本文档的 IP/端口/密码必然过期**(GPU 每次重开都会变; 本文写 22160 / AGENTS 曾写 24127 / 2026-09-13 实际 22172)。
+> **连接信息的唯一可靠来源 = 向用户索取**; 拿到后写进本地配置即可:
+> ```bash
+> python3 scripts/instrument_calibrate.py --set-conn HOST:PORT   # → ~/.gpu_conn (chmod 600, 不入 git)
+> ```
+> 用之前先跑 `python3 scripts/instrument_calibrate.py --check`(见 SKILL「仪器标定」)。以下内容仅作硬件/目录结构的参考。
+
+
 > 服务器: 175.155.64.171
 > 端口: **22160**(2026-08-02 更新; 曾用 24220/22183/22156 均已失效)
 > 用户: **linux**(密码登录; 曾用 root)

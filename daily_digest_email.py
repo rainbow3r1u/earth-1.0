@@ -456,7 +456,30 @@ def section_long_top10():
                 vs += '🎯'
             lines.append(f'{i:>2} {sym:<16} {p*100:5.1f}% {qs:>10} {vs:>10}')
         if cell_syms:
-            lines.insert(2, f'🎯 金矿格候选(C远×V高, 历史均值+74U/笔·回测未显著): {", ".join(cell_syms)}')
+            lines.insert(2, f'🎯 金矿格命中(C远×V高, 历史均值+74U/笔·回测未显著): {", ".join(cell_syms)}')
+        else:
+            # 格内 0 时也出一行"心跳", 避免误判功能未实现 (2026-09-13 用户要求)
+            # 口径: 两条腿同时满足才算格内; 未命中时按 min(量能/0.70, 距离/33) 排序找最接近的
+            cands = []
+            for c in rec_coins:
+                v, dd = c['volq'], c['dist']
+                if v is None or dd is None:
+                    continue
+                score = min(v / 0.70, dd / 33.0)
+                ok_v, ok_d = v > 0.70, dd > 33.0
+                gap = (f'距离差{33.0 - dd:.1f}pp' if ok_v and not ok_d else
+                       f'量能差{0.70 - v:.2f}' if ok_d and not ok_v else
+                       f'距离差{33.0 - dd:.1f}pp/量能差{0.70 - v:.2f}')
+                cands.append((score, c['sym'], ok_v, ok_d, gap, v, dd))
+            cands.sort(reverse=True)
+            if cands:
+                top = cands[:2]
+                txt = ' · '.join(
+                    f'{s} ({("量能✅" if ov else "量能❌")}{("距离✅" if od else "距离❌")} {g})'
+                    for _, s, ov, od, g, _, _ in top)
+                lines.insert(2, f'🎯 金矿格: 今日格内 0 只 — 最接近: {txt}')
+            else:
+                lines.insert(2, '🎯 金矿格: 今日格内 0 只 (数据不足, 无量能/距离可算)')
         lines.append(f'量能分布: V高 {n_h} · V中 {n_m} · V低 {n_l} · 格内 {len(cell_syms)}'
                      f'  (影子假设: 格内15%笔数贡献81%盈利但t=1.23未显著; 只提醒不干预开仓)')
         # ── 影子落盘(仅当日预测已生成时; 按pred日期去重, 保留180天) ──
@@ -636,7 +659,7 @@ def section_hybrid():
 def section_2x2():
     """3.8b 影子臂 2×2 结构对照 (2026-09-12 用户批准加入晨报).
 
-    为什么需要它: 实盘 9/3(果)/9/8(米) 把「持有时长 48h→72h」与「止损 5%→8%」**同时**改了,
+    为什么需要它: 实盘 9/3(果)/9/8(刘) 把「持有时长 48h→72h」与「止损 5%→8%」**同时**改了,
     而原影子对照臂两项都没动 → 10/23 终审做 "72h vs 48h" 对比时 SL 变量未被控制(归因被污染)。
     本表把 (SL5/SL8)×(48h/72h) 四档并排: 主档=SL5/48h, 另三档由 08:46 cron 与主档同源同日生成,
     因此"每笔U"之差**只**来自结构参数, 并给出单变量增量, 直接回答"收益提升来自哪一项"。
@@ -930,15 +953,15 @@ def section_residual_survival():
         return f'<p style="color:#c00">(批次生存表生成失败: {e})</p>'
 
 
-def section_mi_equity():
-    """3.9e 米实盘权益 (2026-09-09 用户需求): 第二账户(纯LONG臂, 125U/5x/SL-8%/72h)总权益,
+def section_liu_equity():
+    """3.9e 刘实盘权益 (2026-09-09 用户需求): 第二账户(纯LONG臂, 125U/5x/SL-8%/72h)总权益,
     晨报直读。数据: HYBRID_BINANCE 凭证 /fapi/v2/account → totalMarginBalance(钱包+浮盈) + state账本。"""
     try:
         sys.path.insert(0, os.path.join(BASE, 'audit'))
         import hybrid_live as hl
         acct = hl.signed('GET', '/fapi/v2/account')
         if not isinstance(acct, dict) or 'totalMarginBalance' not in acct:
-            return f"<div style='font-size:11px;color:#c00;'>(米权益获取失败: {str(acct)[:80]})</div>"
+            return f"<div style='font-size:11px;color:#c00;'>(刘权益获取失败: {str(acct)[:80]})</div>"
         eq = float(acct['totalMarginBalance'])
         avail = float(acct.get('availableBalance', 0))
         st = json.load(open('/home/myuser/websocket_new/data/hybrid_live_state.json'))
@@ -947,13 +970,13 @@ def section_mi_equity():
         principal = 1448.22  # 本金1万CNY入金折算
         pct = (eq / principal - 1) * 100
         c = '#0a0' if pct >= 0 else '#c00'
-        return (f"<div style='font-size:13px;'><b>米总权益: <span style='color:{c};'>{eq:.2f}U</span></b>"
+        return (f"<div style='font-size:13px;'><b>刘总权益: <span style='color:{c};'>{eq:.2f}U</span></b>"
                 f" <span style='font-size:11px;color:#555;'>(本金1万CNY≈1448.22U, "
                 f"<span style='color:{c};'>{pct:+.2f}%</span>)"
                 f" | 可用 {avail:.2f}U | 在持 {n_open} 笔 | 累计已实现 {realized:+.2f}U"
                 f" <span style='color:#888;'>(含链路测试-0.16U)</span></span></div>")
     except Exception as e:
-        return f'<div style="font-size:11px;color:#c00;">(米权益生成失败: {e})</div>'
+        return f'<div style="font-size:11px;color:#c00;">(刘权益生成失败: {e})</div>'
 
 
 def _short_breakeven_wr():
@@ -1706,11 +1729,11 @@ def main():
     pre_style = ("style=\"white-space:pre-wrap;font-size:11px;"
                  "font-family:'SimHei','Microsoft YaHei','PingFang SC',Consolas,monospace;line-height:1.5;\"")
     # 口径标签: 绿=48h影子/前向口径(3.8影子臂/前向结算), 橙=72h逻辑(老日线口径, 仅参考)
-    # ⚠️ 2026-09-12 更正: 绿标签原注释为"与生产执行一致"已失效 — 实盘 9/3(果)/9/8(米)起为 72h+SL-8%,
+    # ⚠️ 2026-09-12 更正: 绿标签原注释为"与生产执行一致"已失效 — 实盘 9/3(果)/9/8(刘)起为 72h+SL-8%,
     #    仅影子臂与前向结算仍走 48h/SL-5%。实盘规则标签见 tag48_exec。
     tag_style = ("font-size:11px;padding:1px 6px;border-radius:3px;"
                  "font-family:'SimHei','Microsoft YaHei';")
-    tag48_exec = f"<span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>实盘执行规则(9/7~9/8起): LONG无止盈 · SL-8% · 72h · 果08:21/米08:23开仓 · 米SHORT已关</span>"
+    tag48_exec = f"<span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>实盘执行规则(9/7~9/8起): LONG无止盈 · SL-8% · 72h · 果08:21/刘08:23开仓 · 刘SHORT已关</span>"
     tag48 = f"<span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>48h逻辑 · 1m口径 · 08:21开仓 · SL-5%/TP+10%/48h到期</span>"
     tag72 = f"<span style='{tag_style}background:#fff3e0;color:#e65100;'>72h逻辑 · 日线口径(老) · open[T]入场 · 扫T~T+2三根日线 · 与实盘口径不同仅参考</span>"
     tag_none = f"<span style='{tag_style}background:#eee;color:#666;'>无结算口径</span>"
@@ -1754,8 +1777,8 @@ def main():
 {section_residual_picks()}
 <b>3.9c 果实盘批次生存表</b> <span style='{tag_style}background:#fff3e0;color:#e65100;'>每批开仓N笔 → 存活/止损/到期 · 存活率 · 批内净U · 9/13起选币=主LONG榜</span>
 {section_residual_survival()}
-<b>3.9e 米实盘权益 (第二账户·纯LONG臂)</b> <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>125U/5x/SL-8%/72h · 08:23开仓 · SHORT已关</span>
-{section_mi_equity()}
+<b>3.9e 刘实盘权益 (第二账户·纯LONG臂)</b> <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>125U/5x/SL-8%/72h · 08:23开仓 · SHORT已关</span>
+{section_liu_equity()}
 <b>3.9d SHORT TOP5 试盘时机</b> <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>滚动胜率 vs 含费盈亏线34.4%(未计funding) · 只输出一个结论: 适不适合小资金试盘</span>
 {section_short_top5()}
 <b>4. 强势股续涨 + 每日资金榜</b> {tag_none}

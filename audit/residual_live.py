@@ -46,7 +46,7 @@ STATE_FILE = os.path.join(DATA_DIR, 'residual_live_state.json')
 EXINFO_CACHE = os.path.join(DATA_DIR, 'residual_live_exinfo.json')
 LOCK_FILE = '/tmp/residual_live.lock'
 # ==== 选币来源 (2026-09-13 用户拍板切换) ====
-# 'top10_long'           = 主LONG模型榜 (现行; 与米账户同源, 米仍用此榜)
+# 'top10_long'           = 主LONG模型榜 (现行; 与刘账户同源, 刘仍用此榜)
 # 'top10_long_residual'  = 残差模型榜 (2026-09-02~09-12 曾用; 残差臂已转纯影子, 见文件头说明)
 # 回退方法: 把本行改回 'top10_long_residual' 即可(历史 state 兼容, 不影响在持仓位管理)
 PRED_FIELD = 'top10_long'
