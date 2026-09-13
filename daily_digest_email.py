@@ -1596,7 +1596,7 @@ def section_tail_ability():
             else:
                 vc, vt = '#ef6c00', f'🟡 暂无法判定({ratio*100:.0f}%基线): 底率 {b7*100:.2f}% 仍低于全期 {ba*100:.2f}% 的八成, 供给不足时 lift 统计噪声大'
             h = (f"<div style='margin:8px 0 4px;font-size:15px;'><b>阈值 {tname}</b> "
-                 f"<span style='color:#78909c;font-size:12px;'>(近7个可算窗口, {n7}笔选币)</span></div>"
+                 f"<span style='color:#78909c;font-size:12px;'>(近7个<b>已完成</b>窗口 {rows[-7]['d']}~{rows[-1]['d']}, {n7}笔选币)</span></div>"
                  "<div>"
                  f"<div style='{card}'><div style='{big}color:#1565c0;'>{b7*100:.2f}%</div>"
                  f"<div style='{lab}'>① 宇宙底率</div>"
@@ -1634,7 +1634,12 @@ def section_tail_ability():
                         f"({round(tp*r['n'])}/{r['n']}笔)</span></td>"
                         f"<td {cell}><b style='color:{cl}'>{lf_txt}</b></td>"
                         f"<td {cell}>{r['n']}</td></tr>")
-        mini = ("<div style='margin-top:8px;font-size:13px;font-weight:bold;'>近 7 个可算窗口逐日(阈值 ≥+33%)</div>"
+        mini = ("<div style='margin-top:8px;font-size:13px;font-weight:bold;'>近 7 个已完成窗口逐日(阈值 ≥+33%)</div>"
+                "<div style='font-size:11.5px;color:#8d6e63;margin-top:2px;line-height:1.5;'>"
+                "⚠️ <b>底率天生滞后约3天</b> — 它度量的是「该日入场后2天里市场给了多少大跑者」, 需 D+2 收盘才能算;"
+                f"所以今天({datetime.date.today().isoformat()})最新只能看到 {rows[-1]['d']}, 今日底率要等两天后才出。"
+                "<b>想提前知道今天的供给在物理上不可能</b>(实测: 入场前可见的滞后底率 vs 当日每笔U r=+0.046 ≈ 无预测力)"
+                " —— 这正是系统必须天天在场的原因。</div>"
                 "<table style='border-collapse:collapse;margin-top:3px;'>"
                 f"<tr><th {hd}>预测日</th><th {hd}>① 宇宙底率</th><th {hd}>② 顶部命中率</th>"
                 f"<th {hd}>③ lift</th><th {hd}>选币数</th></tr>" + ''.join(body) + "</table>"
