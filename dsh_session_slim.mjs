@@ -14,8 +14,19 @@
 //   node dsh_session_slim.mjs slim --session <session-id>  # 只处理指定会话
 //   node dsh_session_slim.mjs slim --force              # DSH 运行中也强制处理（有风险，慎用）
 //
-// 安全：每次改写前先备份为 session.jsonl.zstd.bak-<日期>；改写后回读校验
-// seq 连续性与全部序号引用。检测到 DSH 正在监听端口时默认拒绝执行。
+// 安全：每次改写前先备份为 session.jsonl.zstd.bak-<日期>（同日不覆盖，避免毁掉
+// 还原依据）；改写后回读校验 seq 连续性、序号引用与压缩事件的影子价格契约。
+// 检测到 DSH 正在监听端口时默认拒绝执行。
+//
+// ⚠️ 2026-09-14 事故与修复（勿删）：本脚本早期版本重排 seq 时只重映射了
+// sourceEventSeqs 与 surfaceOp，漏了压缩事件的 data.shadowedRange / shadowedSeqs
+// （它们仍指向瘦身前的"展开编号"，最大到 811911）。结果 token-meter 折叠时发现
+// armed claim 与紧邻 replace 区间不符，抛 "token surface: replace at seq N ... has
+// no adjacent shadow price"，表现为整扇窗 "history unavailable for session ...
+// (internal)"（4 个会话中招，均为凌晨被本脚本瘦身的）。修复：在第二遍重编号里一并
+// 重映射这两个字段，并在回读校验中加入"压缩事件区间必须等于紧邻 replace 区间"。
+// 若再出现同类症状：`node dsh_session_repair.mjs scan` 体检，
+// `node dsh_session_repair.mjs repair` 用 .bak 重建映射修回。
 
 import { readdirSync, readFileSync, writeFileSync, renameSync, statSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -154,6 +165,30 @@ function rewrite(file) {
         rec.surfaceOp[k] = m;
       }
     }
+    // 压缩事件的"影子价格"引用（shadowedRange/shadowedSeqs）同样指向旧编号。
+    // 漏改的后果：token-meter 折叠时会发现 armed claim 与紧邻 replace 的区间不符，
+    // 抛 "replace ... has no adjacent shadow price"，整扇窗的历史全部加载失败
+    // （2026-09-14 事故：4 个会话中招）。这里必须与 seq/surfaceOp 一起重映射。
+    if (rec.type === 'compaction/summary' || rec.type === 'compaction/prune') {
+      const d = rec.data ?? {};
+      if (d.shadowedRange && typeof d.shadowedRange === 'object') {
+        for (const k of ['start', 'end']) {
+          const m = seqMap.get(d.shadowedRange[k]);
+          if (m === undefined || m === -1) throw new Error(`compaction shadowedRange.${k} 引用异常 seq ${d.shadowedRange[k]}`);
+          d.shadowedRange[k] = m;
+        }
+      }
+      if (Array.isArray(d.shadowedSeqs)) {
+        const remappedSeqs = [];
+        for (const s of d.shadowedSeqs) {
+          const m = seqMap.get(s);
+          if (m === -1) continue; // 被剥离的碎片从不是表面节点，正常不会走到这里
+          if (m === undefined) throw new Error(`compaction shadowedSeqs 引用未知 seq ${s}`);
+          remappedSeqs.push(m);
+        }
+        d.shadowedSeqs = remappedSeqs;
+      }
+    }
     kept.push(rec);
   }
 
@@ -165,12 +200,13 @@ function rewrite(file) {
   const tmp = file + '.new';
   writeFileSync(tmp, Buffer.concat([headerFrame, eventFrame]));
 
-  // 回读校验：seq 连续 + 引用全部指向更早事件
+  // 回读校验：seq 连续 + 引用全部指向更早事件 + 压缩事件的影子价格契约自洽
   const plain2 = execFileSync('zstd', ['-dc', tmp], { maxBuffer: 2048 * 1024 * 1024 }).toString('utf8');
   const lines2 = plain2.split('\n');
   if (lines2.at(-1) === '') lines2.pop();
   if (lines2[0] !== headerLine) throw new Error('header 行不一致');
   let n = 0;
+  let armed = null; // 压缩事件挂出的影子价格区间，必须被紧邻的 replace 精确消费
   for (let i = 1; i < lines2.length; i++) {
     if (!lines2[i]) continue;
     const ev = JSON.parse(lines2[i]);
@@ -178,15 +214,39 @@ function rewrite(file) {
     if (Array.isArray(ev.sourceEventSeqs)) {
       for (const s of ev.sourceEventSeqs) if (s >= n) throw new Error(`seq ${n} 引用未更早的 ${s}`);
     }
+    if (ev.type === 'compaction/summary' || ev.type === 'compaction/prune') {
+      const sr = ev.data?.shadowedRange;
+      const shadowedSeqs = ev.data?.shadowedSeqs;
+      if (!sr || sr.start === undefined || sr.end === undefined) throw new Error(`第 ${i} 行压缩事件缺少 shadowedRange`);
+      if (Array.isArray(shadowedSeqs) && shadowedSeqs.length > 0
+          && (shadowedSeqs[0] !== sr.start || shadowedSeqs.at(-1) !== sr.end)) {
+        throw new Error(`第 ${i} 行 compaction shadowedSeqs 首尾与 shadowedRange 不符`);
+      }
+      armed = { start: sr.start, end: sr.end };
+    } else if (ev.surfaceOp && typeof ev.surfaceOp === 'object') {
+      if (ev.surfaceOp.op === 'append') armed = null;
+      else if (armed !== null) {
+        if (armed.start !== ev.surfaceOp.start || armed.end !== ev.surfaceOp.end) {
+          throw new Error(`第 ${i} 行 replace(${ev.surfaceOp.start}-${ev.surfaceOp.end}) 与 shadowedRange(${armed.start}-${armed.end}) 不符`
+            + ' —— 会在打开会话时报 "has no adjacent shadow price"');
+        }
+        armed = null;
+      }
+    } else {
+      armed = null;
+    }
     n++;
   }
   if (n !== kept.length) throw new Error(`事件数不一致：${n} vs ${kept.length}`);
 
   const today = new Date().toLocaleDateString('sv-SE').replaceAll('-', '');
-  renameSync(file, `${file}.bak-${today}`);
+  // 备份不覆盖：同日二次瘦身若覆盖同名 .bak，会毁掉"旧编号 -> 新编号"的唯一还原依据
+  let backup = `${file}.bak-${today}`;
+  for (let k = 2; existsSync(backup); k++) backup = `${file}.bak-${today}-${k}`;
+  renameSync(file, backup);
   renameSync(tmp, file);
   execFileSync('chmod', ['600', file]);
-  return { ...stats, skipped: false, kept: n };
+  return { ...stats, skipped: false, kept: n, backup };
 }
 
 const args = parseArgs(process.argv.slice(2));
