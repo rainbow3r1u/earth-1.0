@@ -1,0 +1,233 @@
+{
+"2026-09-07": {
+"date": "2026-09-07",
+"rv_day": "2026-09-06",
+"hi": [
+"BRUSDT",
+"EDGEUSDT",
+"PROMUSDT"
+],
+"mid": [
+"CHIPUSDT",
+"TIAUSDT",
+"ENAUSDT",
+"CYSUSDT"
+],
+"lo": [
+"USUSDT",
+"ZKCUSDT",
+"ONDOUSDT"
+],
+"missing": [],
+"rv": {
+"BRUSDT": 12.7112,
+"EDGEUSDT": 10.3793,
+"PROMUSDT": 9.9753,
+"CHIPUSDT": 8.6921,
+"TIAUSDT": 7.0387,
+"ENAUSDT": 6.7136,
+"CYSUSDT": 6.6517,
+"USUSDT": 5.5149,
+"ZKCUSDT": 4.0431,
+"ONDOUSDT": 3.7545
+}
+},
+"2026-09-08": {
+"date": "2026-09-08",
+"rv_day": "2026-09-07",
+"hi": [
+"PIEVERSEUSDT",
+"BRUSDT",
+"COTIUSDT"
+],
+"mid": [
+"PUMPUSDT",
+"CHIPUSDT",
+"STARUSDT",
+"LITUSDT"
+],
+"lo": [
+"JCTUSDT",
+"BMTUSDT",
+"ONGUSDT"
+],
+"missing": [],
+"rv": {
+"PIEVERSEUSDT": 11.5007,
+"BRUSDT": 11.0015,
+"COTIUSDT": 9.7142,
+"PUMPUSDT": 9.1658,
+"CHIPUSDT": 8.4556,
+"STARUSDT": 8.1435,
+"LITUSDT": 6.5062,
+"JCTUSDT": 5.8249,
+"BMTUSDT": 4.9705,
+"ONGUSDT": 4.1113
+}
+},
+"2026-09-09": {
+"date": "2026-09-09",
+"rv_day": "2026-09-08",
+"hi": [
+"COLLECTUSDT",
+"BRUSDT",
+"STARUSDT"
+],
+"mid": [
+"CHIPUSDT",
+"ZESTUSDT",
+"BTWUSDT",
+"ZKCUSDT"
+],
+"lo": [
+"TOSHIUSDT",
+"KITEUSDT",
+"MORPHOUSDT"
+],
+"missing": [],
+"rv": {
+"COLLECTUSDT": 18.846,
+"BRUSDT": 10.5447,
+"STARUSDT": 9.8229,
+"CHIPUSDT": 8.2006,
+"ZESTUSDT": 8.0501,
+"BTWUSDT": 5.8308,
+"ZKCUSDT": 4.8278,
+"TOSHIUSDT": 4.2348,
+"KITEUSDT": 4.1225,
+"MORPHOUSDT": 3.8354
+}
+},
+"2026-09-10": {
+"date": "2026-09-10",
+"rv_day": "2026-09-09",
+"hi": [
+"VELVETUSDT",
+"SIRENUSDT",
+"4USDT"
+],
+"mid": [
+"AKEUSDT",
+"CHILLGUYUSDT",
+"ARCUSDT",
+"INJUSDT"
+],
+"lo": [
+"CVXUSDT",
+"VTHOUSDT",
+"KITEUSDT"
+],
+"missing": [],
+"rv": {
+"VELVETUSDT": 34.0392,
+"SIRENUSDT": 21.2865,
+"4USDT": 14.4342,
+"AKEUSDT": 11.3107,
+"CHILLGUYUSDT": 7.6429,
+"ARCUSDT": 6.4617,
+"INJUSDT": 5.1856,
+"CVXUSDT": 5.0956,
+"VTHOUSDT": 4.6767,
+"KITEUSDT": 4.337
+}
+},
+"2026-09-11": {
+"date": "2026-09-11",
+"rv_day": "2026-09-10",
+"hi": [
+"VELVETUSDT",
+"FLOCKUSDT",
+"STARUSDT"
+],
+"mid": [
+"CHIPUSDT",
+"MITOUSDT",
+"FORMUSDT",
+"AIOUSDT"
+],
+"lo": [
+"DASHUSDT",
+"ESPORTSUSDT",
+"VIRTUALUSDT"
+],
+"missing": [],
+"rv": {
+"VELVETUSDT": 14.013,
+"FLOCKUSDT": 13.9337,
+"STARUSDT": 11.3441,
+"CHIPUSDT": 10.5872,
+"MITOUSDT": 8.3662,
+"FORMUSDT": 8.3122,
+"AIOUSDT": 7.4137,
+"DASHUSDT": 5.9878,
+"ESPORTSUSDT": 5.7324,
+"VIRTUALUSDT": 4.7007
+}
+},
+"2026-09-12": {
+"date": "2026-09-12",
+"rv_day": "2026-09-11",
+"hi": [
+"STARUSDT",
+"CHIPUSDT",
+"PUMPUSDT"
+],
+"mid": [
+"PROMUSDT",
+"ONUSDT",
+"ONGUSDT",
+"BOMEUSDT"
+],
+"lo": [
+"CVXUSDT",
+"TREEUSDT",
+"ZKCUSDT"
+],
+"missing": [],
+"rv": {
+"STARUSDT": 17.0892,
+"CHIPUSDT": 8.3247,
+"PUMPUSDT": 8.1447,
+"PROMUSDT": 7.6208,
+"ONUSDT": 7.4861,
+"ONGUSDT": 7.1948,
+"BOMEUSDT": 5.1941,
+"CVXUSDT": 5.0775,
+"TREEUSDT": 4.9068,
+"ZKCUSDT": 4.8052
+}
+},
+"2026-09-13": {
+"date": "2026-09-13",
+"rv_day": "2026-09-12",
+"hi": [
+"BTWUSDT",
+"PUMPUSDT",
+"POWRUSDT"
+],
+"mid": [
+"BRUSDT",
+"TACUSDT",
+"EGLDUSDT",
+"BMTUSDT"
+],
+"lo": [
+"ORDIUSDT",
+"JTOUSDT",
+"ZKCUSDT"
+],
+"missing": [],
+"rv": {
+"BTWUSDT": 11.4378,
+"PUMPUSDT": 6.6888,
+"POWRUSDT": 6.6355,
+"BRUSDT": 6.432,
+"TACUSDT": 5.7247,
+"EGLDUSDT": 4.3743,
+"BMTUSDT": 4.0155,
+"ORDIUSDT": 3.9012,
+"JTOUSDT": 3.7918,
+"ZKCUSDT": 3.1549
+}
+}
+}
