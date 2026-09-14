@@ -4912,5 +4912,131 @@
     "pnl": 10.0
    }
   ]
+ },
+ "2026-09-11": {
+  "long": [
+   {
+    "sym": "STARUSDT",
+    "prob": 79.1,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "ESPORTSUSDT",
+    "prob": 70.7,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "FORMUSDT",
+    "prob": 69.0,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "CHIPUSDT",
+    "prob": 68.8,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "FLOCKUSDT",
+    "prob": 65.7,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "DASHUSDT",
+    "prob": 65.5,
+    "state": "EXP48",
+    "pnl": 0.57
+   },
+   {
+    "sym": "VELVETUSDT",
+    "prob": 65.3,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "VIRTUALUSDT",
+    "prob": 64.0,
+    "state": "EXP48",
+    "pnl": -2.09
+   },
+   {
+    "sym": "AIOUSDT",
+    "prob": 63.6,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "MITOUSDT",
+    "prob": 61.7,
+    "state": "TP",
+    "pnl": 10.0
+   }
+  ],
+  "short": [
+   {
+    "sym": "TACUSDT",
+    "prob": 92.8,
+    "state": "EXP48",
+    "pnl": -1.16
+   },
+   {
+    "sym": "VTHOUSDT",
+    "prob": 91.6,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "UAIUSDT",
+    "prob": 87.2,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "IOSTUSDT",
+    "prob": 87.2,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "BULLAUSDT",
+    "prob": 85.7,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "NEWTUSDT",
+    "prob": 84.7,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "BIRBUSDT",
+    "prob": 83.7,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "VVVUSDT",
+    "prob": 82.6,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "LABUSDT",
+    "prob": 82.0,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "我踏马来了USDT",
+    "prob": 78.3,
+    "state": "SL",
+    "pnl": -5.0
+   }
+  ]
  }
 }
