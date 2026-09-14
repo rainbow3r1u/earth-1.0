@@ -482,6 +482,17 @@ def section_long_top10():
                 lines.insert(2, '🎯 金矿格: 今日格内 0 只 (数据不足, 无量能/距离可算)')
         lines.append(f'量能分布: V高 {n_h} · V中 {n_m} · V低 {n_l} · 格内 {len(cell_syms)}'
                      f'  (影子假设: 格内15%笔数贡献81%盈利但t=1.23未显著; 只提醒不干预开仓)')
+        # ── rv 池内加权追踪心跳(2026-09-14 加, 与金矿格同规格: 只读观测/不参与决策) ──
+        # 假设: TOP10池内 "前一日1m已实现波动" 高的币 → 右尾更多(回测: +9.33 vs +3.36 U/笔, CI不重叠)
+        try:
+            import subprocess as _sp
+            _r = _sp.run([sys.executable, 'audit/rv_tracker.py', '--line'],
+                         capture_output=True, text=True, timeout=90, cwd=BASE)
+            _l = (_r.stdout or '').strip().split('\n')[-1] if _r.stdout else ''
+            if _l:
+                lines.append(_l + ' · 只读观测, 不参与开仓')
+        except Exception as _e:
+            lines.append('🔬 rv加权追踪: (读取失败, 见 audit/rv_tracker.py)')
         # ── 影子落盘(仅当日预测已生成时; 按pred日期去重, 保留180天) ──
         if not stale:
             try:
