@@ -102,6 +102,7 @@ def chk_cron():
         ('forward_ic_check.py', '08:50 前向IC'),
         ('hybrid_s5.py', '08:50 S5对照臂'),
         ('residual_tracker.py', '08:55 残差影子'),
+        ('rv_tracker.py', '08:58 rv池内加权追踪(只读观测, 2026-09-14 加)'),
         ('digest_guard.sh', '09:00 晨报保险丝'),
         ('forward_tracker.py', '09:10 前向tracker'),
         ('telegram_group_bot.py signal', '08:20 TG信号'),
