@@ -46,6 +46,7 @@ DATA_WHITELIST_EXACT = {
     'data/prod_fingerprint.jsonl',          # 生产指纹账本 (2026-09-13 立): 每日代码/模型/数据哈希, 永久留存
     'data/model_probe.jsonl',               # 模型标尺账本 (2026-09-13 立): 固定输入上的每日模型概率向量 → 测'模型是否被改过'
     'data/volq_shadow.json',                # 金矿格影子(C远×V高)前向证据 (9/13起): 10/23终审用
+    'data/rv_shadow.json',                  # rv池内加权追踪(前一日1m已实现波动)前向证据 (9/14起): 与金矿格同节点终审
 }
 EXCLUDE_EXT = {
     '.pyc', '.pyo', '.db', '.sqlite', '.sqlite3', '.npz', '.bin', '.pkl',
