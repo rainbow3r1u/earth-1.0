@@ -1408,7 +1408,8 @@ def section_ema_gate():
     chg = g - s['prev_gap']
     arrow = '↓' if chg < 0 else ('↑' if chg > 0 else '→')
     # 历史参考常数(500天事件研究 11 次压缩事件, 固定值不重算以保持轻量)
-    hist = ('历史同类事件 11 次: 落入贴近后持续 ≥5天 <b>82%</b>(底率43%) · ≥10天 <b>55%</b> · '
+    # ⚠️ 2026-09-14 用词消歧: 此处"底率"指本事件的基础发生率, 与 3.4 节的「宇宙底率」无关 → 改名避免同名歧义
+    hist = ('历史同类事件 11 次: 落入贴近后持续 ≥5天 <b>82%</b>(该事件基础率43%) · ≥10天 <b>55%</b> · '
             '中位持续 <b>10 天</b>; 从跌破 2.75% 到进入贴近区 中位 <b>2 天</b>(91% 在5天内)')
     extra = ''
     if st == '贴近(纠缠)':
@@ -1525,10 +1526,17 @@ def section_tail_ability():
     """3.4 右尾能力仪表盘 (2026-09-13 用户批准加入晨报, 要求「醒目+三个参数意思写清楚").
 
     回答什么问题: "模型抓肥尾的能力还在不在? 若不在, 是模型退化还是市场没给?"
+
+    ⚠️ 本节有 **两个阈值档** 各出一张卡: **≥+33%**(右尾档) 与 **≥+16.7%**(≈+50U/300U档)。
+    两张卡的 ①②③ 是 **各自阈值下独立计算** 的, 数值不可互相比较(阈值越高, 底率/命中率越小)。
+    **重要: §4.6 的供给分档标尺(荒<1.0% / 偏紧1.0~1.5% / 正常≥1.5%)只对 ≥+33% 档成立** ——
+    套用到 ≥+16.7% 档会把「偏紧」误读成「供给正常」。故卡片标题与 ① 标签均显式带阈值。
+
     三个参数(都在同一口径下算: 入场=T0开盘, 出场=T2收盘, 即实盘 72h 结构对应的自然2日窗口):
-      ① 宇宙底率  = 全宇宙(约540币)中, 2日涨幅≥阈值 的币占比 → **市场供给**: 这段行情里「有多少币能跑出大涨幅"
-      ② 顶部命中率 = 我们 TOP10 选币中, 2日涨幅≥阈值 的占比 → **实际抓到多少**
-      ③ lift      = ② ÷ ①  → **模型相对能力**: 我们的榜单比「随机抓一个币「强多少倍
+      ① 宇宙底率  = 当日**全宇宙可算2日涨幅的币**(notusdt, K线≥60根, 近期≈540个)里,
+                    2日涨幅 ≥ **该卡阈值** 的币占比 → **市场供给**: 这段行情里「有多少币能跑出这么大涨幅」
+      ② 顶部命中率 = 我们 TOP10 选币中, 2日涨幅 ≥ **该卡阈值** 的占比 → **实际抓到多少**
+      ③ lift      = ② ÷ ①  → **模型相对能力**: 我们的榜单比「随机抓一个币」强多少倍
     判读(2026-09-13 实测确立):
       lift ≥3x = 模型尾部能力完好(全期 3.68x); 底率高低只反映行情, 不是模型的错
       底率 ≥1.5% 但 lift <2.5x → 🔴 模型尾部能力真的退化 → 需查模型层
@@ -1592,9 +1600,10 @@ def section_tail_ability():
         lab = "font-size:14px;font-weight:bold;color:#263238;margin-top:2px;"
         dfn = "font-size:11.5px;color:#546e7a;line-height:1.45;margin-top:3px;"
 
-        def cards(t, tname):
+        def cards(t, tname, tag):
             t7, b7, l7, n7 = agg(w7, t)
             ta, ba, la, na = agg(rows, t)
+            uni7 = sum(r['uni'] for r in w7) / len(w7)      # 近7窗口平均宇宙币数(用于把百分比翻译成"币数")
             # 判读以"该档自身全期 lift"为基线(两档量级不同, 绝对阈值不通用)
             ratio = (l7 / la) if la > 0 else 0.0
             supply_ok = b7 >= ba * 0.8          # 供给恢复到全期八成以上 → 有资格判模型
@@ -1606,24 +1615,30 @@ def section_tail_ability():
                 vc, vt = '#c62828', f'🔴 模型尾部能力退化(供给已恢复但只达基线 {ratio*100:.0f}%) — 需查模型层'
             else:
                 vc, vt = '#ef6c00', f'🟡 暂无法判定({ratio*100:.0f}%基线): 底率 {b7*100:.2f}% 仍低于全期 {ba*100:.2f}% 的八成, 供给不足时 lift 统计噪声大'
-            h = (f"<div style='margin:8px 0 4px;font-size:15px;'><b>阈值 {tname}</b> "
-                 f"<span style='color:#78909c;font-size:12px;'>(近7个<b>已完成</b>窗口 {rows[-7]['d']}~{rows[-1]['d']}, {n7}笔选币)</span></div>"
+            h = (f"<div style='margin:10px 0 4px;font-size:15px;'><b>阈值 {tname}</b> "
+                 f"<span style='color:#78909c;font-size:12px;'>(近7个<b>已完成</b>窗口 {rows[-7]['d']}~{rows[-1]['d']}, {n7}笔选币)</span>"
+                 f"<div style='font-size:11.5px;color:#455a64;margin-top:2px;line-height:1.45;'>"
+                 f"本卡口径: ①②③ 中的「<b>达标</b>」一律指 <b>该币 2日涨幅 {tag}</b> 这一条阈值"
+                 f"(另一张卡用的是另一个阈值, <b>两卡数值不可互比</b>)。</div></div>"
                  "<div>"
                  f"<div style='{card}'><div style='{big}color:#1565c0;'>{b7*100:.2f}%</div>"
-                 f"<div style='{lab}'>① 宇宙底率</div>"
-                 f"<div style='{dfn}'>全宇宙 {rows[-1]['uni']} 个币里, 2日涨幅达标的占比。<br>"
-                 f"<b>市场供给</b> — 这段行情里能跑出大涨幅的币有多密。</div></div>"
+                 f"<div style='{lab}'>① 宇宙底率({tag})</div>"
+                 f"<div style='{dfn}'>分母 = 当日<b>全宇宙可算2日涨幅的 {uni7:.0f} 个币</b>;"
+                 f"分子 = 其中 2日涨幅 {tag} 的币。<br>"
+                 f"近7窗口平均 ≈ <b>{b7*uni7:.1f} 个币/窗口</b> 达标。<br>"
+                 f"<b>市场供给</b> — 这段行情里能跑出这么大涨幅的币有多密(阈值越高此数越小)。</div></div>"
                  f"<div style='{card}'><div style='{big}color:#6a1b9a;'>{t7*100:.2f}%</div>"
-                 f"<div style='{lab}'>② 顶部命中率</div>"
-                 f"<div style='{dfn}'>我们 TOP10 选币里, 涨幅达标的占比。<br>"
-                 f"<b>实际抓到</b> — 榜单有多少笔真的吃到大涨。</div></div>"
+                 f"<div style='{lab}'>② 顶部命中率({tag})</div>"
+                 f"<div style='{dfn}'>分母 = 我们当日的 10 个 TOP10 选币;"
+                 f"分子 = 其中 2日涨幅 {tag} 的币。<br>"
+                 f"<b>实际抓到</b> — 榜单有多少笔真的吃到这么大涨。</div></div>"
                  f"<div style='{card}'><div style='{big}color:{vc};'>{l7:.2f}x</div>"
                  f"<div style='{lab}'>③ lift = ②÷①</div>"
-                 f"<div style='{dfn}'>我们的榜单比「随机抓一个币」强多少倍。<br>"
+                 f"<div style='{dfn}'>我们的榜单比「随机抓一个币」强多少倍(同为 {tag} 口径)。<br>"
                  f"<b>模型相对能力</b> — 与行情无关, 掉下来才是模型的问题。</div></div>"
                  "</div>"
                  f"<div style='margin:6px 0 2px;font-size:15px;font-weight:bold;color:{vc};'>{vt}</div>"
-                 f"<div style='font-size:12px;color:#37474f;'>自身基线对照({rows[0]['d']}~{rows[-1]['d']}, {len(rows)}个窗口/{na}笔): "
+                 f"<div style='font-size:12px;color:#37474f;'>自身基线对照({rows[0]['d']}~{rows[-1]['d']}, {len(rows)}个窗口/{na}笔, 同为 {tag} 口径): "
                  f"底率 <b>{ba*100:.2f}%</b> · 命中率 <b>{ta*100:.2f}%</b> · lift <b>{la:.2f}x</b></div>")
             return h
 
@@ -1652,7 +1667,7 @@ def section_tail_ability():
                 "<b>想提前知道今天的供给在物理上不可能</b>(实测: 入场前可见的滞后底率 vs 当日每笔U r=+0.046 ≈ 无预测力)"
                 " —— 这正是系统必须天天在场的原因。</div>"
                 "<table style='border-collapse:collapse;margin-top:3px;'>"
-                f"<tr><th {hd}>预测日</th><th {hd}>① 宇宙底率</th><th {hd}>② 顶部命中率</th>"
+                f"<tr><th {hd}>预测日</th><th {hd}>① 宇宙底率(≥+33%)</th><th {hd}>② 顶部命中率(≥+33%)</th>"
                 f"<th {hd}>③ lift</th><th {hd}>选币数</th></tr>" + ''.join(body) + "</table>"
                 "<div style='font-size:11.5px;color:#8d6e63;margin-top:3px;line-height:1.5;'>"
                 "⚠️ <b>单日只有 10 个选币 → ②命中率只能取 0%/10%/20%…</b>(10.00% = 恰好 1 个币, 不是「稳定10%概率」); "
@@ -1660,6 +1675,11 @@ def section_tail_ability():
                 "* 底率&lt;1% 的窗口 lift 分母太小=噪声, 标灰不作判读。</div>")
 
         note = ("<div style='font-size:11.5px;color:#546e7a;margin-top:6px;line-height:1.5;'>"
+                "<b>⚠️ 先分清「哪个底率」(本节有两张卡, 2026-09-14 标注)</b>: 上面两张卡分别是 <b>≥+33%</b> 与 <b>≥+16.7%</b> 两个阈值, "
+                "它们的 ①②③ 都是<b>各自阈值下独立算</b>的 —— 阈值越高, 底率/命中率越小, <b>两卡数值不可互比</b>。"
+                "下面「近7窗口逐日」表用的是 <b>≥+33%</b> 档。<br>"
+                "<b>★ 供给分档只认 ≥+33% 档</b>: §4.6 的标尺 <b>荒 &lt;1.0% / 偏紧 1.0~1.5% / 正常 ≥1.5%</b> "
+                "是在 <b>≥+33%</b> 口径上校准的 —— <b>拿 ≥+16.7% 档的底率(通常 2~3%)去套这张标尺, 会把「偏紧」误读成「供给正常」</b>。<br>"
                 "<b>怎么读</b>: ③lift 是「模型能力」, ①②是「行情供给」。<b>lift 掉了才是模型的事</b>; "
                 "底率低只是行情没给大跑者(此时命中率低属正常, 不要据此改模型)。<br>"
                 "<b>⚠️ 结构门槛(为什么\u201c抓到1个\u201d也常常亏)</b>: 300U名义下 1 笔 +33% 尾部 ≈ <b>+99U</b>, "
@@ -1670,12 +1690,15 @@ def section_tail_ability():
                 "<b>为什么不用 IC 判</b>: IC 量全宇宙排序质量, 与实际抓尾经常背离 — 实测 9/06 IC_L=−0.149 而 lift=9.1x, "
                 "9/07 IC_L=−0.186 而 lift=13.7x(IC深负但顶部照样抓到)。<b>右尾能力看这三个数, 看 IC 会误判。</b><br>"
                 "口径: 入场=T0开盘, 出场=T2收盘(实盘72h结构的自然2日窗), 无前视(需T2已收盘); "
-                "宇宙=K线≥60根的notusdt全宇宙(约540币); lift=②÷①。<br>"
-                "证伪线: 底率回升≥1.5% 而 lift 仍 <2.5x → 模型层问题; 底率持续 <1% → 行情问题, 等即可。"
+                "宇宙=<b>当日可算2日涨幅的 notusdt 全宇宙</b>(U本位永续, 已剔除稳定币/BTC等, 且历史K线≥60根; 近期≈540币, 逐日微动); "
+                "底率分母=该宇宙, 命中率分母=当日10个TOP10选币; lift=②÷①。<br>"
+                "证伪线: 底率(<b>≥+33%档</b>)回升≥1.5% 而 lift 仍 <2.5x → 模型层问题; 底率持续 <1% → 行情问题, 等即可。"
                 "</div>")
         return ("<div style='border:1px solid #90caf9;border-left:6px solid #1565c0;border-radius:6px;"
                 "background:#f5faff;padding:10px 12px;margin:6px 0;'>"
-                + cards(33.0, '≥+33% 右尾') + cards(16.7, '≥+16.7%(≈+50U/300U档)')
+                "<div style='font-size:12px;color:#37474f;margin-bottom:2px;'>"
+                "本节两张卡 = <b>两个不同阈值</b>(≥+33% 右尾档 / ≥+16.7% 中等涨幅档), 各自独立计算, <b>数值不可互比</b>。</div>"
+                + cards(33.0, '≥+33% 右尾', '≥+33%') + cards(16.7, '≥+16.7%(≈+50U/300U档)', '≥+16.7%')
                 + mini + note + "</div>")
     except Exception as e:
         return f'<p style="color:#c00">(3.4 右尾能力仪表盘生成失败: {e})</p>'
