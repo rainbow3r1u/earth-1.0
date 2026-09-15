@@ -31,11 +31,31 @@ DAY_MS = 86400000
 #   SHADOW_VARIANT=sl8    python3 audit/hybrid_tracker.py   → data/hybrid_tracker_sl8.json    (SL8/48h)
 #   SHADOW_VARIANT=h72    python3 audit/hybrid_tracker.py   → data/hybrid_tracker_h72.json    (SL5/72h)
 #   SHADOW_VARIANT=sl8h72 python3 audit/hybrid_tracker.py   → data/hybrid_tracker_sl8h72.json (SL8/72h, 对齐实盘)
+#   SHADOW_VARIANT=sl8h72tp30 → data/hybrid_tracker_sl8h72tp30.json
+#       (SL8/72h + LONG止盈+30%, 仅入场后48h内有效 —— **2026-09-15 实盘TP上线后的对齐档**)
 # 未设该环境变量时(含 cron)参数取默认值 → 行为与旧版逐位一致; 变体档不覆盖主档。
 VARIANTS = {
     'sl8':    {'sl_pct': 0.08, 'hold_days': 2, 'file': 'hybrid_tracker_sl8.json',    'tag': 'SL-8%/48h'},
     'h72':    {'sl_pct': 0.05, 'hold_days': 3, 'file': 'hybrid_tracker_h72.json',    'tag': 'SL-5%/72h'},
     'sl8h72': {'sl_pct': 0.08, 'hold_days': 3, 'file': 'hybrid_tracker_sl8h72.json', 'tag': 'SL-8%/72h(对齐实盘)'},
+    # ⚠️ 2026-09-15: 实盘(果/刘)新增 LONG 止盈 → sl8h72 档**不再是实盘的镜像**, 本档才是。
+    #    口径必与执行器一致: TP价=入场×1.30(币价+30% = 5x下币安ROE+150%), 窗口=入场后48h(超时不再止盈)。
+    'sl8h72tp30': {'sl_pct': 0.08, 'hold_days': 3, 'file': 'hybrid_tracker_sl8h72tp30.json',
+                   'tag': 'SL-8%/72h+TP30(限48h, 9/15实盘结构)', 'tp_long_pct': 0.30, 'tp_long_window_h': 48},
+    # 2026-09-16: 用户拍板实盘 TP 由 +30% 下调至 +15%(=币安ROE+75% @5x) → 本档为 9/16 起的实盘镜像;
+    #   tp30 档保留继续跑(冻结为 9/15 结构样本), 三档并排可拆出"降档"的纯效应。
+    'sl8h72tp15': {'sl_pct': 0.08, 'hold_days': 3, 'file': 'hybrid_tracker_sl8h72tp15.json',
+                   'tag': 'SL-8%/72h+TP15(限48h, 9/16上午实盘结构)', 'tp_long_pct': 0.15, 'tp_long_window_h': 48},
+    # 2026-09-16 用户拍板 SL 8%→5% (与 TP+15% 配套, "先稳住账户") → 本档为 9/16 起的实盘镜像:
+    #   SL-5% / TP+15%(限48h) / 72h。与 'h72'(SL-5%/72h/无TP) 同源同日 → 两者之差 = TP 的纯效应。
+    'sl5h72tp15': {'sl_pct': 0.05, 'hold_days': 3, 'file': 'hybrid_tracker_sl5h72tp15.json',
+                   'tag': 'SL-5%/72h+TP15(限48h, 对齐实盘 9/16起)', 'tp_long_pct': 0.15, 'tp_long_window_h': 48},
+    # 2026-09-16 用户指令: "在0-48下改tp到10%, 看看肥日代价是多少"
+    #   动机: 真实账户口径下 TP+15% 的「次数比 3.05」> 「赔率 2.87」= 止盈跑不赢止损;
+    #         降到 TP+10% 后 次数比 1.36 < 赔率 1.91 = 止盈跑赢止损, 且净结果翻倍。
+    #   本档用途: 量「降档」在含肥日窗口(8/03~9/11 含 8/19 底率9.26% 那种日子)付出的代价。
+    'sl5h72tp10': {'sl_pct': 0.05, 'hold_days': 3, 'file': 'hybrid_tracker_sl5h72tp10.json',
+                   'tag': 'SL-5%/72h+TP10(限48h)', 'tp_long_pct': 0.10, 'tp_long_window_h': 48},
 }
 
 def fetch_1m(sym, start_ms, end_ms, max_tries=3):
@@ -87,12 +107,18 @@ def fetch_funding(sym, start_ms, end_ms):
     except Exception:
         return []
 
-def settle_hybrid(sym, date_str, direction, prob, sl_pct=0.05, hold_days=2):
+def settle_hybrid(sym, date_str, direction, prob, sl_pct=0.05, hold_days=2,
+                  tp_long_pct=None, tp_long_window_h=None):
     """混合结构结算: LONG 无TP(SL/到期平) / SHORT TP10%/SL。默认 SL-5% / 48h —— 与原口径一致。
 
     2026-09-12 参数化(sl_pct/hold_days): 实盘自 9/3(果)/9/8(刘) 起为 72h+SL-8%, 而本影子臂固定
     48h+SL-5%, 两个变量同时不同 → 10/23 终审做 "72h vs 48h" 时 SL 变量未被控制(归因被污染)。
     参数化后可输出独立的 2×2 对照档(见文件头 SHADOW_VARIANT 说明); 默认参数与旧行为逐位一致。
+
+    2026-09-15 参数化(tp_long_pct/tp_long_window_h): 实盘 LONG 侧 9/15 起新增止盈
+    (币价+30% = 5x下币安ROE+150%, 仅入场后48h内有效) → 为保持"影子=实盘镜像", 新增该两参数。
+    默认 None = 无止盈 = 与旧行为逐位一致(主档与既有三个变体档不受影响)。
+    同分钟 SL/TP 双触发按 **SL 优先**(与既有 SHORT 口径一致, 对 TP 保守=低估其收益)。
     返回 dict: entry/result/trigger/net_pnl_u(300U名义)
     8/24 晚: 入场 00:05→00:21 UTC (08:21 CST), 与 3.7/实盘口径对齐(用户拍板)。"""
     t0 = ts_utc(*map(int, date_str.split('-')), 0, 21)   # 00:21 UTC 入场
@@ -119,6 +145,9 @@ def settle_hybrid(sym, date_str, direction, prob, sl_pct=0.05, hold_days=2):
 
     sl_hi, sl_lo = entry * (1 + sl_pct), entry * (1 - sl_pct)
     tp_hi, tp_lo = entry * 1.10, entry * 0.90
+    # LONG 止盈(2026-09-15): 价格门槛 + 时间窗口(仅入场后 tp_long_window_h 小时内有效)
+    tp_long = (entry * (1 + tp_long_pct)) if tp_long_pct else None
+    tp_long_until = (t0 + tp_long_window_h * 3600000) if (tp_long_pct and tp_long_window_h) else None
     # 2026-09-12 修: 原按 [t0, expiry) 全窗口扣 funding → 提前 SL/TP 出场的单也被扣满 48h 资金费,
     # 影子账面系统性高估成本(而它正是用户每日对照的基准)。现只计到"实际离场时点"。
     fund_events = [(int(e['fundingTime']), float(e['fundingRate'])) for e in funding]
@@ -139,9 +168,12 @@ def settle_hybrid(sym, date_str, direction, prob, sl_pct=0.05, hold_days=2):
         hit_tp = (h >= tp_hi) if direction == 'LONG' else (l <= tp_lo)
         if hit_sl:                     # 同分钟双触发 SL_FIRST
             triggered = ('SL', x); break
-        # LONG 无止盈: 直接跳过 TP 检测
         if direction == 'SHORT' and hit_tp:
             triggered = ('TP', x); break
+        # LONG 止盈: 需同时满足价格门槛 且 未超过时间窗口(超过窗口后不再止盈, 继续持有到到期吃右尾)
+        if direction == 'LONG' and tp_long is not None and h >= tp_long:
+            if tp_long_until is None or x[0] <= tp_long_until:
+                triggered = ('TP_LONG', x); break
 
     def net(gross, slippage=0.0002):
         return NOTIONAL * (gross - FEE - slippage - fund_cost)
@@ -153,6 +185,10 @@ def settle_hybrid(sym, date_str, direction, prob, sl_pct=0.05, hold_days=2):
             return {'sym': sym, 'direction': direction, 'prob': prob, 'entry': entry,
                     'result': f'-{sl_pct*100:.1f}%', 'trigger': '止损', 'time': fmt(x[0]),
                     'net_u': round(net(-sl_pct, 0.0005), 2)}
+        if kind == 'TP_LONG':
+            return {'sym': sym, 'direction': direction, 'prob': prob, 'entry': entry,
+                    'result': f'+{tp_long_pct*100:.1f}%', 'trigger': '止盈', 'time': fmt(x[0]),
+                    'net_u': round(net(tp_long_pct), 2)}
         return {'sym': sym, 'direction': direction, 'prob': prob, 'entry': entry,
                 'result': '+10.0%', 'trigger': '止盈', 'time': fmt(x[0]),
                 'net_u': round(net(0.10), 2)}
@@ -199,6 +235,9 @@ def main():
     force = ('--force' in sys.argv) or os.environ.get('TRACKER_FORCE') == '1'
     path = TRACKER if var is None else os.path.join(os.path.dirname(TRACKER), var['file'])
     settle_kw = {} if var is None else {'sl_pct': var['sl_pct'], 'hold_days': var['hold_days']}
+    if var and var.get('tp_long_pct'):
+        settle_kw['tp_long_pct'] = var['tp_long_pct']
+        settle_kw['tp_long_window_h'] = var.get('tp_long_window_h')
     if var:
         print(f'[hybrid_tracker] 变体档 {var["tag"]} → {var["file"]}', flush=True)
     if force:

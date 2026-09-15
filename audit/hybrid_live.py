@@ -4,7 +4,9 @@
 HYBRID 混合结构实盘执行器 (3.8板块结构, 2026-09-08 部署, 第二账户)
 =================================================================
 结构 (完全对齐 3.8 影子臂 hybrid_tracker 口径, 唯一差异=真金白银):
-  LONG : TOP10 全开 · 无止盈 · SL-8% · 72h到期 · 市价开平
+  LONG : TOP10 全开 · SL-8% · **TP+30%(=币安ROE+150% @5x, 限入场后48h)** · 72h到期 · 市价开平
+         ⚠️ TP 为 2026-09-15 用户拍板新增(此前"无止盈") — 动机: "72h太吃彩票属性, 先稳定下来"
+         已知代价: 主动卖右尾(影子42天该档 -4155U/-78%); 真实账户口径因未经历超级肥日而 +4.12U
   SHORT: 已关闭(2026-09-08晚用户拍板; 代码保留, 影子S5继续跟踪, 证伪线见MAX_DAILY_SHORT注释)
   资金 : 固定名义125U/笔 · 5x逐仓 · LONG≤10 · 72h · 最坏日全灭≈101U(7%权益) · 85%守卫(容量≈49笔)
 
@@ -35,9 +37,22 @@ NOTIONAL = 125.0      # 单笔名义U (2026-09-08晚用户拍板提额: 10单LON
 LEVERAGE = 5          # 逐仓杠杆 (2026-09-08晚二次拍板: SL8拉长持仓+双臂→并发峰值~35笔, 2x容量19笔不够; 镜像果5x+SL8已验证包络(51笔零强平), 爆仓距离≈-19%)
 MAX_DAILY_LONG = 10    # LONG每日上限(TOP10全开)
 MAX_DAILY_SHORT = 0    # SHORT侧已关闭(2026-09-08晚用户拍板: 直觉+数据双确认)。依据: S5影子36天与LONG日相关+0.07无对冲价值/后半段E归零(前18天+3.9U→后19天+0.2U, 125U口径)/加SHORT使最差日-66→-88U回撤205→243U。证伪线(重开条件): S5滚动20天日均E>+2U(125U口径)持续, 或出现corr转负的崩盘regime; 10/23终审复核。TP/SL常量保留备重开。
-SL_PCT_LONG = 0.08    # LONG止损 8% (2026-09-08用户拍板对齐果账户; 依据9/7 TOP10模拟器1585笔网格: 胜率69→75%/右尾截杀96→56笔)
+SL_PCT_LONG = 0.05    # LONG止损 5% (2026-09-16 用户拍板 8%→5%, 对齐果账户; 原8%依据含肥日回测) [# 原注释: LONG止损 8% (2026-09-08用户拍板对齐果账户; 依据9/7 TOP10模拟器1585笔网格: 胜率69→75%/右尾截杀96→56笔)
 SL_PCT_SHORT = 0.05   # SHORT止损 5% (保持3.8原版; TP10封顶卖右尾结构, 放宽到8%将使盈亏平衡TP率37%→45%, 高于影子36天实测命中36%)
 TP_PCT_SHORT = 0.10   # SHORT止盈 +10% (3.8口径)
+# ==== LONG 止盈 (2026-09-15 用户拍板, 铁律1流程已走: 对照表+用户选定"直接上生产") ====
+# 口径: 用户所说"盈利超过150%"指**币安显示的回报率(ROE)**, 5x杠杆下 ROE = 5 × 币价涨跌
+#       → ROE +150% ⟺ 币价 +30% ⟺ 未实现盈亏 = 1.5 × 保证金 = 0.30 × 名义
+# 窗口: 仅入场后 48h 内有效; 超过 48h 撤销止盈单, 剩余时间继续持有到 72h 到期(不吃掉第三天的右尾)
+# 数据依据(真实账户分钟级重放, 详见 Hindsight "ROE+150% 止盈规则上线"):
+#   刘 9/08~9/15 44笔已结算: 实际 -124.63U → 规则后 -120.51U (+4.12U, 2笔触发 1胜1负)
+#   ⚠️ 风险敞口: 单笔 TUTUSDT 级肥日(+856%) 在 125U 口径下会少赚 -1032U ≈ 实测改善的 250 倍
+#   ⚠️ 影子42天410笔口径该档为 -4155U(-78%) —— 真实账户恰未经历超级肥日, 故两者不矛盾
+#   ⚠️ 48h窗口不是装饰: 果 9/11 批 BRUSDT 峰值 ROE+186% 出现在 48h 之后, 不过滤会多砍一笔
+TP_PCT_LONG = 0.15    # 币价 +15% = 币安ROE +75% (@5x) — 2026-09-15 用户拍板由 +30% 下调
+TP_WINDOW_H = 48      # 止盈有效期(小时)。终点用**名义口径** = 批次日+2天 08:21 CST(见 nominal_tp_end_ms):
+                      #   不用"实际open_time+48h" → 那会让撤单滞后到 48.0~49.1h(对账每小时才跑一次);
+                      #   名义口径下终点正好落在次次日 08:23 那次 reconcile, 且与影子档 t0+48h 逐位一致。
 HOLD_DAYS = 3         # 72h到期 (2026-09-08用户拍板; 右尾敞口放大器, 预研+111%)
 BALANCE_BUF_RATIO = 0.85
 BALANCE_MIN_ABORT = 30.0
@@ -172,6 +187,13 @@ def floor_step(v, step):
     return math.floor(round(v / step, 9)) * step
 
 
+def ceil_step(v, step):
+    """向上取整到 tick (止盈用: 保证触发价 ≥ 目标价, 不提前低于阈值落袋)"""
+    if step <= 0:
+        return v
+    return math.ceil(round(v / step, 9)) * step
+
+
 def fmt_qty(q, step):
     s = f'{step:.10f}'.rstrip('0')
     dec = len(s.split('.')[1]) if '.' in s else 0
@@ -209,13 +231,25 @@ def open_algo_ids(sym):
     return set(), r
 
 
+def _algo_ok(resp):
+    """algo 端点成功判据 (2026-09-16 修, 与 residual_live 同款):
+    原判据把 HTTP 错误响应(无 'code' 键 → None)判为成功 → 撤单函数从未真正撤单。"""
+    if not isinstance(resp, dict):
+        return False
+    if resp.get('error'):
+        return False
+    return resp.get('code') in (None, 200, '200')
+
+
 def cancel_algo(sym, algo_id):
+    """撤条件单: 先按 algoId 单撤(端点=**单数** /fapi/v1/algoOrder, 2026-09-16 修正:
+    原用复数 algoOrders → HTTP 404); 失败再按 symbol 全撤(会连SL一起撤)。"""
     if algo_id:
-        r = signed('DELETE', '/fapi/v1/algoOrders', {'algoId': algo_id})
-        if not (isinstance(r, dict) and r.get('code') not in (None, 200)):
+        r = signed('DELETE', '/fapi/v1/algoOrder', {'algoId': algo_id, 'symbol': sym})
+        if _algo_ok(r):
             return True
     r2 = signed('DELETE', '/fapi/v1/algoOpenOrders', {'symbol': sym})
-    return not (isinstance(r2, dict) and r2.get('code') not in (None, 200))
+    return _algo_ok(r2)
 
 
 def cancel_all_algos(sym, pos):
@@ -300,7 +334,11 @@ def open_one(sym, direction):
         sl_id, so = place_cond_algo(sym, close_side, 'STOP_MARKET', sl_price, fl['tick'])
         if sl_id is None:
             log(f'  ⚠️ {sym} SL挂单失败: {str(so)[:120]} (reconcile会重挂)')
-        tp_price, tp_id = None, None
+        # LONG 止盈 (2026-09-15 上线): 币价+30% = 币安ROE+150% @5x, 48h内有效
+        tp_price = ceil_step(entry * (1 + TP_PCT_LONG), fl['tick'])
+        tp_id, to = place_cond_algo(sym, close_side, 'TAKE_PROFIT_MARKET', tp_price, fl['tick'])
+        if tp_id is None:
+            log(f'  ⚠️ {sym} TP挂单失败: {str(to)[:120]} (reconcile会重挂)')
     else:
         sl_price = floor_step(entry * (1 + SL_PCT_SHORT), fl['tick'])
         tp_price = floor_step(entry * (1 - TP_PCT_SHORT), fl['tick'])
@@ -396,6 +434,19 @@ def nominal_expiry_ms(pos):
     return int((d0 + timedelta(days=HOLD_DAYS, minutes=21)).timestamp() * 1000)
 
 
+def nominal_tp_end_ms(pos):
+    """止盈窗口终点(名义 48h) = 批次日+2天 00:21 UTC (=08:21 CST)。
+
+    2026-09-15 用户拍板: 用**批次日**口径而非"实际 open_time + 48h", 理由两条:
+      ① 对账每小时才跑一次 → 用实际时长会让撤单滞后到 48.0~49.1h(多约 1 小时敞口, 且时点不确定);
+         用批次日口径时, 终点正好落在次次日的 08:23 trade 那次 reconcile 上 → 撤单时点确定。
+      ② **与影子档 sl8h72tp30 逐位对齐**: 影子以 D 日 00:21 UTC 为 t0, 其 48h 窗口终点正是 D+2 00:21 UTC
+         = 本函数返回值 → 实盘与影子的止盈窗口边界完全相同(消除口径分叉, 保住"止盈纯效应"可比)。
+    实测: 实际入场 08:25 许 → 本窗口在 08:21 届满 = 实际持有 ≈47.9h(比 48.0h 少几分钟, 可忽略)。"""
+    d0 = datetime.strptime(pos['date'], '%Y-%m-%d').replace(tzinfo=timezone.utc)
+    return int((d0 + timedelta(days=TP_WINDOW_H // 24, minutes=21)).timestamp() * 1000)
+
+
 def reconcile(st, close_expired=True):
     """对账: 条件单触发落账 / 到期兜底平仓(HOLD_DAYS=3 → 72h) / SL/TP单丢失重挂"""
     if not st['open']:
@@ -439,7 +490,21 @@ def reconcile(st, close_expired=True):
             log(f'  {sym} {HOLD_DAYS * 24}h到期, 平仓')
             close_one(sym, st, '到期')
             continue
-        # 条件单在交易所吗? 缺则重挂 (SL必挂; SHORT的TP也必挂)
+        # ── 止盈有效期守卫 (2026-09-15 上线): 入场满 48h 即撤止盈单, 剩余时间继续持有到 72h 到期 ──
+        #    为什么设 48h: 实测第三天才起飞的单不少(果 9/11 批 BRUSDT 峰值 ROE+186% 出现在 48h 之后),
+        #    不撤单会把这些右尾也砍掉。撤单后 tp_cancelled=True 防 reconcile 重挂。
+        #    终点口径 = nominal_tp_end_ms(批次日+2天08:21, 与影子档逐位对齐); age 判断留作兜底。
+        age_h = (now_ms - pos['open_time']) / 3600000.0
+        tp_expired = (now_ms >= nominal_tp_end_ms(pos)) or (age_h >= TP_WINDOW_H)
+        if pos['direction'] == 'LONG' and not pos.get('tp_cancelled') and tp_expired:
+            if pos.get('tp_algo_id'):
+                cancel_algo(sym, pos['tp_algo_id'])
+                log(f'  {sym} 止盈窗口届满({TP_WINDOW_H}h, 已持 {age_h:.1f}h), 撤销止盈单 '
+                    f'(继续持有到 {HOLD_DAYS*24}h 到期)')
+            pos['tp_cancelled'] = True
+            pos['tp_algo_id'] = None
+            save_state(st)
+        # 条件单在交易所吗? 缺则重挂 (SL必挂; TP: SHORT常挂 / LONG仅入场48h内)
         ids, _r = open_algo_ids(sym)
         fl = get_filters(sym, load_exinfo())
         if fl:
@@ -454,9 +519,16 @@ def reconcile(st, close_expired=True):
                     save_state(st)
                 else:
                     log(f'  ⚠️ {sym} SL重挂失败: {str(so)[:120]}')
-            if pos['direction'] == 'SHORT' and pos.get('tp_algo_id') not in ids:
-                tp_price = floor_step(pos['entry'] * (1 - TP_PCT_SHORT), fl['tick'])
-                new_id, to = place_cond_algo(sym, 'BUY', 'TAKE_PROFIT_MARKET', tp_price, fl['tick'])
+            want_tp = (pos['direction'] == 'SHORT') or (
+                pos['direction'] == 'LONG' and not pos.get('tp_cancelled') and not tp_expired)
+            if want_tp and pos.get('tp_algo_id') not in ids:
+                if pos['direction'] == 'LONG':
+                    tp_price = ceil_step(pos['entry'] * (1 + TP_PCT_LONG), fl['tick'])
+                    tp_side = 'SELL'
+                else:
+                    tp_price = floor_step(pos['entry'] * (1 - TP_PCT_SHORT), fl['tick'])
+                    tp_side = 'BUY'
+                new_id, to = place_cond_algo(sym, tp_side, 'TAKE_PROFIT_MARKET', tp_price, fl['tick'])
                 if new_id:
                     pos['tp_price'] = tp_price
                     pos['tp_algo_id'] = new_id
@@ -465,6 +537,42 @@ def reconcile(st, close_expired=True):
                 else:
                     log(f'  ⚠️ {sym} TP重挂失败: {str(to)[:120]}')
         time.sleep(0.15)
+
+
+def close_market(sym, st, reason):
+    """强制市价平仓 + 记账 (2026-09-16 加, 事故护栏).
+
+    ⚠️ 与 residual_live 同款: `close_one` 对非「到期」原因不下市价单(假定交易所已平),
+    误用它主动平仓会把仍在交易所的仓从账本删除 → 孤儿仓(2026-09-16 迁移 SL 档位时踩到)。"""
+    pos = st['open'].get(sym)
+    if pos is None:
+        return None
+    fl = get_filters(sym, load_exinfo())
+    if fl is None:
+        log(f'  {sym} 无法强制平仓(过滤器缺失)')
+        return None
+    q = float(pos.get('qty') or 0)
+    if q <= 0:
+        return None
+    side = 'SELL' if pos['direction'] == 'LONG' else 'BUY'
+    o = signed('POST', '/fapi/v1/order', {
+        'symbol': sym, 'side': side, 'type': 'MARKET',
+        'quantity': fmt_qty(q, fl['step']), 'reduceOnly': 'true',
+        'newClientOrderId': safe_cid(f'hl-{sym[:12]}-fx')})
+    if o.get('orderId') is None:
+        log(f'  ⚠️ {sym} 强制平仓下单失败: {str(o)[:120]}')
+        return None
+    time.sleep(0.8)
+    for _ in range(10):
+        oo = signed('GET', '/fapi/v1/order', {'symbol': sym, 'orderId': o['orderId']})
+        if oo.get('status') == 'FILLED':
+            ep = float(oo.get('avgPrice') or 0) or get_price(sym) or pos['entry']
+            cancel_all_algos(sym, pos)
+            close_one(sym, st, reason, exit_price=ep, exit_time=int(time.time() * 1000))
+            return ep
+        time.sleep(0.4)
+    log(f'  ⚠️ {sym} 强制平仓未确认成交(仓与账本均保留)')
+    return None
 
 
 def wait_pred(today_str, timeout_s=1800):
@@ -575,6 +683,7 @@ def mode_trade(st, force=False):
 def mode_status(st):
     print(f'== HYBRID 3.8实盘执行器状态 (第二账户) ==')
     print(f'配置: 名义{NOTIONAL}U/笔 {LEVERAGE}x逐仓 SL: LONG-{SL_PCT_LONG*100:.0f}% '
+          f'TP: LONG+{TP_PCT_LONG*100:.0f}%(=币安ROE+{TP_PCT_LONG*LEVERAGE*100:.0f}% @{LEVERAGE}x, 限入场{TP_WINDOW_H}h内) '
           f'(SHORT侧已关: SL-{SL_PCT_SHORT*100:.0f}%/TP+{TP_PCT_SHORT*100:.0f}%参数保留) {HOLD_DAYS*24}h')
     acct = signed('GET', '/fapi/v2/account')
     if isinstance(acct, dict):
@@ -585,7 +694,17 @@ def mode_status(st):
         print(f'\n在持 {len(st["open"])}笔:')
         for sym, p in st['open'].items():
             hold_h = (time.time() * 1000 - p['open_time']) / 3600000
-            tp = f" TP={p.get('tp_price')}" if p.get('tp_price') else ''
+            # 2026-09-15: LONG 显示 TP 状态(含"已过48h窗口故不挂") —— 防"漏挂"误读; SHORT 恒挂
+            #   终点口径与 reconcile 一致(名义批次日+2天08:21), 保证显示与行为同源
+            tp_over = (int(time.time() * 1000) >= nominal_tp_end_ms(p)) or (hold_h >= TP_WINDOW_H)
+            if p['direction'] == 'SHORT':
+                tp = f" TP={p.get('tp_price')}" if p.get('tp_price') else ' TP=缺失'
+            elif p.get('tp_cancelled') or tp_over:
+                tp = f' TP=已过{TP_WINDOW_H}h窗口不挂'
+            elif p.get('tp_algo_id'):
+                tp = f" TP={p.get('tp_price')}"
+            else:
+                tp = ' TP=缺失(reconcile将重挂)'
             print(f"  {sym}: [{p['direction']}] entry={p['entry']} qty={p['qty']} "
                   f"SL={p['sl_price']}{tp} 已持{hold_h:.1f}h ({p['date']}批)")
     else:

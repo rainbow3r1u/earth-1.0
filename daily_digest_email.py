@@ -683,7 +683,17 @@ def section_2x2():
         files = [('base',   'SL-5%/48h <b>(原基线)</b>', 'hybrid_tracker.json'),
                  ('sl8',    'SL-8%/48h',                 'hybrid_tracker_sl8.json'),
                  ('h72',    'SL-5%/72h',                 'hybrid_tracker_h72.json'),
-                 ('sl8h72', 'SL-8%/72h <b>(实盘现行)</b>', 'hybrid_tracker_sl8h72.json')]
+                 ('sl8h72', 'SL-8%/72h <b>(9/3~9/14 实盘结构)</b>', 'hybrid_tracker_sl8h72.json'),
+                 # 2026-09-15 实盘 LONG 侧新增止盈(币价+30%=币安ROE+150% @5x, 仅48h内有效)
+                 # → 本档才是 9/15 起的实盘镜像; sl8h72 变为"不加TP"的反事实对照(两者之差=止盈的纯效应)
+                 ('sl8h72tp30', 'SL-8%/72h+TP30(限48h)', 'hybrid_tracker_sl8h72tp30.json'),
+                 # 2026-09-16 用户拍板 TP 由 +30% 降到 +15%(ROE+75%) → 本档才是 9/16 起的实盘镜像
+                 ('sl8h72tp15', 'SL-8%/72h+TP15(限48h)', 'hybrid_tracker_sl8h72tp15.json'),
+                 # 2026-09-16 用户拍板 SL 8%→5% → 本档为 9/16 起的实盘镜像
+                 ('sl5h72tp15', 'SL-5%/72h+TP15(限48h) <b>(9/16起实盘现行)</b>',
+                  'hybrid_tracker_sl5h72tp15.json'),
+                 # 2026-09-16 用户指令: 量「止盈档 15%→10%」的肥日代价(TP10=ROE+50%)
+                 ('sl5h72tp10', 'SL-5%/72h+TP10(限48h)', 'hybrid_tracker_sl5h72tp10.json')]
         cell = "style='padding:2px 8px;border:1px solid #ccc;font-size:12px;'"
         hd = "style='padding:2px 8px;border:1px solid #ccc;font-size:12px;background:#f0f0f0;'"
         stats, missing = {}, []
@@ -703,9 +713,11 @@ def section_2x2():
                 continue
             sl = [t for t in tr if t.get('trigger') == '止损']
             ex = [t for t in tr if t.get('trigger') == '到期']
+            tp = [t for t in tr if t.get('trigger') == '止盈']
             tot = sum(t['net_u'] for t in tr)
             stats[key] = {'label': label, 'n': len(tr), 'tot': tot, 'per': tot / len(tr),
-                          'exp': len(ex) / len(tr) * 100,
+                          'exp': len(ex) / len(tr) * 100, 'ntp': len(tp),
+                          'tpm': sum(t['net_u'] for t in tp) / max(len(tp), 1),
                           'slm': sum(t['net_u'] for t in sl) / max(len(sl), 1),
                           'exm': sum(t['net_u'] for t in ex) / max(len(ex), 1)}
         if not stats:
@@ -719,7 +731,9 @@ def section_2x2():
             rows.append(f"<tr><td {cell}>{label}</td><td {cell}>{s['n']}</td>"
                         f"<td {cell}>{s['tot']:+.1f}</td>"
                         f"<td {cell}><b style='color:{c}'>{s['per']:+.2f}</b></td>"
-                        f"<td {cell}>{s['exp']:.1f}%</td><td {cell}>{s['slm']:+.2f}</td>"
+                        f"<td {cell}>{s['exp']:.1f}%</td>"
+                        f"<td {cell}><span style='color:#0a0;'>{s['ntp']}</span></td>"
+                        f"<td {cell}>{s['slm']:+.2f}</td>"
                         f"<td {cell}>{s['exm']:+.2f}</td></tr>")
         dlt = ''
         b = stats.get('base')
@@ -734,15 +748,35 @@ def section_2x2():
                        "<b>单变量增量(vs 原基线)</b>: " + ' | '.join(parts) + "</div>")
         table = ("<table style='border-collapse:collapse;'>"
                  f"<tr><th {hd}>结构(LONG侧 · 300U名义)</th><th {hd}>笔数</th><th {hd}>累计U</th>"
-                 f"<th {hd}>每笔U</th><th {hd}>到期率</th><th {hd}>止损单均</th><th {hd}>到期单均</th></tr>"
+                 f"<th {hd}>每笔U</th><th {hd}>到期率</th><th {hd}>止盈笔数</th>"
+                 f"<th {hd}>止损单均</th><th {hd}>到期单均</th></tr>"
                  + ''.join(rows) + "</table>")
+        # 止盈纯效应(2026-09-15 上线): TP30档 vs 不加TP档, 同源同日 → 差值只来自止盈规则
+        tp_line = ''
+        s72 = stats.get('h72')          # 9/16 起: 以 SL-5%/72h(无TP) 作止盈的对照基线
+        parts = []
+        for key, nm in (('sl5h72tp15', 'TP15(ROE+75%, 9/16起实盘)'), ('sl5h72tp10', 'TP10(ROE+50%)'), ('sl8h72tp15', 'TP15@SL-8%'), ('sl8h72tp30', 'TP30@SL-8%(9/15)')):
+            st_ = stats.get(key)
+            if s72 and st_ and s72['per']:
+                dv = st_['per'] - s72['per']
+                col = '#0a0' if dv >= 0 else '#c00'
+                parts.append(f"{nm}: <b style='color:{col}'>{dv:+.2f}U/笔 ({dv / abs(s72['per']) * 100:+.0f}%)</b>"
+                             f" 触发 {st_['ntp']}笔 累计 {st_['tot']:+.1f}U")
+        tp_line = ''
+        if parts:
+            tp_line = ("<div style='font-size:11.5px;color:#333;margin-top:3px;'>"
+                       f"<b>止盈纯效应(vs 不加TP {s72['tot']:+.1f}U, 同源同日)</b>: " + ' ｜ '.join(parts) +
+                       "<br><span style='color:#666;'>⚠️ 止盈=主动卖右尾(公理1): 含肥日的长窗口应为负; "
+                       "若前向持续为正, 说明当前 regime 缺肥日 —— 这正是本档要采的证据(10/23 终审)。"
+                       "档位越低触发越多、越依赖'冲高回吐'型单</span></div>")
         note = ("<div style='font-size:10px;color:#666;'>同源同日(同一批pred、同一天08:21入场) → "
                 "差异<b>只</b>来自结构参数 | 变体档由 08:46 cron 与主档同源维护(独立文件, 不覆盖主档) | "
-                "到期率≠到期胜率 | 单变量读数: 仅改持有(72h)≈全部收益提升, 仅放宽止损为次要放大器</div>")
+                "到期率≠到期胜率 | 单变量读数: 仅改持有(72h)≈全部收益提升, 仅放宽止损为次要放大器 | "
+                "TP30=币价+30%(币安ROE+150% @5x)且仅入场后48h内有效[2026-09-15上线]</div>")
         if missing:
             note = (f"<div style='font-size:10px;color:#c00;'>⚠️ 缺档: {', '.join(missing)}"
                     "(08:46 cron 未跑/失败? 查 logs/hybrid_tracker_variants.log)</div>") + note
-        return table + dlt + note
+        return table + dlt + tp_line + note
     except Exception as e:
         return f'<p style="color:#c00">(2×2对照生成失败: {e})</p>'
 
@@ -937,27 +971,32 @@ def section_residual_survival():
                      if any(p.get('symbol') == s and p.get('date') == d for p in open_pos)]
             stopped = [r for r in gone.get(d, []) if r.get('trigger') == '止损']
             expired = [r for r in gone.get(d, []) if r.get('trigger') == '到期']
-            other = len(gone.get(d, [])) - len(stopped) - len(expired)
+            # 2026-09-15 TP 上线: '止盈' 必须单独成列, 否则会被算进"其他(手动/异常离场)"而掩盖止盈笔数
+            took = [r for r in gone.get(d, []) if r.get('trigger') == '止盈']
+            other = len(gone.get(d, [])) - len(stopped) - len(expired) - len(took)
             surv = len(alive) / len(opened) * 100 if opened else 0
             # 存活率配色: 绿≥70 黄40-70 红<40
             sc = '#0a0' if surv >= 70 else ('#b8860b' if surv >= 40 else '#c00')
             stop_u = sum(r.get('net_u', 0) for r in stopped)
             exp_u = sum(r.get('net_u', 0) for r in expired)
+            tp_u = sum(r.get('net_u', 0) for r in took)
             rows.append(
                 f"<tr><td {cell}>{d}</td><td {cell}>{len(opened)}笔</td>"
                 f"<td {cell}><b style='color:{sc};'>{len(alive)}</b></td>"
                 f"<td {cell}>{len(stopped)}</td><td {cell}>{len(expired)}</td>"
-                f"<td {cell}>{other}</td>"
+                f"<td {cell}>{len(took)}</td><td {cell}>{other}</td>"
                 f"<td {cell}><b style='color:{sc};'>{surv:.0f}%</b></td>"
-                f"<td {cell}>{stop_u:+.1f}</td><td {cell}>{exp_u:+.1f}</td></tr>")
+                f"<td {cell}>{stop_u:+.1f}</td><td {cell}>{exp_u:+.1f}</td>"
+                f"<td {cell}>{tp_u:+.1f}</td></tr>")
         if not rows:
             return "<div style='font-size:11px;color:#888;'>(3.9c 批次生存表: 尚无正式批次)</div>"
         return ("<table style='border-collapse:collapse;'>"
                 f"<tr><th {hd}>批次</th><th {hd}>开仓</th><th {hd}>存活</th><th {hd}>止损</th>"
-                f"<th {hd}>到期平</th><th {hd}>其他</th><th {hd}>存活率</th>"
-                f"<th {hd}>止损净U</th><th {hd}>到期净U</th></tr>"
+                f"<th {hd}>到期平</th><th {hd}>止盈</th><th {hd}>其他</th><th {hd}>存活率</th>"
+                f"<th {hd}>止损净U</th><th {hd}>到期净U</th><th {hd}>止盈净U</th></tr>"
                 + ''.join(rows) + "</table>"
-                + "<div style='font-size:10px;color:#666;'>果实盘每批生存动态 (9/2起正式批; 72h持有, SL-8%盘中触发[9/7起由5%调]; 9/13起选币=主LONG榜) | "
+                + "<div style='font-size:10px;color:#666;'>果实盘每批生存动态 (9/2起正式批; 72h持有, SL-8%盘中触发[9/7起由5%调]; "
+                "**止盈 TP+30%=币安ROE+150% @5x, 仅入场后48h内有效[2026-09-15上线]**; 9/13起选币=主LONG榜) | "
                 "存活率配色: 绿≥70%/黄40~70%/红<40% | 止损净U=该批已止损单的真实净亏损合计 | "
                 "存活=本批持仓仍在等待72h到期(按批次标签归属, 币被后续批次重开计入新批) | '其他'=手动/异常离场</div>")
     except Exception as e:
