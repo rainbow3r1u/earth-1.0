@@ -229,5 +229,25 @@
 "JTOUSDT": 3.7918,
 "ZKCUSDT": 3.1549
 }
+},
+"2026-09-14": {
+"date": "2026-09-14",
+"rv_day": "2026-09-13",
+"hi": [],
+"mid": [],
+"lo": [],
+"missing": [
+"API3USDT",
+"CHIPUSDT",
+"REZUSDT",
+"VVVUSDT",
+"LITUSDT",
+"INJUSDT",
+"ICPUSDT",
+"SAGAUSDT",
+"CHILLGUYUSDT",
+"COTIUSDT"
+],
+"rv": {}
 }
 }
