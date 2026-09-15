@@ -5038,5 +5038,131 @@
     "pnl": -5.0
    }
   ]
+ },
+ "2026-09-12": {
+  "long": [
+   {
+    "sym": "TREEUSDT",
+    "prob": 93.0,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "CHIPUSDT",
+    "prob": 76.3,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "ZKCUSDT",
+    "prob": 72.7,
+    "state": "EXP48",
+    "pnl": -1.52
+   },
+   {
+    "sym": "PROMUSDT",
+    "prob": 68.4,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "PUMPUSDT",
+    "prob": 68.4,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "ONUSDT",
+    "prob": 66.3,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "CVXUSDT",
+    "prob": 65.9,
+    "state": "EXP48",
+    "pnl": -0.49
+   },
+   {
+    "sym": "BOMEUSDT",
+    "prob": 65.1,
+    "state": "EXP48",
+    "pnl": -3.04
+   },
+   {
+    "sym": "STARUSDT",
+    "prob": 64.7,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "ONGUSDT",
+    "prob": 64.0,
+    "state": "SL",
+    "pnl": -5.0
+   }
+  ],
+  "short": [
+   {
+    "sym": "UAIUSDT",
+    "prob": 88.4,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "LABUSDT",
+    "prob": 82.4,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "BEATUSDT",
+    "prob": 80.4,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "AKEUSDT",
+    "prob": 77.6,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "BTRUSDT",
+    "prob": 76.2,
+    "state": "EXP48",
+    "pnl": 5.37
+   },
+   {
+    "sym": "TACUSDT",
+    "prob": 75.0,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "USELESSUSDT",
+    "prob": 73.8,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "IOSTUSDT",
+    "prob": 73.6,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "QUSDT",
+    "prob": 72.7,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "龙虾USDT",
+    "prob": 72.1,
+    "state": "SL",
+    "pnl": -5.0
+   }
+  ]
  }
 }
