@@ -163,6 +163,7 @@ E=+8.8U/笔来自样本, 震荡期临时转负(8/28~9/3六连亏-701U)是方差�
 06:05  fetch_etf.py ETF资金流 | 06:10 coingecko_mcap 市值 | 06:12 exchange_info | 06:20 oi_snapshot
 07:10  daily_universe_snapshot.py 宇宙快照(data/universe/)
 07:30  update_klines_oi K线+OI 补采
+08:00  br_forecast.py 底率预测(只读观测: 滚动180天OLS → 预测今日底率档位 + 近14日趋势) ← 9/16 新增
 08:02  data_versions_snapshot.py 数据版本快照(只读)
 08:04  audit_snapshot.py 审计快照(只读)
 08:05  auto_dual_trade.py 训练+预测(SOUP+置换检验; 交易由 residual_live 执行)
@@ -360,6 +361,19 @@ E=+8.8U/笔来自样本, 震荡期临时转负(8/28~9/3六连亏-701U)是方差�
 - 看系统健康: `crontab -l` + `tail logs/auto_dual.log` + `~/.local/share/auto_trade/trade.log`
 - **全链路体检**: `python3 scripts/system_health_check.py`(09:15 cron 自动跑, `--notify` 失败邮件; 日志 logs/health_check.log; 详见体检SKILL `.agents/skills/health-check/`)
 - **实盘状态**: `cd /home/myuser/websocket_new && python3 audit/residual_live.py status`(权益/在持/当日开仓/SL)
+- **底率预测**: `python3 audit/br_forecast.py --report`(只读观测; 每日 08:00 自动跑并挂晨报; `--line` 输出晨报那一行)
+  - **底率(D)** = 全宇宙币中「从 D 开盘到 D+2 收盘 涨幅≥+33%」的币占比。
+    **荒期 <1.0%(系统必亏) / 偏紧 1.0~1.5% / 正常 ≥1.5%(有正期望)** —— 这是决定系统能不能赚钱的第一变量。
+  - 方法: 滚动 180 天 OLS 预测, 特征 5 个(离散度5日/20日均、底率3~7日/3~22日均、BTC振幅),
+    **全部只用 ≤D-2 已完整收盘的日线**(避开缓存里那根半截 bar); **特征用原始值, 不做标准化**
+    —— 实测标准化会把「水平」信息洗掉, 样本外 ρ 从 +0.177 掉到 +0.111。
+  - 585 天历史(2025-03~2026-09)样本外 501 天: **ρ +0.149 vs 朴素基线 +0.128**(赢 4/6 季度);
+    五等分: 最低分位底率 **0.99%(荒期)** vs 最高分位 **1.90%(正常)** → 1.9 倍差距。
+  - ⚠️ **很弱**: ρ 0.149 → R²≈0.02; 且**最近 90 天已退化**(OLS −0.063 vs 基线 +0.063, 晨报标 🔴)。
+    **只作「荒期减笔数」的参考, 绝不当开仓闸门。**
+  - ⚠️ **方法论教训(必记)**: 41 天窗口曾给出**相反结论**(底率_近3~7日均 −0.501, 像"均值回归"),
+    585 天推翻为 **+0.152(持续性)**; 另两个变量(量能比20d、BTC振幅)在 41 天 p<0.05 显著,
+    585 天完全不显著 → **小样本上的相关性不可信, 任何同类发现必须用长历史复核。**
 - **模型水准测评**: `python3 scripts/model_quality_audit.py`(六层判读: 身份/能力/供给/捕捉/结构/金矿格; 见附录A §8.4, 触发词"模型水准测评")
 - **模型/代码是否被改过**: `python3 scripts/model_probe.py --report`(标尺) + `python3 scripts/prod_fingerprint.py --diff`(指纹差异)
 - 手动触发训练: `cd /home/myuser/websocket_new && python3 auto_dual_trade.py`(会拿锁, 勿重复跑)
