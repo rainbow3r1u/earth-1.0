@@ -1,0 +1,128 @@
+{
+ "updated": "2026-09-16 04:38",
+ "target_date": "2026-09-15",
+ "score": 1.443,
+ "pct": 39.7,
+ "bucket": "偏紧",
+ "low_q_mean": 1.168,
+ "high_q_mean": 1.891,
+ "oos_rho": 0.1493,
+ "oos_naive": 0.1278,
+ "oos_rho_90d": -0.0627,
+ "oos_naive_90d": 0.0635,
+ "degraded": true,
+ "n_train": 561,
+ "n_pred": 501,
+ "pred_7d": 1.465,
+ "pred_prev7d": 1.546,
+ "act_7d": 0.982,
+ "act_prev7d": 1.646,
+ "act_7d_bucket": "荒期",
+ "recent": [
+  {
+   "date": "2026-08-30",
+   "score": 1.74,
+   "bucket": "正常",
+   "actual": 0.558,
+   "actual_bucket": "荒期"
+  },
+  {
+   "date": "2026-08-31",
+   "score": 1.561,
+   "bucket": "正常",
+   "actual": 1.487,
+   "actual_bucket": "偏紧"
+  },
+  {
+   "date": "2026-09-01",
+   "score": 1.633,
+   "bucket": "正常",
+   "actual": 1.487,
+   "actual_bucket": "偏紧"
+  },
+  {
+   "date": "2026-09-02",
+   "score": 1.423,
+   "bucket": "偏紧",
+   "actual": 2.045,
+   "actual_bucket": "正常"
+  },
+  {
+   "date": "2026-09-03",
+   "score": 1.454,
+   "bucket": "偏紧",
+   "actual": 2.23,
+   "actual_bucket": "正常"
+  },
+  {
+   "date": "2026-09-04",
+   "score": 1.392,
+   "bucket": "偏紧",
+   "actual": 1.859,
+   "actual_bucket": "正常"
+  },
+  {
+   "date": "2026-09-05",
+   "score": 1.617,
+   "bucket": "正常",
+   "actual": 1.859,
+   "actual_bucket": "正常"
+  },
+  {
+   "date": "2026-09-06",
+   "score": 1.454,
+   "bucket": "偏紧",
+   "actual": 1.115,
+   "actual_bucket": "偏紧"
+  },
+  {
+   "date": "2026-09-07",
+   "score": 1.48,
+   "bucket": "偏紧",
+   "actual": 0.743,
+   "actual_bucket": "荒期"
+  },
+  {
+   "date": "2026-09-08",
+   "score": 1.512,
+   "bucket": "正常",
+   "actual": 0.372,
+   "actual_bucket": "荒期"
+  },
+  {
+   "date": "2026-09-09",
+   "score": 1.493,
+   "bucket": "偏紧",
+   "actual": 0.372,
+   "actual_bucket": "荒期"
+  },
+  {
+   "date": "2026-09-10",
+   "score": 1.444,
+   "bucket": "偏紧",
+   "actual": 1.301,
+   "actual_bucket": "偏紧"
+  },
+  {
+   "date": "2026-09-11",
+   "score": 1.488,
+   "bucket": "偏紧",
+   "actual": 1.301,
+   "actual_bucket": "偏紧"
+  },
+  {
+   "date": "2026-09-12",
+   "score": 1.381,
+   "bucket": "偏紧",
+   "actual": 1.673,
+   "actual_bucket": "正常"
+  }
+ ],
+ "feat": {
+  "disp5": 7.198,
+  "disp20": 6.823,
+  "br37": 0.781,
+  "br322": 1.255,
+  "btcamp": 1.254
+ }
+}

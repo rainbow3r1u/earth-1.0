@@ -493,6 +493,18 @@ def section_long_top10():
                 lines.append(_l + ' · 只读观测, 不参与开仓')
         except Exception as _e:
             lines.append('🔬 rv加权追踪: (读取失败, 见 audit/rv_tracker.py)')
+        # ── 底率预测心跳(2026-09-16 加, 与金矿格/rv 同规格: 只读观测/不参与决策) ──
+        # 底率(D)=全宇宙2日涨幅≥+33%的币占比; 荒期<1.0%(系统必亏) / 偏紧1.0~1.5% / 正常≥1.5%(有正期望)
+        # 方法: 滚动180天OLS(特征原始值, 不做标准化) → 样本外ρ +0.149 vs 朴素基线 +0.128 (585天历史实测)
+        try:
+            import subprocess as _sp2
+            _r2 = _sp2.run([sys.executable, 'audit/br_forecast.py', '--line'],
+                           capture_output=True, text=True, timeout=30, cwd=BASE)
+            _l2 = (_r2.stdout or '').strip().split('\n')[-1] if _r2.stdout else ''
+            if _l2:
+                lines.append(_l2 + ' · 只读观测, 不参与开仓')
+        except Exception:
+            lines.append('🔮 底率预测: (读取失败, 见 audit/br_forecast.py)')
         # ── 影子落盘(仅当日预测已生成时; 按pred日期去重, 保留180天) ──
         if not stale:
             try:
