@@ -249,5 +249,25 @@
 "COTIUSDT"
 ],
 "rv": {}
+},
+"2026-09-15": {
+"date": "2026-09-15",
+"rv_day": "2026-09-14",
+"hi": [],
+"mid": [],
+"lo": [],
+"missing": [
+"HIVEUSDT",
+"PROMUSDT",
+"ARKUSDT",
+"VVVUSDT",
+"DASHUSDT",
+"STRKUSDT",
+"KITEUSDT",
+"CHIPUSDT",
+"BSBUSDT",
+"FETUSDT"
+],
+"rv": {}
 }
 }
