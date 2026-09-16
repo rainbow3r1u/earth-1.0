@@ -704,9 +704,11 @@ def section_2x2():
                  # 2026-09-16 用户拍板 SL 8%→5% → 本档为 9/16 起的实盘镜像
                  ('sl5h72tp15', 'SL-5%/72h+TP15(限48h) <b>(9/16上午实盘, 已冻结为反事实)</b>',
                   'hybrid_tracker_sl5h72tp15.json'),
-                 # 2026-09-16 用户拍板: 实盘改梯度TP(第一天+15%/第二天+30%/第三天不挂) → 本档为新镜像
-                 ('sl5h72lad1530', 'SL-5%/72h+<b>梯度TP(0~24h +15% → 24~48h +30% → 48h后不挂)</b> <b>(9/16起实盘现行)</b>',
+                 # 2026-09-16 上午: 实盘梯度TP 15/30/无 → 下午第2天降到 20% → 1530 冻结为反事实, 1520 为现行
+                 ('sl5h72lad1530', 'SL-5%/72h+梯度TP(0~24h +15% → 24~48h +30% → 48h后不挂) <b>(9/16上午实盘, 已冻结)</b>',
                   'hybrid_tracker_sl5h72lad1530.json'),
+                 ('sl5h72lad1520', 'SL-5%/72h+<b>梯度TP(0~24h +15% → 24~48h +20% → 48h后不挂)</b> <b>(9/16下午起实盘现行)</b>',
+                  'hybrid_tracker_sl5h72lad1520.json'),
                  # 2026-09-16 用户指令: 量「止盈档 15%→10%」的肥日代价(TP10=ROE+50%)
                  ('sl5h72tp10', 'SL-5%/72h+TP10(限48h)', 'hybrid_tracker_sl5h72tp10.json')]
         cell = "style='padding:2px 8px;border:1px solid #ccc;font-size:12px;'"
@@ -770,7 +772,7 @@ def section_2x2():
         tp_line = ''
         s72 = stats.get('h72')          # 9/16 起: 以 SL-5%/72h(无TP) 作止盈的对照基线
         parts = []
-        for key, nm in (('sl5h72lad1530', '梯度15/30/无(9/16起实盘)'), ('sl5h72tp15', 'TP15(ROE+75%, 9/16上午)'), ('sl5h72tp10', 'TP10(ROE+50%)'), ('sl8h72tp15', 'TP15@SL-8%'), ('sl8h72tp30', 'TP30@SL-8%(9/15)')):
+        for key, nm in (('sl5h72lad1520', '梯度15/20/无(9/16下午起实盘)'), ('sl5h72lad1530', '梯度15/30/无(9/16上午)'), ('sl5h72tp15', 'TP15(ROE+75%, 9/16上午)'), ('sl5h72tp10', 'TP10(ROE+50%)'), ('sl8h72tp15', 'TP15@SL-8%'), ('sl8h72tp30', 'TP30@SL-8%(9/15)')):
             st_ = stats.get(key)
             if s72 and st_ and s72['per']:
                 dv = st_['per'] - s72['per']
