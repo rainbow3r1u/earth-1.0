@@ -836,9 +836,23 @@ def mode_status(st):
 
 def main():
     mode = sys.argv[1] if len(sys.argv) > 1 else 'status'
-    if mode not in ('trade', 'reconcile', 'status'):
+    if mode not in ('trade', 'reconcile', 'status', 'enable', 'disable'):
         print(__doc__)
         sys.exit(1)
+    # ── 开仓开关的显式开/关(2026-09-16 加; 用户口径: "果账户入金即可恢复") ──
+    #   为什么要命令而不是"入金自动恢复": 交易总开关**绝不能自动解除** ——
+    #   否则任何一次误入金(转错账户/测试转账)都会让系统自动开始真金交易。
+    #   恢复 = 两步: ① 入金 ② `python3 audit/residual_live.py enable`
+    if mode == 'enable':
+        if os.path.exists(TRADE_OFF_FILE):
+            os.remove(TRADE_OFF_FILE)
+        log('✅ 开仓开关已【打开】: 哨兵文件已删除, 下个 08:21 trade 将正常开仓')
+        return
+    if mode == 'disable':
+        with open(TRADE_OFF_FILE, 'w') as _f:
+            _f.write('手动关闭果账户开仓\n')
+        log('🔴 开仓开关已【关闭】: 只对账/平到期, 不开新批')
+        return
     # 文件锁
     lf = open(LOCK_FILE, 'w')
     try:
