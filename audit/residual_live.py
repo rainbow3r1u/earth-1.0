@@ -70,6 +70,20 @@ SL_PCT = 0.05        # 止损 5% (2026-09-16 用户拍板 8%→5%, 与 TP+15% �
 #   ⚠️ 影子42天410笔口径该档为 -4155U(-78%) —— 真实账户恰未经历超级肥日, 故两者不矛盾
 #   ⚠️ 48h窗口不是装饰: 本账户 9/11 批 BRUSDT 峰值 ROE+186% 出现在 48h 之后, 不过滤会多砍一笔
 # ── 梯度止盈(2026-09-16 用户拍板: "第一天15%TP 第二天30%TP 最后一天无TP") ──
+# ── 开仓总开关(2026-09-16 用户指令: "关闭果账户下单, 只保留刘账户") ──
+#   机制: 本文件存在 → trade 模式**只做对账+平到期, 不开新批**(切点在 reconcile 之后)。
+#   为什么切在这里: 现有持仓必须继续被管理(SL丢失重挂/到期平仓), 只停开新单 ——
+#     若连对账一起停, 持仓会失去保护(裸奔), 属危险操作, 故不采用。
+#   reconcile / status 两个模式不受影响。开关是**绝对**的(--force 也不绕过)。
+#   恢复: 删除该文件即可。查看: python3 audit/residual_live.py status
+TRADE_OFF_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                              '..', 'data', 'TRADING_DISABLED_RESIDUAL')
+
+
+def trading_enabled():
+    return not os.path.exists(TRADE_OFF_FILE)
+
+
 TP_PCT = 0.15        # 【第1天 0~24h】止盈档: 币价+15% = 币安ROE+75% @5x
 TP_PCT_D2 = 0.15     # 【第2天 24~48h】止盈档: 币价+15% = 币安ROE+75% @5x
                      #   ⚠️ 2026-09-16 用户拍板: 与第1天同档(=0.15)
@@ -703,6 +717,16 @@ def mode_trade(st, force=False):
     # 1. 先对账+平到期 (08:21 集中到期)
     log('== 对账/到期平仓 ==')
     reconcile(st, close_expired=True)
+    # 1.5 开仓总开关(2026-09-16 用户指令: 关闭果账户下单, 只保留刘账户)
+    #     位置刻意放在 reconcile 之后: 上面的对账/平到期/SL重挂已执行完 → 现有持仓仍被完整管理,
+    #     只有"开新批"被跳过。开关绝对(--force 不绕过)。
+    if not trading_enabled():
+        log('🔴 开仓已关闭(data/TRADING_DISABLED_RESIDUAL 存在) → 本次只完成对账+平到期, 不开新批')
+        d = st['days'].setdefault(today_str, {})
+        d['opened'] = []
+        d['note'] = '开仓已关闭(TRADING_DISABLED_RESIDUAL)'
+        save_state(st)
+        return
     # 2. 时间窗守卫
     m = now_cst_min()
     if not force and not (8 * 60 + 20 <= m <= 10 * 60):
@@ -774,6 +798,8 @@ def mode_trade(st, force=False):
 
 def mode_status(st):
     print(f'== 果实盘 实盘执行器状态 (选币={PRED_FIELD}) ==')
+    print('🔴 开仓开关: 【已关闭】(' + os.path.basename(TRADE_OFF_FILE) + ' 存在) —— 只对账/平到期, 不开新批'
+          if not trading_enabled() else '🟢 开仓开关: 开启')
     print(f'配置: 名义{NOTIONAL}U/笔 {LEVERAGE}x逐仓 SL-{SL_PCT*100:.0f}% '
           f'梯度TP: 0~{TP_WINDOW_H}h +{TP_PCT*100:.0f}%(ROE+{TP_PCT*LEVERAGE*100:.0f}%) → '
           f'{TP_WINDOW_H}~{TP_WINDOW_END_H}h +{TP_PCT_D2*100:.0f}%(ROE+{TP_PCT_D2*LEVERAGE*100:.0f}%) → '
