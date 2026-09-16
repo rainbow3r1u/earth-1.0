@@ -69,8 +69,11 @@ SL_PCT = 0.05        # 止损 5% (2026-09-16 用户拍板 8%→5%, 与 TP+15% �
 #   ⚠️ 风险敞口: 单笔 TUTUSDT 级肥日(+856%) 在 40U 口径下会少赚 -330U ≈ 实测改善的 24 倍
 #   ⚠️ 影子42天410笔口径该档为 -4155U(-78%) —— 真实账户恰未经历超级肥日, 故两者不矛盾
 #   ⚠️ 48h窗口不是装饰: 本账户 9/11 批 BRUSDT 峰值 ROE+186% 出现在 48h 之后, 不过滤会多砍一笔
-TP_PCT = 0.15        # 止盈触发: 币价 +15% = 币安ROE +75% (@5x) — 2026-09-15 用户拍板由 +30% 下调
-TP_WINDOW_H = 48     # 止盈有效期(小时)。终点用**名义口径** = 批次日+2天 08:21 CST(见 nominal_tp_end_ms):
+# ── 梯度止盈(2026-09-16 用户拍板: "第一天15%TP 第二天30%TP 最后一天无TP") ──
+TP_PCT = 0.15        # 【第1天 0~24h】止盈档: 币价+15% = 币安ROE+75% @5x
+TP_PCT_D2 = 0.30     # 【第2天 24~48h】止盈档: 币价+30% = 币安ROE+150% @5x
+TP_WINDOW_H = 24     # 第1天窗口(小时) —— 之后档位升到 TP_PCT_D2
+TP_WINDOW_END_H = 48 # 第2天窗口终点(小时) —— 之后(48~72h)不挂止盈, 放开跑
                      #   不用"实际open_time+48h"→ 那会让撤单滞后到 48.0~49.1h(对账每小时才跑一次);
                      #   名义口径下终点正好落在次次日 08:21 那次 reconcile, 且与影子档 t0+48h 逐位一致。
 HOLD_DAYS = 3        # 持仓窗口 72h (2026-09-03 由48h迁移, 与标签72h终点语义对齐; 稳态3批共存, 峰值~30笔)
@@ -504,6 +507,17 @@ def nominal_tp_end_ms(pos):
          = 本函数返回值 → 实盘与影子的止盈窗口边界完全相同(消除口径分叉, 保住"止盈纯效应"可比)。
     实测: 实际入场 08:25:37 → 本窗口在 08:21 届满 = 实际持有 47.93h(比 48.0h 少 7 分钟, 可忽略)。"""
     d0 = datetime.strptime(pos['date'], '%Y-%m-%d').replace(tzinfo=timezone.utc)
+    return int((d0 + timedelta(days=TP_WINDOW_END_H // 24, minutes=21)).timestamp() * 1000)
+
+
+def nominal_day1_end_ms(pos):
+    """第1天窗口终点(名义 24h) = 批次日+1天 00:21 UTC (=08:21 CST)。
+
+    与 nominal_tp_end_ms 用同一套约定(批次日口径 + 对齐影子档 t0+Nh), 只是 N=1:
+      ① 终点落在次日 08:21 那次 reconcile 上 → 档位切换(+15%→+30%)时点确定;
+      ② 与影子档 sl5h72lad1530 的 t0+24h 逐位一致 → 实盘/影子边界相同, 可对拍。
+    实测: 实际入场 08:25:37 → 本窗口在次日 08:21 届满 = 实际持有 23.93h。"""
+    d0 = datetime.strptime(pos['date'], '%Y-%m-%d').replace(tzinfo=timezone.utc)
     return int((d0 + timedelta(days=TP_WINDOW_H // 24, minutes=21)).timestamp() * 1000)
 
 
@@ -565,19 +579,36 @@ def reconcile(st, close_expired=True):
             log(f'  {sym} 72h到期, 平仓')
             close_one(sym, st, '到期')
             continue
-        # ── 止盈有效期守卫 (2026-09-15 上线): 入场满 48h 即撤止盈单, 剩余时间继续持有到 72h 到期 ──
-        #    为什么设 48h: 实测第三天才起飞的单不少(本账户 9/11 批 BRUSDT 峰值 ROE+186% 在 48h 之后),
-        #    不撤单会把这些右尾也砍掉。撤后置 tp_cancelled=True, 防本轮/后续 reconcile 重挂。
-        #    终点口径 = nominal_tp_end_ms(批次日+2天08:21, 与影子档逐位对齐); age 判断留作兜底。
+        # ── 梯度止盈档位守卫 (2026-09-16 用户拍板: 由"平价TP15限48h"改为三档阶梯) ──
+        #    【第1天 0~24h】TP=+15%   【第2天 24~48h】TP=+30%   【第3天 48~72h】不挂TP
+        #    机制: 早期尖刺多为假突破 → 落袋; 能活过第1天的才配拿 +30%; 第3天放开跑。
+        #    实测(影子388笔分钟级重放): 梯度 +778.1U vs 平价TP15 +738.9U (+39.3U/+5%);
+        #      第3天封顶会变差(15/30/50 仅 +724.7U) → 第3天必须无TP;
+        #      第2天设 +25% 也比 +30% 差(+703.1U)。无TP反事实全期 +4224.3U → 越晚封顶越贵。
+        #    ⚠️ 该改善 t=0.25 不显著(逐笔 13胜11负, 两边机制对称抵消) → 属"按机制改、按前向裁决";
+        #       影子档 sl5h72lad1530 同步镜像, 10/23 终审用前向数据复核。
+        #    边界口径 = 批次日+1/+2天 08:21 CST(与影子档 t0+24h/t0+48h 逐位对齐)。
         age_h = (now_ms - pos['open_time']) / 3600000.0
-        tp_expired = (now_ms >= nominal_tp_end_ms(pos)) or (age_h >= TP_WINDOW_H)
-        if not pos.get('tp_cancelled') and tp_expired:
+        tp_day2 = (now_ms >= nominal_day1_end_ms(pos)) or (age_h >= TP_WINDOW_H)
+        tp_tier_end = (now_ms >= nominal_tp_end_ms(pos)) or (age_h >= TP_WINDOW_END_H)
+        want_tp = None if tp_tier_end else (TP_PCT_D2 if tp_day2 else TP_PCT)
+        # 迁移兼容: 本改动前的老记录没有 tp_tier → 用已挂 tp_price 反推档位(避免无谓撤单重挂)
+        if 'tp_tier' not in pos:
+            if (not pos.get('tp_price')) or pos.get('tp_cancelled'):
+                pos['tp_tier'] = None
+            else:
+                _lv = pos['tp_price'] / pos['entry'] - 1
+                pos['tp_tier'] = (TP_PCT if abs(_lv - TP_PCT) < 0.03
+                                  else (TP_PCT_D2 if abs(_lv - TP_PCT_D2) < 0.03 else None))
+        if pos.get('tp_tier') != want_tp and not (want_tp is None and pos.get('tp_cancelled')):
             if pos.get('tp_algo_id'):
                 cancel_sl(sym, pos['tp_algo_id'])
-                log(f'  {sym} 止盈窗口届满({TP_WINDOW_H}h, 已持 {age_h:.1f}h), 撤销止盈单 '
-                    f'(继续持有到 {HOLD_DAYS*24}h 到期)')
-            pos['tp_cancelled'] = True
+                log(f'  {sym} TP档位 {pos.get("tp_tier")} → {want_tp} (已持 {age_h:.1f}h), 撤旧单待重挂')
             pos['tp_algo_id'] = None
+            pos['tp_tier'] = want_tp
+            pos['tp_cancelled'] = (want_tp is None)
+            if want_tp is None:
+                log(f'  {sym} 进入第3天(已持 {age_h:.1f}h): 不挂止盈, 持有到 {HOLD_DAYS*24}h 到期')
             save_state(st)
         # SL/TP algo单还在交易所吗? 不在则重挂 (防裸奔 / 防止盈失效)
         ids, _r = open_algo_ids(sym)
@@ -593,8 +624,8 @@ def reconcile(st, close_expired=True):
                     save_state(st)
                 else:
                     log(f'  ⚠️ {sym} SL重挂失败: {str(so)[:120]}')
-            if (not pos.get('tp_cancelled')) and not tp_expired and pos.get('tp_algo_id') not in ids:
-                tp = ceil_step(pos['entry'] * (1 + TP_PCT), fl['tick'])
+            if (want_tp is not None) and (not pos.get('tp_cancelled')) and pos.get('tp_algo_id') not in ids:
+                tp = ceil_step(pos['entry'] * (1 + want_tp), fl['tick'])
                 new_id, to = place_tp_algo(sym, tp, fl['tick'])
                 if new_id:
                     pos['tp_price'] = tp
@@ -739,7 +770,9 @@ def mode_trade(st, force=False):
 def mode_status(st):
     print(f'== 果实盘 实盘执行器状态 (选币={PRED_FIELD}) ==')
     print(f'配置: 名义{NOTIONAL}U/笔 {LEVERAGE}x逐仓 SL-{SL_PCT*100:.0f}% '
-          f'TP+{TP_PCT*100:.0f}%(=币安ROE+{TP_PCT*LEVERAGE*100:.0f}% @{LEVERAGE}x, 限入场{TP_WINDOW_H}h内) {HOLD_DAYS*24}h')
+          f'梯度TP: 0~{TP_WINDOW_H}h +{TP_PCT*100:.0f}%(ROE+{TP_PCT*LEVERAGE*100:.0f}%) → '
+          f'{TP_WINDOW_H}~{TP_WINDOW_END_H}h +{TP_PCT_D2*100:.0f}%(ROE+{TP_PCT_D2*LEVERAGE*100:.0f}%) → '
+          f'{TP_WINDOW_END_H}h后不挂) {HOLD_DAYS*24}h')
     acct = signed('GET', '/fapi/v2/account')
     if isinstance(acct, dict):
         print(f'账户: 可用 {acct.get("availableBalance")}U | 总权益 {acct.get("totalMarginBalance")}U')
@@ -749,9 +782,9 @@ def mode_status(st):
             hold_h = (time.time() * 1000 - p['open_time']) / 3600000
             # 2026-09-15: 显示 TP 状态 —— 否则"已过48h窗口故无TP"会被误读成漏挂
             #   终点口径与 reconcile 一致(名义批次日+2天08:21), 保证显示与行为同源
-            tp_over = (int(time.time() * 1000) >= nominal_tp_end_ms(p)) or (hold_h >= TP_WINDOW_H)
+            tp_over = (int(time.time() * 1000) >= nominal_tp_end_ms(p)) or (hold_h >= TP_WINDOW_END_H)
             if p.get('tp_cancelled') or tp_over:
-                tps = f'TP=已过{TP_WINDOW_H}h窗口不挂'
+                tps = f'TP=已过{TP_WINDOW_END_H}h窗口不挂(第3天放开)'
             elif p.get('tp_algo_id'):
                 tps = f'TP={p.get("tp_price")}'
             else:

@@ -56,6 +56,18 @@ VARIANTS = {
     #   本档用途: 量「降档」在含肥日窗口(8/03~9/11 含 8/19 底率9.26% 那种日子)付出的代价。
     'sl5h72tp10': {'sl_pct': 0.05, 'hold_days': 3, 'file': 'hybrid_tracker_sl5h72tp10.json',
                    'tag': 'SL-5%/72h+TP10(限48h)', 'tp_long_pct': 0.10, 'tp_long_window_h': 48},
+    # 2026-09-16 用户拍板: 由"平价 TP15 限 48h"改为**梯度止盈**(第一天+15% / 第二天+30% / 第三天不挂)。
+    #   依据(影子 8/03~9/11, 388笔, 分钟级重放): 梯度 +778.1U vs 平价TP15 +738.9U (+39.3U / +5%);
+    #     第3天封顶会变差(15/30/50 仅 +724.7U) → 第3天必须无TP; 第2天设 +25% 亦差于 +30%(+703.1U);
+    #     无TP反事实全期 +4224.3U → 越晚封顶越贵。
+    #   ⚠️ 该改善 t=0.25 **不显著**(逐笔 13胜11负, 两边机制对称抵消):
+    #      赚 = 第2天冲到 +30% 以上的单(5笔×+45U); 亏 = 第2天峰在 +15~30% 就回落的单(2笔×-60U + 6笔×-20~35U)。
+    #   ⇒ 本档 = 9/16 起的**实盘镜像**(果+刘同结构), 与 'sl5h72tp15' 同源同日
+    #     → 两者逐笔之差 = "梯度化"的纯效应, 交 10/23 终审用前向数据裁决。
+    #   档位语义: (起始h, 结束h, 止盈幅度 or None); None = 该时段不挂止盈。
+    'sl5h72lad1530': {'sl_pct': 0.05, 'hold_days': 3, 'file': 'hybrid_tracker_sl5h72lad1530.json',
+                      'tag': 'SL-5%/72h+梯度TP(0~24h +15% → 24~48h +30% → 48h后不挂, 对齐实盘 9/16起)',
+                      'tp_ladder': [(0, 24, 0.15), (24, 48, 0.30), (48, 72, None)]},
 }
 
 def fetch_1m(sym, start_ms, end_ms, max_tries=3):
@@ -108,7 +120,7 @@ def fetch_funding(sym, start_ms, end_ms):
         return []
 
 def settle_hybrid(sym, date_str, direction, prob, sl_pct=0.05, hold_days=2,
-                  tp_long_pct=None, tp_long_window_h=None):
+                  tp_long_pct=None, tp_long_window_h=None, tp_ladder=None):
     """混合结构结算: LONG 无TP(SL/到期平) / SHORT TP10%/SL。默认 SL-5% / 48h —— 与原口径一致。
 
     2026-09-12 参数化(sl_pct/hold_days): 实盘自 9/3(果)/9/8(刘) 起为 72h+SL-8%, 而本影子臂固定
@@ -148,6 +160,11 @@ def settle_hybrid(sym, date_str, direction, prob, sl_pct=0.05, hold_days=2,
     # LONG 止盈(2026-09-15): 价格门槛 + 时间窗口(仅入场后 tp_long_window_h 小时内有效)
     tp_long = (entry * (1 + tp_long_pct)) if tp_long_pct else None
     tp_long_until = (t0 + tp_long_window_h * 3600000) if (tp_long_pct and tp_long_window_h) else None
+    # ── 梯度止盈(2026-09-16): 档位随持有时间上移; None = 该时段不挂止盈 ──
+    #    边界用**名义 t0 + N 小时**(与实盘 nominal_day1_end_ms/nominal_tp_end_ms 同约定:
+    #    实盘 t0 = 批次日 08:21 CST, 影子 t0 = 批次日 00:21 UTC = 08:21 CST → 逐位对齐)
+    _lad = ([(a * 3600000, b * 3600000, (entry * (1 + pct)) if pct else None)
+             for a, b, pct in tp_ladder] if tp_ladder else None)
     # 2026-09-12 修: 原按 [t0, expiry) 全窗口扣 funding → 提前 SL/TP 出场的单也被扣满 48h 资金费,
     # 影子账面系统性高估成本(而它正是用户每日对照的基准)。现只计到"实际离场时点"。
     fund_events = [(int(e['fundingTime']), float(e['fundingRate'])) for e in funding]
@@ -170,8 +187,15 @@ def settle_hybrid(sym, date_str, direction, prob, sl_pct=0.05, hold_days=2,
             triggered = ('SL', x); break
         if direction == 'SHORT' and hit_tp:
             triggered = ('TP', x); break
-        # LONG 止盈: 需同时满足价格门槛 且 未超过时间窗口(超过窗口后不再止盈, 继续持有到到期吃右尾)
-        if direction == 'LONG' and tp_long is not None and h >= tp_long:
+        # LONG 梯度止盈(2026-09-16): 按持有小时落入哪一档, 用该档的价位判断
+        if direction == 'LONG' and _lad is not None:
+            _age = x[0] - t0
+            for _a, _b, _lvl in _lad:
+                if _a < _age <= _b and _lvl is not None and h >= _lvl:
+                    triggered = ('TP_LAD', x, _lvl); break
+            if triggered is not None: break
+        # LONG 平价止盈(2026-09-15): 需同时满足价格门槛 且 未超过时间窗口
+        if direction == 'LONG' and _lad is None and tp_long is not None and h >= tp_long:
             if tp_long_until is None or x[0] <= tp_long_until:
                 triggered = ('TP_LONG', x); break
 
@@ -179,7 +203,7 @@ def settle_hybrid(sym, date_str, direction, prob, sl_pct=0.05, hold_days=2,
         return NOTIONAL * (gross - FEE - slippage - fund_cost)
 
     if triggered:
-        kind, x = triggered
+        kind, x = triggered[0], triggered[1]   # 梯度档带第3元素(档位价), 故不做整体解包
         fund_cost = _fund_cost(x[0])   # 只计到触发分钟为止的资金费
         if kind == 'SL':
             return {'sym': sym, 'direction': direction, 'prob': prob, 'entry': entry,
@@ -189,6 +213,11 @@ def settle_hybrid(sym, date_str, direction, prob, sl_pct=0.05, hold_days=2,
             return {'sym': sym, 'direction': direction, 'prob': prob, 'entry': entry,
                     'result': f'+{tp_long_pct*100:.1f}%', 'trigger': '止盈', 'time': fmt(x[0]),
                     'net_u': round(net(tp_long_pct), 2)}
+        if kind == 'TP_LAD':
+            _pct = triggered[2] / entry - 1
+            return {'sym': sym, 'direction': direction, 'prob': prob, 'entry': entry,
+                    'result': f'+{_pct*100:.1f}%', 'trigger': '止盈', 'time': fmt(x[0]),
+                    'net_u': round(net(_pct), 2)}
         return {'sym': sym, 'direction': direction, 'prob': prob, 'entry': entry,
                 'result': '+10.0%', 'trigger': '止盈', 'time': fmt(x[0]),
                 'net_u': round(net(0.10), 2)}
@@ -238,6 +267,8 @@ def main():
     if var and var.get('tp_long_pct'):
         settle_kw['tp_long_pct'] = var['tp_long_pct']
         settle_kw['tp_long_window_h'] = var.get('tp_long_window_h')
+    if var and var.get('tp_ladder'):
+        settle_kw['tp_ladder'] = var['tp_ladder']
     if var:
         print(f'[hybrid_tracker] 变体档 {var["tag"]} → {var["file"]}', flush=True)
     if force:
