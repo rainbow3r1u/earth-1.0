@@ -480,7 +480,7 @@ def section_trade():
         return f'(交易摘要读取失败: {e})'
 
 
-def build_liu_trend_chart():
+def build_liu_trend_chart(max_days=30):
     """3. 刘账户实盘趋势曲线图 (2026-09-18 用户指令: 方案A —— 第3节换成真钱账户趋势).
 
     用户背景: 看到原第3节(TOP10全开前向口径)显示 -4.5%, 问"今天刘账户的Long在赚不? 这表对么"
@@ -514,7 +514,15 @@ def build_liu_trend_chart():
             tr = t.get('trigger')
             if tr in ('止盈', '止损', '到期'):
                 a[{'止盈': 'tp', '止损': 'sl', '到期': 'ex'}[tr]] += 1
-        days = sorted(agg)
+        days_all = sorted(agg)
+        # ── 横轴窗口 (2026-09-18 用户指令) ──
+        #   "以刘账户有资金开始, 一直增加, 持续加到30天, 然后重复滚动"
+        #   → 不足30天: 从开户日(9/08)起显示全部(逐日增长)
+        #   → 满30天后: 变成**滚动30天窗口**(始终最近30天), 并在窗口起点归零重算累计
+        #     (归零是必须的: 滚动窗口下若不归零, 曲线起点会是一个越来越大的历史累计值,
+        #      看起来像"从半空中开始", 无法读"这30天赚了多少")
+        days = days_all[-max_days:] if len(days_all) > max_days else days_all
+        rebased = len(days_all) > max_days
         daily = [round(agg[d]['u'], 2) for d in days]
         cum, c = [], 0.0
         for v in daily:
@@ -530,8 +538,11 @@ def build_liu_trend_chart():
         ax1.fill_between(x, cum, 0, where=[v >= 0 for v in cum], color='#2e7d32', alpha=0.10, interpolate=True)
         ax1.fill_between(x, cum, 0, where=[v < 0 for v in cum], color='#c62828', alpha=0.10, interpolate=True)
         ax1.set_ylabel('Cumulative realized (USD)')
-        ax1.set_title(f'LIU account (Binance #2) - REAL money, day {lab[0]}..{lab[-1]}, '
-                      f'{len(hist)} closed trades', fontsize=10)
+        nwin = sum(agg[d]['n'] for d in days)
+        _tag = (f'rolling {max_days}d window (rebased at {lab[0]})' if rebased
+                else f'growing {len(days)}/{max_days}d from account start')
+        ax1.set_title(f'LIU account (= LONG all-open, REAL money) - {lab[0]}..{lab[-1]}, '
+                      f'{nwin} closed trades - {_tag}', fontsize=10)
         ax1.legend(loc='best', fontsize=8, framealpha=0.9)
         ax1.grid(alpha=0.25, lw=0.4)
         c2 = ['#2e7d32' if v >= 0 else '#c62828' for v in daily]
@@ -551,7 +562,8 @@ def build_liu_trend_chart():
         fig.savefig(out, bbox_inches='tight')
         plt.close(fig)
         return out, {'n_days': len(days), 'cum_last': round(cum[-1], 2),
-                     'n_trades': len(hist), 'first': days[0], 'last': days[-1]}
+                     'n_trades': nwin, 'n_trades_all': len(hist), 'first': days[0], 'last': days[-1],
+                     'window': ('rolling' if rebased else 'growing'), 'max_days': max_days}
     except Exception as e:
         print(f'[3节刘账户趋势图] 生成失败: {e}')
         return None, None
@@ -2147,7 +2159,7 @@ def main():
 <pre {pre_style}>{section_live_summary()}</pre>
 <div {sec_style}>2. 止损建议 (只出结论 · 明细已按 2026-09-17 指令隐去) <span style='{tag_style}background:#fff3cd;color:#856404;'>口径: 假设不止损的48h全窗口最大反向(MAE) · 数据照常采集, 只是不渲染逐笔明细</span></div>
 {section_sl_advice()}
-<div {sec_style}>3. 刘账户实盘趋势 (真钱 · 已实现盈亏累计 · 现行口径 SL-5%/TP+15%限48h/持72h) <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>按平仓日聚合, 当天平仓当天可见 · 无结算延迟 · 2026-09-18 由 TOP10影子口径 换成实盘</span></div>
+<div {sec_style}>3. 刘账户实盘趋势 (= LONG全开 · 真钱 · 已实现盈亏累计 · SL-5%/TP+15%限48h/持72h) <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>按平仓日聚合, 当天平仓当天可见 · 横轴由开户日起逐日增长, 满30天转为滚动30天窗口 · 2026-09-18 由TOP10影子口径换成实盘</span></div>
 {section_verify(_imgs)}
 <div {sec_style}>3.4 🎯 右尾能力仪表盘 (模型抓肥尾的能力还在不在) <span style='{tag_style}background:#e3f2fd;color:#1565c0;'>规则: lift 掉了才是模型的事; 底率低只是行情没给 · 看这三个数, 不看 IC · 2026-09-13 加</span></div>
 {section_tail_ability()}
