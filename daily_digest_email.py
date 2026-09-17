@@ -480,6 +480,83 @@ def section_trade():
         return f'(交易摘要读取失败: {e})'
 
 
+def build_liu_trend_chart():
+    """3. 刘账户实盘趋势曲线图 (2026-09-18 用户指令: 方案A —— 第3节换成真钱账户趋势).
+
+    用户背景: 看到原第3节(TOP10全开前向口径)显示 -4.5%, 问"今天刘账户的Long在赚不? 这表对么"
+      → 原图与刘实盘有三处错位: ①纯模拟非真钱 ②300U名义+TP10/48h(刘是125U+TP15/72h)
+        ③48h结算→永远落后2天。用户选择方案A: 换成刘的真钱账户。
+
+    本图: 上=**已实现盈亏累计曲线(USD)** · 下=逐日已实现柱(绿赚红亏)
+      数据源 data/hybrid_live_state.json 的 history(每笔含 exit_time / net_u / trigger)
+      **按平仓日聚合 → 当天平仓当天可见, 无结算延迟**(与 48h 影子口径最大区别)
+      口径 = 真钱已实现净额(含手续费/资金费, 由交易所 income API 逐笔记账); 浮盈不计入。
+    标签用英文: 本机 matplotlib 无中文字体(实测25个字体无CJK), 与 5.5b 图同处理。
+    返回 (png_path, state) 或 (None, None)。
+    """
+    try:
+        import matplotlib
+        matplotlib.use('Agg')
+        import matplotlib.pyplot as plt
+        CST = datetime.timezone(datetime.timedelta(hours=8))   # 本模块无全局 CST, 局部定义
+        stt = json.load(open(os.path.join(BASE, 'data', 'hybrid_live_state.json')))
+        hist = [t for t in stt.get('history', [])
+                if t.get('direction') == 'LONG' and t.get('exit_time')]
+        if len(hist) < 3:
+            return None, None
+        agg = {}
+        for t in hist:
+            d = datetime.datetime.fromtimestamp(t['exit_time'] / 1000,
+                                                tz=datetime.timezone.utc).astimezone(CST).strftime('%Y-%m-%d')
+            a = agg.setdefault(d, {'u': 0.0, 'n': 0, 'tp': 0, 'sl': 0, 'ex': 0})
+            a['u'] += t.get('net_u') or 0
+            a['n'] += 1
+            tr = t.get('trigger')
+            if tr in ('止盈', '止损', '到期'):
+                a[{'止盈': 'tp', '止损': 'sl', '到期': 'ex'}[tr]] += 1
+        days = sorted(agg)
+        daily = [round(agg[d]['u'], 2) for d in days]
+        cum, c = [], 0.0
+        for v in daily:
+            c += v
+            cum.append(round(c, 2))
+        x = list(range(len(days)))
+        lab = [d[5:] for d in days]
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(7.6, 4.6), dpi=140,
+                                       sharex=True, gridspec_kw={'height_ratios': [2.4, 1]})
+        ax1.axhline(0, color='#999', lw=0.7, ls='--')
+        ax1.plot(x, cum, color='#1a237e', lw=2.0, marker='o', ms=4,
+                 label=f'LIU realized cum (last {cum[-1]:+.1f}U)')
+        ax1.fill_between(x, cum, 0, where=[v >= 0 for v in cum], color='#2e7d32', alpha=0.10, interpolate=True)
+        ax1.fill_between(x, cum, 0, where=[v < 0 for v in cum], color='#c62828', alpha=0.10, interpolate=True)
+        ax1.set_ylabel('Cumulative realized (USD)')
+        ax1.set_title(f'LIU account (Binance #2) - REAL money, day {lab[0]}..{lab[-1]}, '
+                      f'{len(hist)} closed trades', fontsize=10)
+        ax1.legend(loc='best', fontsize=8, framealpha=0.9)
+        ax1.grid(alpha=0.25, lw=0.4)
+        c2 = ['#2e7d32' if v >= 0 else '#c62828' for v in daily]
+        ax2.bar(x, daily, color=c2, width=0.66)
+        ax2.axhline(0, color='#999', lw=0.7)
+        ax2.set_ylabel('Daily USD')
+        ax2.grid(alpha=0.25, lw=0.4, axis='y')
+        ax2.set_xticks(x); ax2.set_xticklabels(lab, fontsize=7)
+        for ax in (ax1, ax2):
+            for sp in ('top', 'right'):
+                ax.spines[sp].set_visible(False)
+        fig.align_ylabels()
+        fig.tight_layout()
+        out_dir = os.path.join(BASE, 'data', 'charts')
+        os.makedirs(out_dir, exist_ok=True)
+        out = os.path.join(out_dir, f'liu_trend_{datetime.date.today().isoformat()}.png')
+        fig.savefig(out, bbox_inches='tight')
+        plt.close(fig)
+        return out, {'n_days': len(days), 'cum_last': round(cum[-1], 2),
+                     'n_trades': len(hist), 'first': days[0], 'last': days[-1]}
+    except Exception as e:
+        print(f'[3节刘账户趋势图] 生成失败: {e}')
+        return None, None
+
+
 def build_top10_trend_chart(days=7):
     """3. TOP10全开 近N天趋势曲线图 (2026-09-18 用户需求: 用曲线表示, 别用文字).
 
@@ -552,7 +629,7 @@ def build_top10_trend_chart(days=7):
         return None, None
 
 def section_verify(imgs=None):
-    """TOP10全开 近7天趋势 —— **2026-09-18 用户指令改为曲线图, 不再输出文字**.
+    """3. 刘账户实盘趋势曲线图 —— **2026-09-18 方案A: 由 TOP10影子口径 换成真钱账户**.
 
     用户原话: "然后第三节Top10全开趋势用曲线表示, 别用文字, 就是用图表表示"
     实现: build_top10_trend_chart() 生成 PNG → 以 CID 内嵌; 汇总数字写进图例,
@@ -560,7 +637,7 @@ def section_verify(imgs=None):
     imgs: main() 传进来的 {cid: path} 字典(由 main 负责构建并复用, 避免重复计算)。
     """
     try:
-        cid = 'top10trend'
+        cid = 'liutrend'
         path = (imgs or {}).get(cid)
         if not path:
             return f'<div style="{ST_NOTE}">(3节趋势图生成失败, 见日志)</div>'
@@ -2045,11 +2122,12 @@ def main():
     tag_none = f"<span style='{tag_style}background:#eee;color:#666;'>无结算口径</span>"
     # 5.5b BTC vs 山寨走势对比图 (2026-09-02): 8/30教训 — BTC vol灯绿但山寨横截面已在崩(中位-3.23%/89%下跌),
     # 四灯只看BTC看不见山寨独立冲击 → 此图补盲区; 生成失败自动降级为文字行, 不影响晨报其余部分
-    # 2026-09-18: 3. TOP10全开趋势 改为曲线图(用户指令) —— 单独构建, 与 5.5b 图并列内嵌
-    trend_path, trend_state = build_top10_trend_chart()
+    # 2026-09-18: 3. 曲线图。**方案A: 换成刘账户真钱趋势**(用户拍板) ——
+    #   原为 TOP10全开前向口径, 与实盘三处错位(纯模拟/300U+TP10+48h/落后2天), 用户看到 -4.5% 时质疑"这表对么"
+    trend_path, trend_state = build_liu_trend_chart()
     _imgs = {}
     if trend_path:
-        _imgs['top10trend'] = trend_path
+        _imgs['liutrend'] = trend_path
     chart_path, chart_state = build_btc_alt_chart()
     chart_html = ''
     if chart_path:
@@ -2069,7 +2147,7 @@ def main():
 <pre {pre_style}>{section_live_summary()}</pre>
 <div {sec_style}>2. 止损建议 (只出结论 · 明细已按 2026-09-17 指令隐去) <span style='{tag_style}background:#fff3cd;color:#856404;'>口径: 假设不止损的48h全窗口最大反向(MAE) · 数据照常采集, 只是不渲染逐笔明细</span></div>
 {section_sl_advice()}
-<div {sec_style}>3. TOP10全开近7天趋势 (曲线图 · 48h 1m口径) {tag48}</div>
+<div {sec_style}>3. 刘账户实盘趋势 (真钱 · 已实现盈亏累计 · 现行口径 SL-5%/TP+15%限48h/持72h) <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>按平仓日聚合, 当天平仓当天可见 · 无结算延迟 · 2026-09-18 由 TOP10影子口径 换成实盘</span></div>
 {section_verify(_imgs)}
 <div {sec_style}>3.4 🎯 右尾能力仪表盘 (模型抓肥尾的能力还在不在) <span style='{tag_style}background:#e3f2fd;color:#1565c0;'>规则: lift 掉了才是模型的事; 底率低只是行情没给 · 看这三个数, 不看 IC · 2026-09-13 加</span></div>
 {section_tail_ability()}
