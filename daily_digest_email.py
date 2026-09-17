@@ -182,6 +182,41 @@ def build_btc_alt_chart(days=30):
         return None, None
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+# 统一排版系统 (2026-09-18 立)
+#   用户原话: "整个晨报你都用html把样式全部整理好, 现在东一块西一块, 字体大大小小的"
+#   改前: 7 种字号混用 + 21 个章节标题无字号(走浏览器默认16px) + 表格样式串复制 8 遍
+#   原则: **这里是唯一真相源**。任何新章节必须用下面的常量, 不要再写字面量。
+#         坚持内联样式(不用 <style> 块) —— QQ邮箱等客户端可能剥离 <style>, 内联能优雅降级。
+# ══════════════════════════════════════════════════════════════════════════════
+FONT = "'Microsoft YaHei','SimHei','PingFang SC',Arial,sans-serif"
+FONT_MONO = "'SimHei','Microsoft YaHei','PingFang SC',Consolas,monospace"
+
+# ── 字号阶梯(5 级, 每级用途唯一, 不再新增) ──
+FS_BIG = 32    # 仅仪表盘大数字
+FS_SEC = 14    # 章节标题
+FS_BODY = 12   # 正文 / 表格 / 摘要
+FS_LOG = 11    # 日志块(monospace 本身偏宽, 刻意小一号)
+FS_TINY = 10   # 口径标签 / 脚注 / 注释
+
+# ── 文本样式 ──
+ST_SEC = f"font-size:{FS_SEC}px;font-weight:bold;color:#111;margin:16px 0 5px;padding-bottom:2px;border-bottom:1px solid #e0e0e0;"
+ST_BODY = f"font-size:{FS_BODY}px;font-family:{FONT};line-height:1.6;color:#333;"
+ST_LOG = f"white-space:pre-wrap;font-size:{FS_LOG}px;font-family:{FONT_MONO};line-height:1.55;margin:4px 0;color:#222;"
+ST_NOTE = f"font-size:{FS_TINY}px;color:#666;line-height:1.5;margin:3px 0;"
+ST_TAG = f"font-size:{FS_TINY}px;padding:1px 6px;border-radius:3px;font-family:{FONT};margin-left:4px;white-space:normal;"
+
+# ── 表格(改前这段被复制粘贴 8 遍) ──
+ST_TBL = f"border-collapse:collapse;font-family:{FONT};font-size:{FS_BODY}px;margin:4px 0;"
+ST_TH = "border:1px solid #bbb;padding:3px 8px;background:#f2f2f2;text-align:left;font-weight:bold;white-space:nowrap;"
+ST_TD = "border:1px solid #ddd;padding:3px 8px;white-space:nowrap;"
+# 兼容旧代码: 老代码用 cell="style='...'" / hd="style='...'" 的形态, 此处提供同形常量
+CELL = f"style='{ST_TD}'"
+HD = f"style='{ST_TH}'"
+
+# ══════════════════════════════════════════════════════════════════════════════
+
+
 def _refresh_tracker():
     """晨报前刷新预测tracker(2026-09-06 从 _format_trade_summary 移出: 格式化函数不应有写盘副作用)."""
     try:
@@ -639,8 +674,8 @@ def section_top10_forward():
         import top10_forward as tf
         cache = tf.update()  # 增量结算(历史已缓存, 只补新到期的天)
         a = tf.agg(cache)
-        cell = "style='padding:2px 8px;border:1px solid #ccc;font-size:12px;'"
-        hd = "style='padding:2px 8px;border:1px solid #ccc;font-size:12px;background:#f0f0f0;'"
+        cell = CELL   # 2026-09-18: 统一排版常量(原为复制粘贴的字面量)
+        hd = HD
         rows = []
         for name, key in (('多空TOP10全开', 'ALL'), ('LONG TOP10全开', 'LONG'),
                           ('SHORT TOP10全开', 'SHORT')):
@@ -672,8 +707,8 @@ def section_top10_forward_u():
         if not cache:
             return '<p style="color:#666">(暂无已结算数据)</p>'
         NOTIONAL, COST = 300.0, 0.002  # 名义300U/笔, 成本0.2%/笔(手续费+滑点)
-        cell = "style='padding:2px 8px;border:1px solid #ccc;font-size:12px;'"
-        hd = "style='padding:2px 8px;border:1px solid #ccc;font-size:12px;background:#f0f0f0;'"
+        cell = CELL   # 2026-09-18: 统一排版常量(原为复制粘贴的字面量)
+        hd = HD
         rows = []
         cum = 0.0
         tot_n = 0
@@ -714,8 +749,8 @@ def section_hybrid():
         days_h = sorted(hb.keys())
         if not days_h:
             return '<p style="color:#c00">(混合结构影子臂: 存档为空)</p>'
-        cell = "style='padding:2px 8px;border:1px solid #ccc;font-size:12px;'"
-        hd = "style='padding:2px 8px;border:1px solid #ccc;font-size:12px;background:#f0f0f0;'"
+        cell = CELL   # 2026-09-18: 统一排版常量(原为复制粘贴的字面量)
+        hd = HD
         rows = []
         cum = 0.0
         n_days = 0
@@ -821,8 +856,8 @@ def section_2x2():
                   'hybrid_tracker_sl5h72lad1520.json'),
                  # 2026-09-16 用户指令: 量「止盈档 15%→10%」的肥日代价(TP10=ROE+50%)
                  ('sl5h72tp10', 'SL-5%/72h+TP10(限48h)', 'hybrid_tracker_sl5h72tp10.json')]
-        cell = "style='padding:2px 8px;border:1px solid #ccc;font-size:12px;'"
-        hd = "style='padding:2px 8px;border:1px solid #ccc;font-size:12px;background:#f0f0f0;'"
+        cell = CELL   # 2026-09-18: 统一排版常量(原为复制粘贴的字面量)
+        hd = HD
         stats, missing = {}, []
         for key, label, fn in files:
             p = os.path.join(D, fn)
@@ -934,8 +969,8 @@ def section_residual():
                     + picks_html)
         rs = json.load(open(rs_path))
         hb = json.load(open(hb_path)) if os.path.exists(hb_path) else {}
-        cell = "style='padding:2px 8px;border:1px solid #ccc;font-size:12px;'"
-        hd = "style='padding:2px 8px;border:1px solid #ccc;font-size:12px;background:#f0f0f0;'"
+        cell = CELL   # 2026-09-18: 统一排版常量(原为复制粘贴的字面量)
+        hd = HD
         rows = []
         cum_r = 0.0
         cum_h = 0.0
@@ -1005,8 +1040,8 @@ def section_residual_picks():
     解读: 重合度持续>70%=两模型本质同源, 残差边际改进有限; 40-60%摆动=残差在看不同的东西。"""
     try:
         import datetime as _dt
-        cell = "style='padding:2px 8px;border:1px solid #ccc;font-size:12px;'"
-        hd = "style='padding:2px 8px;border:1px solid #ccc;font-size:12px;background:#f0f0f0;'"
+        cell = CELL   # 2026-09-18: 统一排版常量(原为复制粘贴的字面量)
+        hd = HD
         today_str = _dt.date.today().isoformat()
 
         def _load(day):
@@ -1074,8 +1109,8 @@ def section_residual_survival():
     每批'开仓N笔→存活/止损/到期'动态 + 存活率%。直观看出每批选币的成色衰减速度。
     数据: residual_live_state.json 的 days(开仓名单)/open(在持)/history(已离场, 含trigger)。"""
     try:
-        cell = "style='padding:2px 8px;border:1px solid #ccc;font-size:12px;'"
-        hd = "style='padding:2px 8px;border:1px solid #ccc;font-size:12px;background:#f0f0f0;'"
+        cell = CELL   # 2026-09-18: 统一排版常量(原为复制粘贴的字面量)
+        hd = HD
         sp = '/home/myuser/websocket_new/data/residual_live_state.json'
         if not os.path.exists(sp):
             return "<div style='font-size:11px;color:#888;'>(3.9c 批次生存表: 无实盘state)</div>"
@@ -1147,7 +1182,7 @@ def section_liu_equity():
         principal = 1448.22  # 本金1万CNY入金折算
         pct = (eq / principal - 1) * 100
         c = '#0a0' if pct >= 0 else '#c00'
-        return (f"<div style='font-size:13px;'><b>刘总权益: <span style='color:{c};'>{eq:.2f}U</span></b>"
+        return (f"<div style='font-size:14px;'><b>刘总权益: <span style='color:{c};'>{eq:.2f}U</span></b>"
                 f" <span style='font-size:11px;color:#555;'>(本金1万CNY≈1448.22U, "
                 f"<span style='color:{c};'>{pct:+.2f}%</span>)"
                 f" | 可用 {avail:.2f}U | 在持 {n_open} 笔 | 累计已实现 {realized:+.2f}U"
@@ -1243,8 +1278,8 @@ def section_forward_ic():
         if not days or not clean:
             return '<p style="color:#c00">[前向批作业] ⚠️ 暂无批作业记录</p>'
         last = clean[-1]
-        cell = "style='padding:2px 8px;border:1px solid #ccc;font-size:12px;'"
-        hd = "style='padding:2px 8px;border:1px solid #ccc;font-size:12px;background:#f0f0f0;'"
+        cell = CELL   # 2026-09-18: 统一排版常量(原为复制粘贴的字面量)
+        hd = HD
         # 概览行
         def _f(v):
             return f'{v:+.2f}' if isinstance(v, (int, float)) else 'N/A'
@@ -1762,7 +1797,7 @@ def section_tail_ability():
 
         w7 = rows[-7:]
         card = "display:inline-block;vertical-align:top;width:31%;min-width:150px;margin:4px 1% 4px 0;padding:8px 10px;border-radius:6px;background:#fff;border:1px solid #cfd8dc;"
-        big = "font-size:30px;font-weight:bold;line-height:1.1;"
+        big = "font-size:32px;font-weight:bold;line-height:1.1;"
         lab = "font-size:14px;font-weight:bold;color:#263238;margin-top:2px;"
         dfn = "font-size:11.5px;color:#546e7a;line-height:1.45;margin-top:3px;"
 
@@ -1781,7 +1816,7 @@ def section_tail_ability():
                 vc, vt = '#c62828', f'🔴 模型尾部能力退化(供给已恢复但只达基线 {ratio*100:.0f}%) — 需查模型层'
             else:
                 vc, vt = '#ef6c00', f'🟡 暂无法判定({ratio*100:.0f}%基线): 底率 {b7*100:.2f}% 仍低于全期 {ba*100:.2f}% 的八成, 供给不足时 lift 统计噪声大'
-            h = (f"<div style='margin:10px 0 4px;font-size:15px;'><b>阈值 {tname}</b> "
+            h = (f"<div style='margin:10px 0 4px;font-size:14px;'><b>阈值 {tname}</b> "
                  f"<span style='color:#78909c;font-size:12px;'>(近7个<b>已完成</b>窗口 {rows[-7]['d']}~{rows[-1]['d']}, {n7}笔选币)</span>"
                  f"<div style='font-size:11.5px;color:#455a64;margin-top:2px;line-height:1.45;'>"
                  f"本卡口径: ①②③ 中的「<b>达标</b>」一律指 <b>该币 2日涨幅 {tag}</b> 这一条阈值"
@@ -1803,7 +1838,7 @@ def section_tail_ability():
                  f"<div style='{dfn}'>我们的榜单比「随机抓一个币」强多少倍(同为 {tag} 口径)。<br>"
                  f"<b>模型相对能力</b> — 与行情无关, 掉下来才是模型的问题。</div></div>"
                  "</div>"
-                 f"<div style='margin:6px 0 2px;font-size:15px;font-weight:bold;color:{vc};'>{vt}</div>"
+                 f"<div style='margin:6px 0 2px;font-size:14px;font-weight:bold;color:{vc};'>{vt}</div>"
                  f"<div style='font-size:12px;color:#37474f;'>自身基线对照({rows[0]['d']}~{rows[-1]['d']}, {len(rows)}个窗口/{na}笔, 同为 {tag} 口径): "
                  f"底率 <b>{ba*100:.2f}%</b> · 命中率 <b>{ta*100:.2f}%</b> · lift <b>{la:.2f}x</b></div>")
             return h
@@ -1826,7 +1861,7 @@ def section_tail_ability():
                         f"({round(tp*r['n'])}/{r['n']}笔)</span></td>"
                         f"<td {cell}><b style='color:{cl}'>{lf_txt}</b></td>"
                         f"<td {cell}>{r['n']}</td></tr>")
-        mini = ("<div style='margin-top:8px;font-size:13px;font-weight:bold;'>近 7 个已完成窗口逐日(阈值 ≥+33%)</div>"
+        mini = ("<div style='margin-top:8px;font-size:14px;font-weight:bold;'>近 7 个已完成窗口逐日(阈值 ≥+33%)</div>"
                 "<div style='font-size:11.5px;color:#8d6e63;margin-top:2px;line-height:1.5;'>"
                 "⚠️ <b>底率天生滞后约3天</b> — 它度量的是「该日入场后2天里市场给了多少大跑者」, 需 D+2 收盘才能算;"
                 f"所以今天({datetime.date.today().isoformat()})最新只能看到 {rows[-1]['d']}, 今日底率要等两天后才出。"
@@ -1931,14 +1966,15 @@ def main():
     today = datetime.date.today().isoformat()
     _refresh_tracker()
     # 文本节转 pre; 第2节(前向结算)为 HTML 表格
-    pre_style = ("style=\"white-space:pre-wrap;font-size:11px;"
-                 "font-family:'SimHei','Microsoft YaHei','PingFang SC',Consolas,monospace;line-height:1.5;\"")
+    # 2026-09-18: 改用统一排版常量(唯一真相源)
+    pre_style = f'style="{ST_LOG}"'
+    sec_style = f"style='{ST_SEC}'"
+    note_style = f"style='{ST_NOTE}'"
     # 口径标签: 绿=48h影子/前向口径(3.8影子臂/前向结算), 橙=72h逻辑(老日线口径, 仅参考)
     # ⚠️ 2026-09-12 更正: 绿标签原注释为"与生产执行一致"已失效 — 实盘 9/3(果)/9/8(刘)起为 72h+SL-8%,
     #    仅影子臂与前向结算仍走 48h/SL-5%。实盘规则标签见 tag48_exec。
-    tag_style = ("font-size:11px;padding:1px 6px;border-radius:3px;"
-                 "font-family:'SimHei','Microsoft YaHei';")
-    tag48_exec = f"<span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>实盘执行规则(9/7~9/8起): LONG无止盈 · SL-8% · 72h · 果08:21/刘08:23开仓 · 刘SHORT已关</span>"
+    tag_style = ST_TAG   # 2026-09-18: 统一为 FS_TINY(10px)
+    tag48_exec = f"<span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>实盘现行: SL-5% · TP+15%(限48h, 48h后不挂) · 持72h · 刘08:23开仓 · 果账户已关闭开仓</span>"
     tag48 = f"<span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>48h逻辑 · 1m口径 · 08:21开仓 · SL-5%/TP+10%/48h到期</span>"
     tag72 = f"<span style='{tag_style}background:#fff3e0;color:#e65100;'>72h逻辑 · 日线口径(老) · open[T]入场 · 扫T~T+2三根日线 · 与实盘口径不同仅参考</span>"
     tag_none = f"<span style='{tag_style}background:#eee;color:#666;'>无结算口径</span>"
@@ -1949,7 +1985,7 @@ def main():
     if chart_path:
         _s = chart_state or {}
         chart_html = f"""
-<b>5.5b BTC vs 山寨走势对比图 (近{_s.get('n_days', 30)}天已收盘)</b> <span style='{tag_style}background:#fff3e0;color:#e65100;'>上:BTC/山寨中位数(均从0%起) · 中:BTC vol5(四灯同色) · 下:山寨横截面离散度(候选第5灯)</span>
+<div {sec_style}>5.5b BTC vs 山寨走势对比图 (近{_s.get('n_days', 30)}天已收盘) <span style='{tag_style}background:#fff3e0;color:#e65100;'>上:BTC/山寨中位数(均从0%起) · 中:BTC vol5(四灯同色) · 下:山寨横截面离散度(候选第5灯)</span></div>
 <div style='margin:6px 0;'><img src="cid:btcaltchart" style="max-width:100%;border:1px solid #ddd;border-radius:4px;"></div>
 <div style='font-size:11px;color:#555;'>BTC近30日 <b>{_s.get('btc_last', 0):+.1f}%</b> vs 山寨中位数 <b>{_s.get('alt_last', 0):+.1f}%</b>
  | 最新BTC vol5 <b>{_s.get('btc_vol5', 0):.2f}%</b>(绿≤1.5/黄1.5~2/红>2, 与5.5节四灯同口径)
@@ -1958,46 +1994,46 @@ def main():
     else:
         chart_html = "\n<div style='font-size:11px;color:#999;'>(5.5b 对比图生成失败, 略过)</div>"
     body_html = f"""<h2 style="margin:0 0 8px;">晨报总览 {today}</h2>
-<b>1. 实盘摘要 (真钱账户当日动作)</b> <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>只含实盘 · 不含影子/模拟 · 2026-09-18 替换原"交易摘要"</span>
+<div {sec_style}>1. 实盘摘要 (真钱账户当日动作) <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>只含实盘 · 不含影子/模拟 · 2026-09-18 替换原"交易摘要"</span></div>
 <pre {pre_style}>{section_live_summary()}</pre>
-<b>2. 止损建议 (只出结论 · 明细已按 2026-09-17 指令隐去)</b> <span style='{tag_style}background:#fff3cd;color:#856404;'>口径: 假设不止损的48h全窗口最大反向(MAE) · 数据照常采集, 只是不渲染逐笔明细</span>
+<div {sec_style}>2. 止损建议 (只出结论 · 明细已按 2026-09-17 指令隐去) <span style='{tag_style}background:#fff3cd;color:#856404;'>口径: 假设不止损的48h全窗口最大反向(MAE) · 数据照常采集, 只是不渲染逐笔明细</span></div>
 {section_sl_advice()}
-<b>3. TOP10全开近7天趋势 (48h 1m口径)</b> {tag48}
+<div {sec_style}>3. TOP10全开近7天趋势 (48h 1m口径) {tag48}</div>
 <pre {pre_style}>{section_verify()}</pre>
-<b>3.4 🎯 右尾能力仪表盘 (模型抓肥尾的能力还在不在)</b> <span style='{tag_style}background:#e3f2fd;color:#1565c0;'>规则: lift 掉了才是模型的事; 底率低只是行情没给 · 看这三个数, 不看 IC · 2026-09-13 加</span>
+<div {sec_style}>3.4 🎯 右尾能力仪表盘 (模型抓肥尾的能力还在不在) <span style='{tag_style}background:#e3f2fd;color:#1565c0;'>规则: lift 掉了才是模型的事; 底率低只是行情没给 · 看这三个数, 不看 IC · 2026-09-13 加</span></div>
 {section_tail_ability()}
-<b>3.5 LONG TOP10 列表 + 成交额 + 量能分位(影子)</b> <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>今日预测 → 08:21已开仓(48h逻辑), 结算见3.6 · 量能分位=C远×V高假设前向采集(至10/23), 只读不干预开仓</span>
+<div {sec_style}>3.5 LONG TOP10 列表 + 成交额 + 量能分位(影子) <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>今日预测 → 08:21已开仓(48h逻辑), 结算见3.6 · 量能分位=C远×V高假设前向采集(至10/23), 只读不干预开仓</span></div>
 <pre {pre_style}>{section_long_top10()}</pre>
-<b>3.6 TOP10全开前向结算 (8/3起)</b> {tag48}
+<div {sec_style}>3.6 TOP10全开前向结算 (8/3起) {tag48}</div>
 {section_top10_forward()}
-<b>3.7 多空TOP10全开 每日U盈亏 (固定名义300U/笔)</b> {tag48}
+<div {sec_style}>3.7 多空TOP10全开 每日U盈亏 (固定名义300U/笔) {tag48}</div>
 {section_top10_forward_u()}
-<b>3.8 混合结构影子臂 每日U盈亏 (LONG无止盈+SHORT现行TP/SL)</b> <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>影子验证 · 08:21开仓 · strict48 · 1m全费用 · 60天验证期至~10/23</span>
+<div {sec_style}>3.8 混合结构影子臂 每日U盈亏 (LONG无止盈+SHORT现行TP/SL) <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>影子验证 · 08:21开仓 · strict48 · 1m全费用 · 60天验证期至~10/23</span></div>
 {section_hybrid()}
-<b>3.8b 影子臂 2×2 结构对照 (SL档位 × 持有时长)</b> <span style='{tag_style}background:#e3f2fd;color:#1565c0;'>变量受控 · LONG侧 · 同源同日 · 为10/23终审提供拆分证据</span>
+<div {sec_style}>3.8b 影子臂 2×2 结构对照 (SL档位 × 持有时长) <span style='{tag_style}background:#e3f2fd;color:#1565c0;'>变量受控 · LONG侧 · 同源同日 · 为10/23终审提供拆分证据</span></div>
 {section_2x2()}
-<b>3.9 RESIDUAL影子臂 LONG对照 (残差标签: 币ret-宇宙中位>5pp)</b> <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>影子验证 · 残差标签LONG模型 · 出场同3.8主臂LONG · 纯旁路不影响实盘</span>
+<div {sec_style}>3.9 RESIDUAL影子臂 LONG对照 (残差标签: 币ret-宇宙中位>5pp) <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>影子验证 · 残差标签LONG模型 · 出场同3.8主臂LONG · 纯旁路不影响实盘</span></div>
 {section_residual()}
-<b>3.9b 主LONG vs 残差LONG 当日选币差异</b> <span style='{tag_style}background:#e3f2fd;color:#1565c0;'>重合币/独有币对照 · 双方概率 · 近7日重合度趋势</span>
+<div {sec_style}>3.9b 主LONG vs 残差LONG 当日选币差异 <span style='{tag_style}background:#e3f2fd;color:#1565c0;'>重合币/独有币对照 · 双方概率 · 近7日重合度趋势</span></div>
 {section_residual_picks()}
-<b>3.9c 果实盘批次生存表</b> <span style='{tag_style}background:#fff3e0;color:#e65100;'>每批开仓N笔 → 存活/止损/到期 · 存活率 · 批内净U · 9/13起选币=主LONG榜</span>
+<div {sec_style}>3.9c 果实盘批次生存表 <span style='{tag_style}background:#fff3e0;color:#e65100;'>每批开仓N笔 → 存活/止损/到期 · 存活率 · 批内净U · 9/13起选币=主LONG榜</span></div>
 {section_residual_survival()}
-<b>3.9e 刘实盘权益 (第二账户·纯LONG臂)</b> <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>125U/5x/SL-8%/72h · 08:23开仓 · SHORT已关</span>
+<div {sec_style}>3.9e 刘实盘权益 (第二账户·纯LONG臂) <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>125U/5x/SL-8%/72h · 08:23开仓 · SHORT已关</span></div>
 {section_liu_equity()}
-<b>3.9d SHORT TOP5 试盘时机</b> <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>滚动胜率 vs 含费盈亏线34.4%(未计funding) · 只输出一个结论: 适不适合小资金试盘</span>
+<div {sec_style}>3.9d SHORT TOP5 试盘时机 <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>滚动胜率 vs 含费盈亏线34.4%(未计funding) · 只输出一个结论: 适不适合小资金试盘</span></div>
 {section_short_top5()}
-<b>4. 强势股续涨 + 每日资金榜</b> {tag_none}
+<div {sec_style}>4. 强势股续涨 + 每日资金榜 {tag_none}</div>
 <pre {pre_style}>{section_momentum()}</pre>
-<b>5. 系统健康</b> {tag_none}
+<div {sec_style}>5. 系统健康 {tag_none}</div>
 <pre {pre_style}>{section_health()}</pre>
-<b>5.0 训练流水线日志摘要 (仅供排查 · 老通道 auto_dual_trade, TRADING_ENABLED=false 不产生交易)</b> <span style='{tag_style}background:#eeeeee;color:#555;'>2026-09-18 从原第1节移来</span>
+<div {sec_style}>5.0 训练流水线日志摘要 (仅供排查 · 老通道 auto_dual_trade, TRADING_ENABLED=false 不产生交易) <span style='{tag_style}background:#eeeeee;color:#555;'>2026-09-18 从原第1节移来</span></div>
 <pre {pre_style}>{section_trade()}</pre>
-<b>5.5 前向批作业 · 模型质量与BTC波动 regime</b> <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>公证预测对答案 · 48h日线口径 · D+2确认</span>
+<div {sec_style}>5.5 前向批作业 · 模型质量与BTC波动 regime <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>公证预测对答案 · 48h日线口径 · D+2确认</span></div>
 {section_forward_ic()}
-<b>5.6 BTC EMA7/EMA28 纠缠闸门 (只读观察 · ⚠️未证实)</b> <span style='{tag_style}background:#ffebee;color:#b71c1c;'>效果量测不出来(t=1.23/CI跨零), 三个机制均被否 · 只作零成本追踪 · 不参与交易决策, 暂不作回测预筛依据 · 2026-09-13 加</span>
+<div {sec_style}>5.6 BTC EMA7/EMA28 纠缠闸门 (只读观察 · ⚠️未证实) <span style='{tag_style}background:#ffebee;color:#b71c1c;'>效果量测不出来(t=1.23/CI跨零), 三个机制均被否 · 只作零成本追踪 · 不参与交易决策, 暂不作回测预筛依据 · 2026-09-13 加</span></div>
 {section_ema_gate()}
 {chart_html}
-<b>6. GitHub 同步</b> {tag_none}
+<div {sec_style}>6. GitHub 同步 {tag_none}</div>
 <pre {pre_style}>{section_github_sync()}</pre>"""
     if _send_digest(f'晨报总览 {today}', body_html, chart_path):
         print('digest sent')

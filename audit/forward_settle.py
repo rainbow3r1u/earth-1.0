@@ -310,7 +310,7 @@ def tables_html(results, result_only=False):
     """
     def esc(v):
         return str(v).replace('<', '&lt;').replace('>', '&gt;')
-    style = ("border-collapse:collapse;font-family:'SimHei','Microsoft YaHei';font-size:11px;"
+    style = ("border-collapse:collapse;font-family:'SimHei','Microsoft YaHei';font-size:12px;"
              "white-space:nowrap;")
     td = "border:1px solid #ddd;padding:2px 5px;text-align:left;"
     th = "border:1px solid #999;padding:2px 5px;background:#f5f5f5;"
@@ -379,7 +379,7 @@ def tables_html(results, result_only=False):
         c_e = '#0a0' if exec_pnl >= 0 else '#c00'
         c_h = '#0a0' if hold_pnl >= 0 else '#c00'
         c_d = '#0a0' if diff >= 0 else '#c00'
-        h.append(f"<div style='font-size:11px;margin-top:4px;padding:3px 6px;background:#f5f5f5;'>"
+        h.append(f"<div style='font-size:12px;margin-top:4px;padding:3px 6px;background:#f5f5f5;'>"
                  f"💰 盈利汇总(共{len(with_r)}单 = 止盈{n_tp} + 止损{n_sl} + 48h到期{n_48}): "
                  f"① 实际执行(TP10/SL5/到期) <b style='color:{c_e};'>{exec_pnl:+.1f}%</b> | "
                  f"② 裸奔48h自然平仓 <b style='color:{c_h};'>{hold_pnl:+.1f}%</b> | "

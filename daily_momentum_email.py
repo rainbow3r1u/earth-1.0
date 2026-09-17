@@ -134,7 +134,7 @@ def build_momentum_body_html():
 
     def esc(v):
         return str(v).replace('<', '&lt;').replace('>', '&gt;')
-    style = ("border-collapse:collapse;font-family:'SimHei','Microsoft YaHei';font-size:11px;white-space:nowrap;")
+    style = ("border-collapse:collapse;font-family:'SimHei','Microsoft YaHei';font-size:12px;white-space:nowrap;")
     td = "border:1px solid #ddd;padding:2px 5px;text-align:left;"
     th = "border:1px solid #999;padding:2px 5px;background:#f5f5f5;"
 
@@ -163,7 +163,7 @@ def build_momentum_body_html():
                  f"<td style='{td}'>{rtxt}</td>"
                  f"<td style='{td}'>{verdict}</td></tr>")
     h.append('</table>')
-    h.append(f"<p style='font-size:11px;color:#666;'>昨日涨幅≥{GAIN_MIN}%共 {len(rows)} 个; "
+    h.append(f"<p style='font-size:12px;color:#666;'>昨日涨幅≥{GAIN_MIN}%共 {len(rows)} 个; "
              f"★=入选 LONG Top10, 🔥=连续2日≥5%; 判定按排名: ✓强=Top10, ~中=Top10%, ✗弱=其余</p>")
 
     h.append('<b>每日资金榜 (合约24h成交额 Top10)</b><br>')
