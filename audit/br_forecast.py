@@ -28,7 +28,7 @@
 用法: python3 audit/br_forecast.py            # 追加今日预测 + 回填实测 + 打印摘要
       python3 audit/br_forecast.py --report   # 只打印, 不写账本
 """
-import json, os, sys, math, statistics, datetime
+import json, os, sys, math, statistics, datetime, bisect
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CACHE = os.path.join(BASE, '..', 'backtester', 'data_cache', 'notusdt_1d_full.json')
@@ -83,7 +83,18 @@ def build(K, now_ms):
     BR = {d: br_of(d) for d in ALLD}
     BR = {k: v for k, v in BR.items() if v is not None}
     def prev(d, k=1):
-        i = DIDX[d]-k
+        """取 ALLD 中 d 之前第 k 个有数据的日期。
+
+        ⚠️ 2026-09-17 修 bug: 原实现 `i = DIDX[d]-k` 在 d 不在缓存时抛 KeyError ——
+        而本脚本的目标日就是"今天", 今天通常还没收盘/还没进缓存 → **每天 08:00 必崩**
+        (实测 9/17 08:00 cron 报 KeyError: '2026-09-17')。
+        修法: d 不在 DIDX 时用 bisect 找它应插入的位置(= 比 d 大的第一个日期),
+        再往前 k 个 → 语义正确(取"今天之前第 k 个已收盘日")。
+        """
+        i = DIDX.get(d)
+        if i is None:
+            i = bisect.bisect_left(ALLD, d)
+        i -= k
         return ALLD[i] if i >= 0 else None
     def amp(b): return (b['h']-b['l'])/b['o']*100 if b['o'] > 0 else None
     def feats(d):
