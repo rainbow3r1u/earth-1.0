@@ -541,36 +541,22 @@ def build_trend30_chart(max_days=30):
                 sh[k][sh_dates[i - 1]] = round(a[k]['cum'] * START_CAP / 100.0, 2)
         last_sh = sh_dates[-1] if sh_dates else None
 
-        # ── 横轴窗口: 先增长后滚动 ──
+        # ── 横轴窗口: 先增长后滚动 ★不归零★ ──
+        # 2026-09-18 用户更正(原话): "不是归零是继续滚动。一直保持30天窗口曲线"
+        #   ⇒ 窗口只切**显示范围**; 累计值始终**从开户日起算**, 绝不因窗口滑动而归零。
+        #     所以满30天后左端点不是0, 而是"30天前的累计值"; 右端点永远是真实累计总额。
         all_d = sorted(set(liu_daily) | set(sh['SHORT']))
-        days = all_d[-max_days:] if len(all_d) > max_days else all_d
-        rebased = len(all_d) > max_days
-        dset = set(days)
-
-        def cum_series(dmap, val_key):
-            """按 days 顺序输出累计序列(窗口起点归零), 无数据的日期用 np.nan 断开"""
-            out, c, started = [], 0.0, False
-            for d in days:
-                if d in dmap and d in dset:
-                    c += dmap[d][val_key] if isinstance(dmap[d], dict) else dmap[d]
-                    out.append(round(c, 2)); started = True
-                else:
-                    out.append(np.nan if started else np.nan)
-            return out
-
-        liu_cum = cum_series({d: {'u': liu_daily[d]['u']} for d in liu_daily}, 'u')
-        sh_cum = {k: cum_series(sh[k], None) if False else None for k in sh}
-        # 影子序列(值本身已是累计值, 不是日增量 → 直接按窗口起点差值)
-        for k in ('SHORT', 'ALL'):
-            base = None; arr = []
-            for d in days:
-                if d in sh[k] and d in dset:
-                    if base is None:
-                        base = sh[k][d]           # 窗口起点归零
-                    arr.append(round(sh[k][d] - base, 2))
-                else:
-                    arr.append(np.nan)
-            sh_cum[k] = arr
+        # ① 全历史累计(从开户日起, 不归零)
+        liu_full, _c = {}, 0.0
+        for d in all_d:
+            if d in liu_daily:
+                _c += liu_daily[d]['u']
+            liu_full[d] = round(_c, 2)
+        # ② 只切显示窗口
+        rolling = len(all_d) > max_days
+        days = all_d[-max_days:] if rolling else all_d
+        liu_cum = [liu_full[d] for d in days]                      # 真钱每个窗口日都有值(无成交则持平)
+        sh_cum = {k: [sh[k].get(d, np.nan) for d in days] for k in ('SHORT', 'ALL')}
 
         x = list(range(len(days)))
         lab = [d[5:] for d in days]
@@ -585,7 +571,7 @@ def build_trend30_chart(max_days=30):
                  label=f'LONG+SHORT TOP10 all-open, sim (last {[v for v in sh_cum["ALL"] if v==v][-1]:+.1f}U)')
         ax1.set_ylabel('Cumulative PnL (USD)')
         nwin = sum(liu_daily[d]['n'] for d in days if d in liu_daily)
-        _tag = (f'rolling {max_days}d (rebased at {lab[0]})' if rebased
+        _tag = (f'rolling {max_days}d window (cumulative from {all_d[0]})' if rolling
                 else f'growing {len(days)}/{max_days}d from account start')
         ax1.set_title(f'30-Day Trend - base {START_CAP:,.1f}U (LIU startup capital) - '
                       f'{lab[0]}..{lab[-1]}, {nwin} real trades - {_tag}', fontsize=10)
@@ -608,7 +594,7 @@ def build_trend30_chart(max_days=30):
         out = os.path.join(out_dir, f'trend30_{datetime.date.today().isoformat()}.png')
         fig.savefig(out, bbox_inches='tight')
         plt.close(fig)
-        return out, {'window': ('rolling' if rebased else 'growing'), 'n_days': len(days),
+        return out, {'window': ('rolling' if rolling else 'growing'), 'n_days': len(days),
                      'start_cap': START_CAP, 'liu_last': liu_cum[-1],
                      'short_last': next((v for v in reversed(sh_cum['SHORT']) if v == v), None),
                      'all_last': next((v for v in reversed(sh_cum['ALL']) if v == v), None),
@@ -2210,7 +2196,7 @@ def main():
 <pre {pre_style}>{section_live_summary()}</pre>
 <div {sec_style}>2. 止损建议 (只出结论 · 明细已按 2026-09-17 指令隐去) <span style='{tag_style}background:#fff3cd;color:#856404;'>口径: 假设不止损的48h全窗口最大反向(MAE) · 数据照常采集, 只是不渲染逐笔明细</span></div>
 {section_sl_advice()}
-<div {sec_style}>3. 30天趋势 (刘=LONG真钱 · SHORT/LONG+SHORT为影子模拟 · 基础金额=刘启动资金) <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>三条曲线均从开户日归零 · 横轴逐日增长至30天后转滚动30天 · 影子为48h结算故落后约2天</span></div>
+<div {sec_style}>3. 30天趋势 (刘=LONG真钱 · SHORT/LONG+SHORT为影子模拟 · 基础金额=刘启动资金) <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>三条曲线累计均自开户日(9/08)起算 · 横轴不足30天逐日增长, 满30天后保持30天窗口持续滚动(**不归零**) · 影子为48h结算故落后约2天</span></div>
 {section_verify(_imgs)}
 <div {sec_style}>3.4 🎯 右尾能力仪表盘 (模型抓肥尾的能力还在不在) <span style='{tag_style}background:#e3f2fd;color:#1565c0;'>规则: lift 掉了才是模型的事; 底率低只是行情没给 · 看这三个数, 不看 IC · 2026-09-13 加</span></div>
 {section_tail_ability()}
