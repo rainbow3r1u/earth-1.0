@@ -480,31 +480,95 @@ def section_trade():
         return f'(交易摘要读取失败: {e})'
 
 
-def section_verify():
-    """TOP10全开 近7天趋势 (48h 1m口径, 与3.6/3.7一致)."""
+def build_top10_trend_chart(days=7):
+    """3. TOP10全开 近N天趋势曲线图 (2026-09-18 用户需求: 用曲线表示, 别用文字).
+
+    布局: 上=3条累计曲线(多空/LONG/SHORT, 复利, rebase到0%) · 下=逐日柱(多空合计%)
+    口径: **完全复用 audit/top10_forward.py 的 tf.agg()**(48h 1m口径, 08:21开仓, SL-5%/TP+10%/48h),
+          不自己另算 —— 避免与 3.6/3.7 两节出现口径分叉。
+    汇总数字写进图例标签 → HTML 侧不需要任何文字。
+    标签用英文: 本机 matplotlib 无中文字体(实测 fontManager 25个字体无CJK), 与 5.5b 图同处理。
+    返回 (png_path, state) 或 (None, None)。
+    """
     try:
+        import matplotlib
+        matplotlib.use('Agg')
+        import matplotlib.pyplot as plt
         sys.path.insert(0, os.path.join(BASE, 'audit'))
         import top10_forward as tf
         cache = tf.load_cache()
         if not cache:
-            return '(暂无已结算数据)'
-        days = sorted(cache)
-        recent = days[-7:]
-        lines = [f"\n=== 近{len(recent)}天趋势 · TOP10全开 (48h 1m) ==="]
-        for ds in recent:
-            r = cache[ds]
-            pnls = [t['pnl'] for t in (r.get('long', []) + r.get('short', []))
-                    if t.get('pnl') is not None]
-            if not pnls:
-                continue
-            lines.append(f"  {ds}: {len(pnls)}笔 日均 {sum(pnls)/len(pnls):+.2f}% 合计 {sum(pnls):+.1f}%")
-        recent_cache = {ds: cache[ds] for ds in recent if ds in cache}
-        a = tf.agg(recent_cache)
-        lines.append(f"  {len(recent_cache)}天汇总(48h等权复利): "
-                     f"多空 {a['ALL']['cum']:+.1f}% | LONG {a['LONG']['cum']:+.1f}% | SHORT {a['SHORT']['cum']:+.1f}%")
-        return '\n'.join(lines)
+            return None, None
+        days_all = sorted(cache)
+        recent = days_all[-days:]
+        if len(recent) < 2:
+            return None, None
+        # 累计曲线: 对前 i 天调用 tf.agg(i=1..N) → 用引擎自己的复利口径
+        cum_a, cum_l, cum_s, dates, daily = [], [], [], [], []
+        for i in range(1, len(recent) + 1):
+            sub = {d: cache[d] for d in recent[:i]}
+            a = tf.agg(sub)
+            cum_a.append(a['ALL']['cum']); cum_l.append(a['LONG']['cum']); cum_s.append(a['SHORT']['cum'])
+            r = cache[recent[i - 1]]
+            pnls = [t['pnl'] for t in (r.get('long', []) + r.get('short', [])) if t.get('pnl') is not None]
+            daily.append((sum(pnls) / len(pnls)) if pnls else 0.0)
+            dates.append(recent[i - 1][5:])
+        x = list(range(len(dates)))
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(7.6, 4.6), dpi=140,
+                                       sharex=True, gridspec_kw={'height_ratios': [2.4, 1]})
+        ax1.axhline(0, color='#999', lw=0.6, ls='--')
+        ax1.plot(x, cum_a, color='#1a237e', lw=2.0, marker='o', ms=3.5,
+                 label=f'ALL (last {cum_a[-1]:+.1f}%)')
+        ax1.plot(x, cum_l, color='#2e7d32', lw=1.6, marker='s', ms=3.0,
+                 label=f'LONG (last {cum_l[-1]:+.1f}%)')
+        ax1.plot(x, cum_s, color='#c62828', lw=1.6, marker='^', ms=3.0,
+                 label=f'SHORT (last {cum_s[-1]:+.1f}%)')
+        ax1.set_ylabel('Cumulative % (compounded)')
+        ax1.set_title(f'TOP10 All-Open - last {len(dates)} settled days (48h/1m, rebased to 0%)',
+                      fontsize=10)
+        ax1.legend(loc='best', fontsize=8, framealpha=0.9)
+        ax1.grid(alpha=0.25, lw=0.4)
+        c2 = ['#2e7d32' if v >= 0 else '#c62828' for v in daily]
+        ax2.bar(x, daily, color=c2, width=0.66)
+        ax2.axhline(0, color='#999', lw=0.6)
+        ax2.set_ylabel('Daily avg %')
+        ax2.grid(alpha=0.25, lw=0.4, axis='y')
+        ax2.set_xticks(x); ax2.set_xticklabels(dates, fontsize=7, rotation=0)
+        for ax in (ax1, ax2):
+            for sp in ('top', 'right'):
+                ax.spines[sp].set_visible(False)
+        fig.align_ylabels()
+        fig.tight_layout()
+        out_dir = os.path.join(BASE, 'data', 'charts')
+        os.makedirs(out_dir, exist_ok=True)
+        out = os.path.join(out_dir, f'top10_trend_{datetime.date.today().isoformat()}.png')
+        fig.savefig(out, bbox_inches='tight')
+        plt.close(fig)
+        return out, {'n_days': len(dates), 'all_last': round(cum_a[-1], 1),
+                     'long_last': round(cum_l[-1], 1), 'short_last': round(cum_s[-1], 1),
+                     'first': recent[0], 'last': recent[-1]}
     except Exception as e:
-        return f'(48h近7天趋势生成失败: {e})'
+        print(f'[3节趋势图] 生成失败: {e}')
+        return None, None
+
+def section_verify(imgs=None):
+    """TOP10全开 近7天趋势 —— **2026-09-18 用户指令改为曲线图, 不再输出文字**.
+
+    用户原话: "然后第三节Top10全开趋势用曲线表示, 别用文字, 就是用图表表示"
+    实现: build_top10_trend_chart() 生成 PNG → 以 CID 内嵌; 汇总数字写进图例,
+          所以本节 HTML 里**一个字都不用**(标题在图内)。
+    imgs: main() 传进来的 {cid: path} 字典(由 main 负责构建并复用, 避免重复计算)。
+    """
+    try:
+        cid = 'top10trend'
+        path = (imgs or {}).get(cid)
+        if not path:
+            return f'<div style="{ST_NOTE}">(3节趋势图生成失败, 见日志)</div>'
+        return (f'<div style="margin:6px 0;">'
+                f'<img src="cid:{cid}" style="max-width:100%;border:1px solid #ddd;border-radius:4px;">'
+                f'</div>')
+    except Exception as e:
+        return f'<div style="{ST_NOTE}">(48h近7天趋势生成失败: {e})</div>'
 
 
 def section_long_top10():
@@ -1945,7 +2009,8 @@ def section_github_sync():
         return f'[GitHub同步] ⚠️ 读取失败: {e}'
 
 
-def _send_digest(subject, body_html, chart_path):
+def _send_digest(subject, body_html, charts=None):
+    """charts: {cid: png路径} 字典(2026-09-18 改为支持多图: 3节趋势图 + 5.5b BTC/山寨图)."""
     """带一次重试的发送(2026-09-06 加: SMTP瞬时故障当天晨报不再直接丢失).
     注: digest_guard 保险丝只兜编译损坏; 本重试兜瞬时SMTP故障; 持续SMTP故障
     两个通道都失效, 由 09:15 系统体检(agent health_check)邮件尝试告警."""
@@ -1953,7 +2018,7 @@ def _send_digest(subject, body_html, chart_path):
     for attempt in (1, 2):
         try:
             send_email(subject, '', body_html=body_html,
-                       inline_images={'btcaltchart': chart_path} if chart_path else None)
+                       inline_images=charts or None)
             return True
         except Exception as e:
             print(f'[晨报] 发送失败(第{attempt}次): {e}')
@@ -1980,9 +2045,15 @@ def main():
     tag_none = f"<span style='{tag_style}background:#eee;color:#666;'>无结算口径</span>"
     # 5.5b BTC vs 山寨走势对比图 (2026-09-02): 8/30教训 — BTC vol灯绿但山寨横截面已在崩(中位-3.23%/89%下跌),
     # 四灯只看BTC看不见山寨独立冲击 → 此图补盲区; 生成失败自动降级为文字行, 不影响晨报其余部分
+    # 2026-09-18: 3. TOP10全开趋势 改为曲线图(用户指令) —— 单独构建, 与 5.5b 图并列内嵌
+    trend_path, trend_state = build_top10_trend_chart()
+    _imgs = {}
+    if trend_path:
+        _imgs['top10trend'] = trend_path
     chart_path, chart_state = build_btc_alt_chart()
     chart_html = ''
     if chart_path:
+        _imgs['btcaltchart'] = chart_path
         _s = chart_state or {}
         chart_html = f"""
 <div {sec_style}>5.5b BTC vs 山寨走势对比图 (近{_s.get('n_days', 30)}天已收盘) <span style='{tag_style}background:#fff3e0;color:#e65100;'>上:BTC/山寨中位数(均从0%起) · 中:BTC vol5(四灯同色) · 下:山寨横截面离散度(候选第5灯)</span></div>
@@ -1998,8 +2069,8 @@ def main():
 <pre {pre_style}>{section_live_summary()}</pre>
 <div {sec_style}>2. 止损建议 (只出结论 · 明细已按 2026-09-17 指令隐去) <span style='{tag_style}background:#fff3cd;color:#856404;'>口径: 假设不止损的48h全窗口最大反向(MAE) · 数据照常采集, 只是不渲染逐笔明细</span></div>
 {section_sl_advice()}
-<div {sec_style}>3. TOP10全开近7天趋势 (48h 1m口径) {tag48}</div>
-<pre {pre_style}>{section_verify()}</pre>
+<div {sec_style}>3. TOP10全开近7天趋势 (曲线图 · 48h 1m口径) {tag48}</div>
+{section_verify(_imgs)}
 <div {sec_style}>3.4 🎯 右尾能力仪表盘 (模型抓肥尾的能力还在不在) <span style='{tag_style}background:#e3f2fd;color:#1565c0;'>规则: lift 掉了才是模型的事; 底率低只是行情没给 · 看这三个数, 不看 IC · 2026-09-13 加</span></div>
 {section_tail_ability()}
 <div {sec_style}>3.5 LONG TOP10 列表 + 成交额 + 量能分位(影子) <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>今日预测 → 08:21已开仓(48h逻辑), 结算见3.6 · 量能分位=C远×V高假设前向采集(至10/23), 只读不干预开仓</span></div>
@@ -2035,7 +2106,7 @@ def main():
 {chart_html}
 <div {sec_style}>6. GitHub 同步 {tag_none}</div>
 <pre {pre_style}>{section_github_sync()}</pre>"""
-    if _send_digest(f'晨报总览 {today}', body_html, chart_path):
+    if _send_digest(f'晨报总览 {today}', body_html, _imgs):
         print('digest sent')
     else:
         print('digest SEND FAILED: 重试后仍失败(见上方错误), 本日晨报未发出')
