@@ -199,6 +199,32 @@ FS_BODY = 12   # 正文 / 表格 / 摘要
 FS_LOG = 11    # 日志块(monospace 本身偏宽, 刻意小一号)
 FS_TINY = 10   # 口径标签 / 脚注 / 注释
 
+# ── matplotlib 中文字体 (2026-09-18 立) ──
+#   背景: 晨报图表原用英文标签, 因为本机无 CJK 字体(matplotlib fontManager 实测 25 个字体无中文)。
+#   2026-09-18 用户要求"每条线的规则写上去" → 规则含中文, 必须先解决字体。
+#   处置: 已下载 Noto Sans CJK SC(开源 SIL OFL)到 ~/.fonts/ 并复制进 matplotlib 的 mpl-data/fonts/ttf,
+#         随后清 ~/.cache/matplotlib/fontlist*.json 触发重建 → fontManager 已能识别。
+#   兜底: 若字体丢失, _setup_cjk_font() 返回 False, 图表自动退回英文标签(不会渲染成豆腐块)。
+MPL_CJK = 'Noto Sans CJK SC'
+
+
+def _setup_cjk_font():
+    """把 matplotlib 配好中文字体; 返回 True=中文可用, False=需退回英文。"""
+    try:
+        import matplotlib
+        from matplotlib import font_manager as _fm
+        names = {f.name for f in _fm.fontManager.ttflist}
+        if MPL_CJK not in names:
+            _fm._load_fontmanager(try_read_cache=False)
+            names = {f.name for f in _fm.fontManager.ttflist}
+            if MPL_CJK not in names:
+                return False
+        matplotlib.rcParams['font.sans-serif'] = [MPL_CJK, 'DejaVu Sans']
+        matplotlib.rcParams['axes.unicode_minus'] = False   # 负号用ASCII, 否则中文下会缺字
+        return True
+    except Exception:
+        return False
+
 # ── 文本样式 ──
 ST_SEC = f"font-size:{FS_SEC}px;font-weight:bold;color:#111;margin:16px 0 5px;padding-bottom:2px;border-bottom:1px solid #e0e0e0;"
 ST_BODY = f"font-size:{FS_BODY}px;font-family:{FONT};line-height:1.6;color:#333;"
@@ -506,6 +532,8 @@ def build_trend30_chart(max_days=30):
         matplotlib.use('Agg')
         import matplotlib.pyplot as plt
         import numpy as np
+        CJK = _setup_cjk_font()
+        TR = (lambda zh, en: zh) if CJK else (lambda zh, en: en)   # 中文兜底: 字体缺失则退回英文
         CST = datetime.timezone(datetime.timedelta(hours=8))
         sys.path.insert(0, os.path.join(BASE, 'audit'))
         import top10_forward as tf
@@ -564,24 +592,31 @@ def build_trend30_chart(max_days=30):
                                        sharex=True, gridspec_kw={'height_ratios': [2.6, 1]})
         ax1.axhline(0, color='#999', lw=0.8, ls='--')
         ax1.plot(x, liu_cum, color='#1a237e', lw=2.2, marker='o', ms=4,
-                 label=f'LIU real money = LONG (last {[v for v in liu_cum if v==v][-1]:+.1f}U)')
+                 label=TR(f'刘账户 = LONG全开 (真钱)  末值 {[v for v in liu_cum if v==v][-1]:+.1f}U',
+                          f'LIU real money = LONG (last {[v for v in liu_cum if v==v][-1]:+.1f}U)'))
         ax1.plot(x, sh_cum['SHORT'], color='#c62828', lw=1.7, marker='^', ms=3.5,
-                 label=f'SHORT TOP10 all-open, sim (last {[v for v in sh_cum["SHORT"] if v==v][-1]:+.1f}U)')
+                 label=TR(f'SHORT TOP10全开 (影子模拟)  末值 {[v for v in sh_cum["SHORT"] if v==v][-1]:+.1f}U',
+                          f'SHORT TOP10 all-open, sim (last {[v for v in sh_cum["SHORT"] if v==v][-1]:+.1f}U)'))
         ax1.plot(x, sh_cum['ALL'], color='#2e7d32', lw=1.7, marker='s', ms=3.5,
-                 label=f'LONG+SHORT TOP10 all-open, sim (last {[v for v in sh_cum["ALL"] if v==v][-1]:+.1f}U)')
-        ax1.set_ylabel('Cumulative PnL (USD)')
+                 label=TR(f'LONG+SHORT TOP10全开 (影子模拟)  末值 {[v for v in sh_cum["ALL"] if v==v][-1]:+.1f}U',
+                          f'LONG+SHORT TOP10 all-open, sim (last {[v for v in sh_cum["ALL"] if v==v][-1]:+.1f}U)'))
+        ax1.set_ylabel(TR('累计盈亏 (USD)', 'Cumulative PnL (USD)'))
         nwin = sum(liu_daily[d]['n'] for d in days if d in liu_daily)
         _tag = (f'rolling {max_days}d window (cumulative from {all_d[0]})' if rolling
                 else f'growing {len(days)}/{max_days}d from account start')
-        ax1.set_title(f'30-Day Trend - base {START_CAP:,.1f}U (LIU startup capital) - '
-                      f'{lab[0]}..{lab[-1]}, {nwin} real trades - {_tag}', fontsize=10)
+        _tagzh = (f'滚动{max_days}天窗口 (累计自 {all_d[0]} 起算, 不归零)' if rolling
+                  else f'自开户日逐日增长 {len(days)}/{max_days}天')
+        ax1.set_title(TR(f'30天趋势 · 基准本金 {START_CAP:,.1f}U(刘启动资金) · {lab[0]}~{lab[-1]} · '
+                         f'{nwin} 笔真钱成交 · {_tagzh}',
+                         f'30-Day Trend - base {START_CAP:,.1f}U - {lab[0]}..{lab[-1]}, {nwin} real trades - {_tag}'),
+                      fontsize=10)
         ax1.legend(loc='best', fontsize=7.5, framealpha=0.9)
         ax1.grid(alpha=0.25, lw=0.4)
         ax2.bar(x, [liu_daily[d]['u'] if d in liu_daily else 0.0 for d in days],
                 color=['#2e7d32' if (d in liu_daily and liu_daily[d]['u'] >= 0) else '#c62828' for d in days],
                 width=0.66)
         ax2.axhline(0, color='#999', lw=0.7)
-        ax2.set_ylabel('LIU daily USD')
+        ax2.set_ylabel(TR('刘真钱 当日 (USD)', 'LIU daily USD'))
         ax2.grid(alpha=0.25, lw=0.4, axis='y')
         ax2.set_xticks(x); ax2.set_xticklabels(lab, fontsize=7)
         for ax in (ax1, ax2):
@@ -591,6 +626,21 @@ def build_trend30_chart(max_days=30):
         fig.tight_layout()
         out_dir = os.path.join(BASE, 'data', 'charts')
         os.makedirs(out_dir, exist_ok=True)
+        # ── 每条线的规则(2026-09-18 用户指令: "每条线的规则写上去") ──
+        _rules_zh = (
+            '规则  ● 刘账户 = LONG全开(真钱):  每日≤10笔 · 125U名义/笔 · 5x逐仓 · 止损-5% · '
+            '止盈+15%(限入场后48h, 48h后不挂) · 持有72h\n'
+            '规则  ▲ SHORT TOP10全开(影子模拟):  每日SHORT TOP10全开 · 止损-5% · 止盈+10% · '
+            '48h到期 · 等权复利 · 300U名义/笔折算到刘本金\n'
+            '规则  ■ LONG+SHORT TOP10全开(影子模拟):  多空各TOP10全开 · 止损-5% · 止盈+10% · '
+            '48h到期 · 等权复利 · 300U名义/笔折算到刘本金')
+        _rules_en = (
+            'RULE  LIU = LONG all-open (REAL):  max 10/day, 125U notional, 5x isolated, SL-5%, '
+            'TP+15% (within 48h), hold 72h\n'
+            'RULE  SHORT TOP10 all-open (SIM):  all short TOP10 daily, SL-5%, TP+10%, 48h expiry\n'
+            'RULE  LONG+SHORT TOP10 all-open (SIM):  both sides all-open, SL-5%, TP+10%, 48h expiry')
+        fig.text(0.005, -0.035, TR(_rules_zh, _rules_en), fontsize=7.2, va='top', ha='left',
+                 linespacing=1.55, color='#444')
         out = os.path.join(out_dir, f'trend30_{datetime.date.today().isoformat()}.png')
         fig.savefig(out, bbox_inches='tight')
         plt.close(fig)
