@@ -463,8 +463,50 @@ def nominal_day1_end_ms(pos):
     return int((d0 + timedelta(days=TP_WINDOW_H // 24, minutes=21)).timestamp() * 1000)
 
 
+def integrity_check(st):
+    """账本 vs 交易所 一致性核对(2026-09-17 加, 源于 BSBUSDT 孤儿仓事故).
+
+    两类异常:
+      ① **孤儿仓** = 交易所有仓、账本没有 → 该仓**无SL/无TP/无人管**(最危险, 本体即为此而立)
+      ② **键/字段不一致** = st['open'] 的键与记录内的 symbol 字段不符
+         → 嵌合记录签名: 源于"日更 state 被 git rebase 三方 JSON 合并"(键行/值行来自不同版本)
+    发现即: 大声记日志 + 邮件告警。**不自动改账本** —— 自动"修"可能造成二次错误,
+    由人工按 AGENTS §7.14 规程处置(还原记录 → 重挂条件单 → 三向核对)。
+    """
+    try:
+        pr = signed('GET', '/fapi/v2/positionRisk')
+        if not isinstance(pr, list):
+            log('  [integrity] positionRisk 查询失败, 跳过核对')
+            return
+        live = {p['symbol'] for p in pr if abs(float(p['positionAmt'])) > 0}
+        ks = set(st['open'])
+        orph = sorted(live - ks)
+        ghost = sorted(ks - live)
+        mism = [k for k, p in st['open'].items() if p.get('symbol') != k]
+        if orph or mism:
+            msg = f'孤儿仓={orph} | 键/字段不一致={mism} | 幽灵={ghost}'
+            log(f'  ⚠️⚠️ 账本完整性异常: {msg}')
+            try:
+                from alert_monitor import send_email
+                send_email('[LIVE]实盘账本完整性异常-需人工处置',
+                           f'{msg}\n\n账本在持 {len(ks)} 笔 / 交易所在持 {len(live)} 笔'
+                           f'\n\n处置规程见 AGENTS §7.14: 还原记录 → 重挂SL/TP → 三向核对')
+                log('  已发告警邮件')
+            except Exception as _e:
+                log(f'  告警邮件发送失败: {_e}')
+        elif ghost:
+            log(f'  [integrity] 幽灵仓 {ghost} (账本有交易所无, 通常是对账滞后1小时内)')
+        else:
+            log(f'  [integrity] ✅ 账本 {len(ks)} 笔 == 交易所 {len(live)} 笔, 键/字段一致')
+    except Exception as e:
+        log(f'  [integrity] 核对异常: {e}')
+
+
 def reconcile(st, close_expired=True):
     """对账: 条件单触发落账 / 到期兜底平仓(HOLD_DAYS=3 → 72h) / SL/TP单丢失重挂"""
+    # 2026-09-17 加: 完整性核对必须放**最前面** —— 账本为空但交易所有仓(最危险的情形:
+    # 仓还在、账本已空 → 会直接 return, 孤儿永远不被发现)必须也能检出。
+    integrity_check(st)
     if not st['open']:
         return
     pr = signed('GET', '/fapi/v2/positionRisk')
