@@ -363,6 +363,80 @@ def section_sl_advice():
         return f'<p style="color:#c00">(止损建议生成失败: {e})</p>'
 
 
+def section_live_summary():
+    """实盘摘要 — 2026-09-18 用户指令(晨报精简第2轮, 方案D).
+
+    背景: 原第1节"交易摘要"展示的是**已关停的老TOP1通道**的日志
+      (💰钱包0.00u / ⚙️本金不足10u跳过交易 / 🎯TOP1决策依据 LONG+SHORT),
+      该通道 TRADING_ENABLED=false, 不产生任何真实交易 → 对实盘零信息量。
+    用户原话: "D换成实盘摘要" → 第1节改为在交易账户的当日实盘动作;
+      原训练日志摘要整块移到第5节"系统健康"(仅供排查, 不涉及交易)。
+
+    口径: **只描述实盘真钱账户**(刘 = 币安#2, 唯一在交易的账户; 果 = 已关闭开仓),
+      不含任何影子/模拟数据。数据源 data/hybrid_live_state.json + 币安 account API。
+    """
+    import json as _json
+    CST = datetime.timezone(datetime.timedelta(hours=8))
+    today = datetime.datetime.now(CST).strftime('%Y-%m-%d')
+    out = []
+
+    def one(tag, name, state_file, on):
+        try:
+            stt = _json.load(open(os.path.join(BASE, 'data', state_file)))
+        except Exception as e:
+            out.append(f'{tag} {name}: 账本读取失败({e})')
+            return
+        # 今日平仓
+        cl = [t for t in stt.get('history', [])
+              if t.get('exit_time')
+              and datetime.datetime.fromtimestamp(t['exit_time'] / 1000,
+                                                  tz=datetime.timezone.utc).astimezone(CST).strftime('%Y-%m-%d') == today]
+        tp = [t for t in cl if t.get('trigger') == '止盈']
+        sl = [t for t in cl if t.get('trigger') == '止损']
+        ex = [t for t in cl if t.get('trigger') == '到期']
+        ot = [t for t in cl if t.get('trigger') not in ('止盈', '止损', '到期')]
+        net = sum(t.get('net_u') or 0 for t in cl)
+        # 今日开仓
+        op = (stt.get('days', {}).get(today) or {}).get('opened_long') or \
+             (stt.get('days', {}).get(today) or {}).get('opened') or []
+        n_open = len(stt.get('open', {}))
+        # 2026-09-18: 已关闭且当日无任何动作的账户 → 压成一行(避免"4行全零"占地方)
+        if (not on) and (not cl) and (not op) and n_open == 0:
+            out.append(f"{tag} {name}: 开仓已关闭 · 无持仓 · 今日无动作")
+            out.append("")
+            return
+        out.append(f"{tag} <b>{name}</b>" + ('' if on else ' <span style="color:#c00;">(开仓已关闭)</span>'))
+        out.append(f"&nbsp;&nbsp;今日开仓({today[5:]}批): <b>{len(op)}</b> 笔" +
+                   (f" — {' / '.join(op)}" if op else " — (尚未执行, 08:2x 开仓)"))
+        if cl:
+            seg = f"止盈 {len(tp)} + 止损 {len(sl)}"
+            if ex:
+                seg += f" + 到期 {len(ex)}"
+            if ot:
+                seg += f" + 其他 {len(ot)}"
+            out.append(f"&nbsp;&nbsp;今日平仓: <b>{len(cl)}</b> 笔 = {seg} → "
+                       f"<b style='color:{'#0a0' if net >= 0 else '#c00'};'>已实现 {net:+.2f}U</b>")
+            det = []
+            for t in tp:
+                det.append(f"<span style='color:#0a0;'>✅{t['symbol']} {t.get('net_u', 0):+.2f}U</span>")
+            for t in sl:
+                det.append(f"<span style='color:#c00;'>❌{t['symbol']} {t.get('net_u', 0):+.2f}U</span>")
+            for t in ex:
+                det.append(f"<span style='color:#666;'>⏱{t['symbol']} {t.get('net_u', 0):+.2f}U</span>")
+            if det:
+                out.append('&nbsp;&nbsp;&nbsp;&nbsp;' + ' · '.join(det))
+        else:
+            out.append("&nbsp;&nbsp;今日平仓: 0 笔")
+        out.append(f"&nbsp;&nbsp;在持 <b>{n_open}</b> 笔")
+        out.append("")
+
+    one('🔴', '刘账户 (币安#2, 唯一在交易 · 125U/5x · SL-5% · TP+15%限48h · 持72h)',
+        'hybrid_live_state.json', True)
+    one('⚪', '果账户 (币安#1, 40U/5x)', 'residual_live_state.json', False)
+    while out and out[-1] == '':
+        out.pop()
+    return '\n'.join(out)
+
 def section_trade():
     """交易摘要: 结构化中文摘要(替代原始日志平铺)"""
     try:
@@ -1884,8 +1958,8 @@ def main():
     else:
         chart_html = "\n<div style='font-size:11px;color:#999;'>(5.5b 对比图生成失败, 略过)</div>"
     body_html = f"""<h2 style="margin:0 0 8px;">晨报总览 {today}</h2>
-<b>1. 交易摘要</b> {tag48_exec}
-<pre {pre_style}>{section_trade()}</pre>
+<b>1. 实盘摘要 (真钱账户当日动作)</b> <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>只含实盘 · 不含影子/模拟 · 2026-09-18 替换原"交易摘要"</span>
+<pre {pre_style}>{section_live_summary()}</pre>
 <b>2. 止损建议 (只出结论 · 明细已按 2026-09-17 指令隐去)</b> <span style='{tag_style}background:#fff3cd;color:#856404;'>口径: 假设不止损的48h全窗口最大反向(MAE) · 数据照常采集, 只是不渲染逐笔明细</span>
 {section_sl_advice()}
 <b>3. TOP10全开近7天趋势 (48h 1m口径)</b> {tag48}
@@ -1916,6 +1990,8 @@ def main():
 <pre {pre_style}>{section_momentum()}</pre>
 <b>5. 系统健康</b> {tag_none}
 <pre {pre_style}>{section_health()}</pre>
+<b>5.0 训练流水线日志摘要 (仅供排查 · 老通道 auto_dual_trade, TRADING_ENABLED=false 不产生交易)</b> <span style='{tag_style}background:#eeeeee;color:#555;'>2026-09-18 从原第1节移来</span>
+<pre {pre_style}>{section_trade()}</pre>
 <b>5.5 前向批作业 · 模型质量与BTC波动 regime</b> <span style='{tag_style}background:#e8f5e9;color:#1b5e20;'>公证预测对答案 · 48h日线口径 · D+2确认</span>
 {section_forward_ic()}
 <b>5.6 BTC EMA7/EMA28 纠缠闸门 (只读观察 · ⚠️未证实)</b> <span style='{tag_style}background:#ffebee;color:#b71c1c;'>效果量测不出来(t=1.23/CI跨零), 三个机制均被否 · 只作零成本追踪 · 不参与交易决策, 暂不作回测预筛依据 · 2026-09-13 加</span>
