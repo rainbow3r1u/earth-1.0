@@ -327,6 +327,42 @@ def section_forward():
         return f'<p style="color:#c00">(前向结算生成失败: {e})</p>'
 
 
+def section_sl_advice():
+    """止损建议(只出结论) — 2026-09-17 用户指令(晨报精简).
+
+    用户原话: "止损建议板块保留, 但是只需要结果就行, 不需要展示明细了(但是数据继续采集)"
+
+    与 section_forward() 的区别: 同一个数据源(audit/forward_settle.py), 但传 result_only=True
+      · 省略: 前向结算逐笔主表 + 止损建议逐行表(用户判定"TOP1口径结构已过时")
+      · 保留: 💰 盈利汇总(实际执行 TP10/SL5/到期  vs  裸奔48h自然平仓  vs  差额)
+              + 扫损单统计(N笔, 需承受 MAE 中位/最大)
+    数据采集链路完全不变: forward_tracker.py(09:10 cron) 照常写 data/forward_tracker.json。
+    """
+    try:
+        import glob
+        from datetime import datetime, timedelta, timezone
+        sys.path.insert(0, os.path.join(BASE, 'audit'))
+        import forward_settle as fs
+        files = sorted(glob.glob(os.path.join(fs.PRED_DIR, 'pred_*.json')))
+        now = datetime.now(timezone.utc)
+        days = []
+        for f in files:
+            ds = os.path.basename(f).replace('pred_', '').replace('.json', '')
+            if ds < '2026-07-28':
+                continue
+            try:
+                maturity = datetime.strptime(ds, '%Y-%m-%d').replace(tzinfo=timezone.utc) + timedelta(days=2, minutes=21)
+            except Exception:
+                continue
+            if maturity <= now:
+                days.append(ds)
+        days.sort()
+        results = fs.settle_days(days)
+        return fs.tables_html(results, result_only=True)
+    except Exception as e:
+        return f'<p style="color:#c00">(止损建议生成失败: {e})</p>'
+
+
 def section_trade():
     """交易摘要: 结构化中文摘要(替代原始日志平铺)"""
     try:
@@ -1850,8 +1886,8 @@ def main():
     body_html = f"""<h2 style="margin:0 0 8px;">晨报总览 {today}</h2>
 <b>1. 交易摘要</b> {tag48_exec}
 <pre {pre_style}>{section_trade()}</pre>
-<b>2. 前向结算 TOP1 (1m修正口径)</b> {tag48}
-{section_forward()}
+<b>2. 止损建议 (只出结论 · 明细已按 2026-09-17 指令隐去)</b> <span style='{tag_style}background:#fff3cd;color:#856404;'>口径: 假设不止损的48h全窗口最大反向(MAE) · 数据照常采集, 只是不渲染逐笔明细</span>
+{section_sl_advice()}
 <b>3. TOP10全开近7天趋势 (48h 1m口径)</b> {tag48}
 <pre {pre_style}>{section_verify()}</pre>
 <b>3.4 🎯 右尾能力仪表盘 (模型抓肥尾的能力还在不在)</b> <span style='{tag_style}background:#e3f2fd;color:#1565c0;'>规则: lift 掉了才是模型的事; 底率低只是行情没给 · 看这三个数, 不看 IC · 2026-09-13 加</span>

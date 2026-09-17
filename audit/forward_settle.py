@@ -298,64 +298,76 @@ if __name__ == '__main__':
     main()
 
 
-def tables_html(results):
-    """生成 HTML 表格(黑体/窄列, 邮件用) — 主表 + 止损建议表"""
+def tables_html(results, result_only=False):
+    """生成 HTML 表格(黑体/窄列, 邮件用) — 主表 + 止损建议表
+
+    2026-09-17 用户指令(晨报精简): `result_only=True` 时**只输出结论, 不输出逐笔明细**。
+      · 省略: 主表(前向结算逐笔明细) + 止损建议逐行表
+      · 保留: 💰 盈利汇总(实际执行 TP10/SL5/到期 vs 裸奔48h自然平仓) + 扫损单统计
+    理由(用户原话): "止损建议板块保留, 但是只需要结果就行, 不需要展示明细了(但是数据继续采集)"
+    数据不受影响: 逐笔明细仍由 forward_tracker.py(09:10 cron)采集进 data/forward_tracker.json,
+    本函数只是不把它渲染进邮件 —— 想恢复展示把 result_only 改回 False 即可。
+    """
     def esc(v):
         return str(v).replace('<', '&lt;').replace('>', '&gt;')
     style = ("border-collapse:collapse;font-family:'SimHei','Microsoft YaHei';font-size:11px;"
              "white-space:nowrap;")
     td = "border:1px solid #ddd;padding:2px 5px;text-align:left;"
     th = "border:1px solid #999;padding:2px 5px;background:#f5f5f5;"
-    # 主表
-    h = [f'<table style="{style}"><tr>']
-    for c in ['日期', '方向', '币', '概率', '结果', '48h自然平仓']:
-        h.append(f'<th style="{th}">{c}</th>')
-    h.append('</tr>')
-    for r in results:
-        # 已止盈/止损的单: 交易已结束, "48h自然平仓"假设收益不再展示(用户 8/3 定)
-        if r.get('trigger') in ('止损', '止盈'):
-            dir_ret = '-'
-        else:
-            dir_ret = f"{r['dir_ret']:+.1f}%" if r.get('dir_ret') is not None else '-'
-        h.append(f"<tr><td style='{td}'>{esc(r['date'][5:])}</td>"
-                 f"<td style='{td}'>{r['direction']}</td>"
-                 f"<td style='{td}'>{esc(r['sym'])}</td>"
-                 f"<td style='{td}'>{r['prob']:.1f}</td>"
-                 f"<td style='{td}'>{esc(r['result'])}</td>"
-                 f"<td style='{td}'>{dir_ret}</td></tr>")
-    h.append('</table>')
-    # 止损建议表
-    with_r = [r for r in results if r.get('dir_ret') is not None]
-    if with_r:
-        h.append('<br><b>止损建议 (48h最大反向=裸奔全窗口MAE; 离场后延伸=触发出场后行情继续逆向的深度, "-"=48h到期无离场)</b><br>')
-        h.append('<table style="' + style + '"><tr>')
-        for c in ['日期', '币', '方向', '结果', '48h最大反向', '离场后延伸', '方向对错', '48h自然平仓']:
+    h = []
+    # 主表 (仅完整模式)
+    if not result_only:
+        h.append(f'<table style="{style}"><tr>')
+        for c in ['日期', '方向', '币', '概率', '结果', '48h自然平仓']:
             h.append(f'<th style="{th}">{c}</th>')
         h.append('</tr>')
-        for r in with_r:
-            d = '✅对' if r.get('dir_ok') else ('❌错' if r.get('dir_ok') is not None else '⏳')
-            trig = '✅止损' if r['result'] == '-5.0%' else ('✅止盈' if r['result'] == '+10.0%' else '48h到期')
-            ret_disp = f"{r['dir_ret']:+.1f}%" if r.get('dir_ret') is not None else '⏳未定'
-            nosl = f"{r.get('max_retrace_no_sl', 0):.1f}%" if r.get('max_retrace_no_sl') is not None else '-'
-            mr = r.get('max_retrace')
-            if r.get('max_retrace_no_sl') is not None and mr is not None and r['result'] in ('-5.0%', '+10.0%'):
-                ext = f"{r['max_retrace_no_sl'] - mr:.1f}%"
+        for r in results:
+            # 已止盈/止损的单: 交易已结束, "48h自然平仓"假设收益不再展示(用户 8/3 定)
+            if r.get('trigger') in ('止损', '止盈'):
+                dir_ret = '-'
             else:
-                ext = '-'
-            # 研究重点高亮: 止损但方向对(扫损单) — 整行黄底, MAE 数字红色加粗; 止盈行 — 整行绿底
-            swept = (r['result'] == '-5.0%' and r.get('dir_ok'))
-            tp_row = (r['result'] == '+10.0%')
-            row_td = td + ('background:#fff3cd;' if swept else ('background:#d9f2d9;' if tp_row else ''))
-            mae_td = row_td + ('color:#c00;font-weight:bold;' if swept else '')
-            h.append(f"<tr><td style='{row_td}'>{esc(r['date'][5:])}</td>"
-                     f"<td style='{row_td}'>{esc(r['sym'])}</td>"
-                     f"<td style='{row_td}'>{r['direction']}</td>"
-                     f"<td style='{row_td}'>{trig}</td>"
-                     f"<td style='{mae_td}'>{nosl}</td>"
-                     f"<td style='{row_td}'>{ext}</td>"
-                     f"<td style='{row_td}'>{d}</td>"
-                     f"<td style='{row_td}'>{ret_disp}</td></tr>")
+                dir_ret = f"{r['dir_ret']:+.1f}%" if r.get('dir_ret') is not None else '-'
+            h.append(f"<tr><td style='{td}'>{esc(r['date'][5:])}</td>"
+                     f"<td style='{td}'>{r['direction']}</td>"
+                     f"<td style='{td}'>{esc(r['sym'])}</td>"
+                     f"<td style='{td}'>{r['prob']:.1f}</td>"
+                     f"<td style='{td}'>{esc(r['result'])}</td>"
+                     f"<td style='{td}'>{dir_ret}</td></tr>")
         h.append('</table>')
+    # 止损建议表 (仅完整模式)
+    with_r = [r for r in results if r.get('dir_ret') is not None]
+    if with_r:
+        if not result_only:
+            h.append('<br><b>止损建议 (48h最大反向=裸奔全窗口MAE; 离场后延伸=触发出场后行情继续逆向的深度, "-"=48h到期无离场)</b><br>')
+            h.append('<table style="' + style + '"><tr>')
+            for c in ['日期', '币', '方向', '结果', '48h最大反向', '离场后延伸', '方向对错', '48h自然平仓']:
+                h.append(f'<th style="{th}">{c}</th>')
+            h.append('</tr>')
+            for r in with_r:
+                d = '✅对' if r.get('dir_ok') else ('❌错' if r.get('dir_ok') is not None else '⏳')
+                trig = '✅止损' if r['result'] == '-5.0%' else ('✅止盈' if r['result'] == '+10.0%' else '48h到期')
+                ret_disp = f"{r['dir_ret']:+.1f}%" if r.get('dir_ret') is not None else '⏳未定'
+                nosl = f"{r.get('max_retrace_no_sl', 0):.1f}%" if r.get('max_retrace_no_sl') is not None else '-'
+                mr = r.get('max_retrace')
+                if r.get('max_retrace_no_sl') is not None and mr is not None and r['result'] in ('-5.0%', '+10.0%'):
+                    ext = f"{r['max_retrace_no_sl'] - mr:.1f}%"
+                else:
+                    ext = '-'
+                # 研究重点高亮: 止损但方向对(扫损单) — 整行黄底, MAE 数字红色加粗; 止盈行 — 整行绿底
+                swept = (r['result'] == '-5.0%' and r.get('dir_ok'))
+                tp_row = (r['result'] == '+10.0%')
+                row_td = td + ('background:#fff3cd;' if swept else ('background:#d9f2d9;' if tp_row else ''))
+                mae_td = row_td + ('color:#c00;font-weight:bold;' if swept else '')
+                h.append(f"<tr><td style='{row_td}'>{esc(r['date'][5:])}</td>"
+                         f"<td style='{row_td}'>{esc(r['sym'])}</td>"
+                         f"<td style='{row_td}'>{r['direction']}</td>"
+                         f"<td style='{row_td}'>{trig}</td>"
+                         f"<td style='{mae_td}'>{nosl}</td>"
+                         f"<td style='{row_td}'>{ext}</td>"
+                         f"<td style='{row_td}'>{d}</td>"
+                         f"<td style='{row_td}'>{ret_disp}</td></tr>")
+            h.append('</table>')
+        # ── 以下两层是"结论", 两种模式都输出 ──
         # 盈利汇总: 实际执行口径(TP+10/SL-5/到期=dir_ret) vs 裸奔48h自然平仓口径(全部按dir_ret)
         n_tp = len([r for r in with_r if r['result'] == '+10.0%'])
         n_sl = len([r for r in with_r if r['result'] == '-5.0%'])
