@@ -113,24 +113,57 @@ def load_liu_status():
 
     st = json.load(open(DATA / 'hybrid_live_state.json'))
     now_ms = int(__import__('time').time() * 1000)
-    rows, no_tp = [], []
+
+    # ★ 2026-09-17 修: 必须与**交易所实时持仓**核对, 不能只读账本。
+    #   起因: 用户 22:15 的消息里看到 COTIUSDT 被归到"无止盈单(已过48h放开)" ——
+    #   真相是它 22:10:05 止盈成交了, 但账本要等 :41 对账才落账(最多滞后34分钟);
+    #   而 TP 条件单触发后即消失, 于是"账本还在 + TP单没了"被误判成"放开跑"。
+    pr = H.signed('GET', '/fapi/v2/positionRisk')
+    live_syms = {p['symbol'] for p in pr if abs(float(p.get('positionAmt', 0))) > 0} \
+        if isinstance(pr, list) else set(st['open'])
+
+    rows, no_tp, just_closed = [], [], []
     for sym, p in st['open'].items():
         try:
+            age = (now_ms - p['open_time']) / 3600000
+            if sym not in live_syms:
+                # 已离场但账本未落账 → 查交易所成交, 报出真实结果
+                aos = H.signed('GET', '/fapi/v1/allOrders',
+                               {'symbol': sym, 'startTime': p['open_time'] - 2000, 'limit': 50})
+                outs = [o for o in (aos if isinstance(aos, list) else [])
+                        if o.get('side') == ('SELL' if p['direction'] == 'LONG' else 'BUY')
+                        and o.get('status') == 'FILLED' and float(o.get('executedQty') or 0) > 0]
+                if outs:
+                    last = max(outs, key=lambda o: o.get('updateTime', 0))
+                    xp = float(last['avgPrice'])
+                    pnl = float(p['qty']) * ((xp - float(p['entry'])) if p['direction'] == 'LONG'
+                                             else (float(p['entry']) - xp))
+                    kind = '止盈' if p.get('tp_price') and abs(xp - float(p['tp_price'])) / float(p['tp_price']) < 0.02 \
+                        else ('止损' if p.get('sl_price') and abs(xp - float(p['sl_price'])) / float(p['sl_price']) < 0.02 else '离场')
+                    et = datetime.datetime.fromtimestamp(int(last['updateTime']) / 1000,
+                                                         tz=datetime.timezone.utc).astimezone(CST)
+                    just_closed.append((sym, kind, (xp / float(p['entry']) - 1) * 100, pnl, et))
+                continue
             cur = H.get_price(sym) or float(p['entry'])
             ids, r = H.open_algo_ids(sym)
             L = [o for o in (r if isinstance(r, list) else [])]
             tp = [o for o in L if 'TAKE_PROFIT' in str(o.get('orderType'))]
             tpv = float(tp[0]['triggerPrice']) if tp else 0.0
-            age = (now_ms - p['open_time']) / 3600000
             pnl = float(p['qty']) * (cur - float(p['entry']))
-            rec = (sym, age, float(p['entry']), cur, tpv, pnl)
-            (rows if tpv else no_tp).append(rec if tpv else (sym, age, pnl))
-        except Exception as _e:
-            no_tp.append((sym, (now_ms - p['open_time']) / 3600000, 0.0))
+            if tpv:
+                rows.append((sym, age, float(p['entry']), cur, tpv, pnl))
+            elif now_ms < H.nominal_tp_end_ms(p):
+                # 窗口内却没有TP单 → 异常(挂单丢失), 不是"放开跑"
+                no_tp.append((sym, age, pnl, True))
+            else:
+                no_tp.append((sym, age, pnl, False))
+        except Exception:
+            no_tp.append((sym, (now_ms - p['open_time']) / 3600000, 0.0, True))
 
     # 距TP 由近到远(升序)
     rows.sort(key=lambda z: (z[4] / z[3] - 1))
     no_tp.sort(key=lambda z: z[1])
+    just_closed.sort(key=lambda z: z[4])
 
     L = []
     L.append(f"💼 刘账户 · {datetime.datetime.now(CST):%m-%d %H:%M}")
@@ -143,8 +176,13 @@ def load_liu_status():
         L.append(f"钱包余额    {wallet:>9,.2f}U")
         L.append(f"未实现盈亏  {upnl:>+9,.2f}U")
         L.append(f"总权益      {equity:>9,.2f}U")
+    if just_closed:
+        L.append("")
+        for sym, kind, pct, pnl, et in just_closed:
+            L.append(f"✅ 刚{kind}: {sym} {pct:+.2f}% ({pnl:+.2f}U) {et:%H:%M}")
+        L.append("    (已成交, 待 :41 对账落账)")
     L.append("")
-    L.append(f"📋 持仓 {len(st['open'])} 笔(按距止盈由近到远)")
+    L.append(f"📋 持仓 {len(rows)} 笔(按距止盈由近到远)")
     L.append("─" * 30)
     for i, (sym, age, e, cur, tpv, pnl) in enumerate(rows, 1):
         gap = (tpv / cur - 1) * 100
@@ -158,9 +196,10 @@ def load_liu_status():
         L.append(f"🎯 最近一笔: {rows[0][0]} 还差 {rows[0][4]/rows[0][3]-1:+.2%} → 触发落袋约 {gain:+.2f}U")
     if no_tp:
         L.append("")
-        L.append(f"⚪ 无止盈单 {len(no_tp)} 笔(已过48h窗口, 第3天放开跑)")
-        for sym, age, pnl in no_tp:
-            L.append(f"    {sym}  持{age:>4.0f}h  现浮 {pnl:>+6.2f}U")
+        L.append(f"⚪ 无止盈单 {len(no_tp)} 笔")
+        for sym, age, pnl, is_anom in no_tp:
+            tag = "⚠️ 窗口内却无TP单(挂单丢失?等下次对账重挂)" if is_anom else "已过48h窗口, 第3天放开跑"
+            L.append(f"    {sym}  持{age:>4.0f}h  现浮 {pnl:>+6.2f}U  — {tag}")
     return '\n'.join(L)
 
 
