@@ -1296,9 +1296,9 @@
   ]
  },
  "2026-09-14": {
-  "updated": "2026-09-15T00:55:01.708014+00:00",
-  "day_pnl_u": -30.2,
-  "n_settled": 2,
+  "updated": "2026-09-16T00:55:01.908035+00:00",
+  "day_pnl_u": 38.5,
+  "n_settled": 10,
   "n_total": 10,
   "trades": [
    {
@@ -1316,10 +1316,10 @@
     "direction": "LONG",
     "prob": 82.8,
     "entry": 0.0413,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null
+    "result": "-5.0%",
+    "trigger": "止损",
+    "time": "09-15 13:00",
+    "net_u": -15.65
    },
    {
     "symbol": "REZUSDT",
@@ -1336,77 +1336,77 @@
     "direction": "LONG",
     "prob": 78.6,
     "entry": 21.513,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null
+    "result": "-0.3%",
+    "trigger": "到期",
+    "time": "09-16 00:21",
+    "net_u": -1.62
    },
    {
     "symbol": "ICPUSDT",
     "direction": "LONG",
     "prob": 74.4,
     "entry": 2.782,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null
+    "result": "-5.0%",
+    "trigger": "止损",
+    "time": "09-15 03:54",
+    "net_u": -15.52
    },
    {
     "symbol": "LITUSDT",
     "direction": "LONG",
     "prob": 71.4,
     "entry": 4.1363,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null
+    "result": "-3.1%",
+    "trigger": "到期",
+    "time": "09-16 00:21",
+    "net_u": -9.94
    },
    {
     "symbol": "SAGAUSDT",
     "direction": "LONG",
     "prob": 71.1,
     "entry": 0.01709,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null
+    "result": "+37.3%",
+    "trigger": "到期",
+    "time": "09-16 00:21",
+    "net_u": 111.22
    },
    {
     "symbol": "COTIUSDT",
     "direction": "LONG",
     "prob": 70.7,
     "entry": 0.016085,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null
+    "result": "+0.4%",
+    "trigger": "到期",
+    "time": "09-16 00:21",
+    "net_u": 0.94
    },
    {
     "symbol": "INJUSDT",
     "direction": "LONG",
     "prob": 70.1,
     "entry": 5.883,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null
+    "result": "-5.0%",
+    "trigger": "止损",
+    "time": "09-15 16:34",
+    "net_u": -15.57
    },
    {
     "symbol": "HEMIUSDT",
     "direction": "LONG",
     "prob": 69.3,
     "entry": 0.006288,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null
+    "result": "+4.5%",
+    "trigger": "到期",
+    "time": "09-16 00:21",
+    "net_u": 14.88
    }
   ]
  },
  "2026-09-15": {
-  "updated": "2026-09-15T00:55:01.708014+00:00",
-  "day_pnl_u": -15.5,
-  "n_settled": 1,
+  "updated": "2026-09-16T00:55:01.908035+00:00",
+  "day_pnl_u": -124.2,
+  "n_settled": 8,
   "n_total": 10,
   "trades": [
    {
@@ -1414,20 +1414,20 @@
     "direction": "LONG",
     "prob": 93.5,
     "entry": 0.05752,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null
+    "result": "-5.0%",
+    "trigger": "止损",
+    "time": "09-15 03:28",
+    "net_u": -15.51
    },
    {
     "symbol": "VVVUSDT",
     "direction": "LONG",
     "prob": 83.9,
     "entry": 22.961,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null
+    "result": "-5.0%",
+    "trigger": "止损",
+    "time": "09-15 07:42",
+    "net_u": -15.53
    },
    {
     "symbol": "ARKUSDT",
@@ -1444,20 +1444,20 @@
     "direction": "LONG",
     "prob": 81.5,
     "entry": 5.712,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null
+    "result": "-5.0%",
+    "trigger": "止损",
+    "time": "09-15 18:45",
+    "net_u": -15.57
    },
    {
     "symbol": "CHIPUSDT",
     "direction": "LONG",
     "prob": 78.1,
     "entry": 0.04191,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null
+    "result": "-5.0%",
+    "trigger": "止损",
+    "time": "09-15 12:33",
+    "net_u": -15.55
    },
    {
     "symbol": "PIEVERSEUSDT",
@@ -1474,20 +1474,20 @@
     "direction": "LONG",
     "prob": 75.4,
     "entry": 4.3969,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null
+    "result": "-5.0%",
+    "trigger": "止损",
+    "time": "09-15 14:51",
+    "net_u": -15.55
    },
    {
     "symbol": "DASHUSDT",
     "direction": "LONG",
     "prob": 75.1,
     "entry": 53.72,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null
+    "result": "-5.0%",
+    "trigger": "止损",
+    "time": "09-15 14:50",
+    "net_u": -15.51
    },
    {
     "symbol": "MINAUSDT",
@@ -1504,6 +1504,114 @@
     "direction": "LONG",
     "prob": 73.9,
     "entry": 0.06133,
+    "result": "-5.0%",
+    "trigger": "止损",
+    "time": "09-15 01:13",
+    "net_u": -15.51
+   }
+  ]
+ },
+ "2026-09-16": {
+  "updated": "2026-09-16T00:55:01.908035+00:00",
+  "day_pnl_u": 0,
+  "n_settled": 0,
+  "n_total": 10,
+  "trades": [
+   {
+    "symbol": "VVVUSDT",
+    "direction": "LONG",
+    "prob": 78.2,
+    "entry": 21.44,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null
+   },
+   {
+    "symbol": "DASHUSDT",
+    "direction": "LONG",
+    "prob": 74.9,
+    "entry": 50.62,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null
+   },
+   {
+    "symbol": "CHIPUSDT",
+    "direction": "LONG",
+    "prob": 70.2,
+    "entry": 3.804,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null
+   },
+   {
+    "symbol": "LITUSDT",
+    "direction": "LONG",
+    "prob": 69.9,
+    "entry": 0.69257,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null
+   },
+   {
+    "symbol": "STRKUSDT",
+    "direction": "LONG",
+    "prob": 69.9,
+    "entry": 0.02667,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null
+   },
+   {
+    "symbol": "ZENUSDT",
+    "direction": "LONG",
+    "prob": 69.5,
+    "entry": 6.203,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null
+   },
+   {
+    "symbol": "AKEUSDT",
+    "direction": "LONG",
+    "prob": 68.7,
+    "entry": 0.027433,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null
+   },
+   {
+    "symbol": "TUSDT",
+    "direction": "LONG",
+    "prob": 68.5,
+    "entry": 0.004451,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null
+   },
+   {
+    "symbol": "ZECUSDT",
+    "direction": "LONG",
+    "prob": 67.6,
+    "entry": 1109.67,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null
+   },
+   {
+    "symbol": "RAYSOLUSDT",
+    "direction": "LONG",
+    "prob": 66.9,
+    "entry": 1.2366,
     "result": "⏳未到期",
     "trigger": "进行中",
     "time": "-",
