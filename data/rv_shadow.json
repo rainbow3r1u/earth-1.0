@@ -269,5 +269,25 @@
 "FETUSDT"
 ],
 "rv": {}
+},
+"2026-09-16": {
+"date": "2026-09-16",
+"rv_day": "2026-09-15",
+"hi": [],
+"mid": [],
+"lo": [],
+"missing": [
+"DASHUSDT",
+"EGLDUSDT",
+"VVVUSDT",
+"STRKUSDT",
+"XPINUSDT",
+"BRUSDT",
+"GRIFFAINUSDT",
+"ZENUSDT",
+"TUSDT",
+"ENJUSDT"
+],
+"rv": {}
 }
 }
