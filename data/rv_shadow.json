@@ -289,5 +289,25 @@
 "ENJUSDT"
 ],
 "rv": {}
+},
+"2026-09-17": {
+"date": "2026-09-17",
+"rv_day": "2026-09-16",
+"hi": [],
+"mid": [],
+"lo": [],
+"missing": [
+"ZKCUSDT",
+"IOUSDT",
+"BSBUSDT",
+"COLLECTUSDT",
+"JCTUSDT",
+"LAUSDT",
+"COTIUSDT",
+"1000CATUSDT",
+"SYNUSDT",
+"OPENUSDT"
+],
+"rv": {}
 }
 }
