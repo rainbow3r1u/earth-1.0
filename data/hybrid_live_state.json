@@ -7,20 +7,6 @@
   "hold_days": 2
  },
  "open": {
-  "DASHUSDT": {
-   "symbol": "DASHUSDT",
-   "direction": "LONG",
-   "qty": 2.464,
-   "entry": 50.73,
-   "open_time": 1789518348111,
-   "date": "2026-09-16",
-   "sl_price": 48.19,
-   "sl_algo_id": 2000001438091178,
-   "tp_price": 58.34,
-   "tp_algo_id": 2000001438091179,
-   "tag": "260916",
-   "tp_tier": 0.15
-  },
   "EGLDUSDT": {
    "symbol": "EGLDUSDT",
    "direction": "LONG",
@@ -31,9 +17,10 @@
    "sl_price": 3.618,
    "sl_algo_id": 2000001438091220,
    "tp_price": 4.381,
-   "tp_algo_id": 2000001438091226,
+   "tp_algo_id": null,
    "tag": "260916",
-   "tp_tier": 0.15
+   "tp_tier": null,
+   "tp_cancelled": true
   },
   "STRKUSDT": {
    "symbol": "STRKUSDT",
@@ -45,9 +32,10 @@
    "sl_price": 0.025370000000000004,
    "sl_algo_id": 2000001438091273,
    "tp_price": 0.030720000000000004,
-   "tp_algo_id": 2000001438091277,
+   "tp_algo_id": null,
    "tag": "260916",
-   "tp_tier": 0.15
+   "tp_tier": null,
+   "tp_cancelled": true
   },
   "GRIFFAINUSDT": {
    "symbol": "GRIFFAINUSDT",
@@ -59,23 +47,10 @@
    "sl_price": 0.012081999999999999,
    "sl_algo_id": 2000001438091385,
    "tp_price": 0.014626,
-   "tp_algo_id": 2000001438091389,
+   "tp_algo_id": null,
    "tag": "260916",
-   "tp_tier": 0.15
-  },
-  "ZENUSDT": {
-   "symbol": "ZENUSDT",
-   "direction": "LONG",
-   "qty": 20.1,
-   "entry": 6.213,
-   "open_time": 1789518355368,
-   "date": "2026-09-16",
-   "sl_price": 5.902,
-   "sl_algo_id": 2000001438091443,
-   "tp_price": 7.1450000000000005,
-   "tp_algo_id": 2000001438091445,
-   "tag": "260916",
-   "tp_tier": 0.15
+   "tp_tier": null,
+   "tp_cancelled": true
   },
   "TUSDT": {
    "symbol": "TUSDT",
@@ -87,9 +62,10 @@
    "sl_price": 0.004221,
    "sl_algo_id": 2000001438091480,
    "tp_price": 0.00511,
-   "tp_algo_id": 2000001438091482,
+   "tp_algo_id": null,
    "tag": "260916",
-   "tp_tier": 0.15
+   "tp_tier": null,
+   "tp_cancelled": true
   },
   "ENJUSDT": {
    "symbol": "ENJUSDT",
@@ -101,9 +77,10 @@
    "sl_price": 0.023530000000000002,
    "sl_algo_id": 2000001438091498,
    "tp_price": 0.02849,
-   "tp_algo_id": 2000001438091500,
+   "tp_algo_id": null,
    "tag": "260916",
-   "tp_tier": 0.15
+   "tp_tier": null,
+   "tp_cancelled": true
   },
   "ZKCUSDT": {
    "symbol": "ZKCUSDT",
@@ -161,34 +138,6 @@
    "tag": "260917",
    "tp_tier": 0.15
   },
-  "LAUSDT": {
-   "symbol": "LAUSDT",
-   "direction": "LONG",
-   "qty": 1834.9,
-   "entry": 0.0683468,
-   "open_time": 1789604778092,
-   "date": "2026-09-17",
-   "sl_price": 0.06492,
-   "sl_algo_id": 2000001440841301,
-   "tp_price": 0.0786,
-   "tp_algo_id": 2000001440841302,
-   "tag": "260917",
-   "tp_tier": 0.15
-  },
-  "COTIUSDT": {
-   "symbol": "COTIUSDT",
-   "direction": "LONG",
-   "qty": 7227.0,
-   "entry": 0.0172783,
-   "open_time": 1789604779296,
-   "date": "2026-09-17",
-   "sl_price": 0.016413999999999998,
-   "sl_algo_id": 2000001440841322,
-   "tp_price": 0.019871,
-   "tp_algo_id": 2000001440841324,
-   "tag": "260917",
-   "tp_tier": 0.15
-  },
   "1000CATUSDT": {
    "symbol": "1000CATUSDT",
    "direction": "LONG",
@@ -200,20 +149,6 @@
    "sl_algo_id": 2000001440841339,
    "tp_price": 0.002275,
    "tp_algo_id": 2000001440841341,
-   "tag": "260917",
-   "tp_tier": 0.15
-  },
-  "SYNUSDT": {
-   "symbol": "SYNUSDT",
-   "direction": "LONG",
-   "qty": 706.0,
-   "entry": 0.1767,
-   "open_time": 1789604781712,
-   "date": "2026-09-17",
-   "sl_price": 0.1678,
-   "sl_algo_id": 2000001440841374,
-   "tp_price": 0.2033,
-   "tp_algo_id": 2000001440841377,
    "tag": "260917",
    "tp_tier": 0.15
   },
@@ -229,6 +164,90 @@
    "tp_price": 0.157,
    "tp_algo_id": 2000001440841392,
    "tag": "260917",
+   "tp_tier": 0.15
+  },
+  "BSBUSDT": {
+   "symbol": "BSBUSDT",
+   "direction": "LONG",
+   "qty": 1366.0,
+   "entry": 0.09148380673499266,
+   "open_time": 1789604773898,
+   "date": "2026-09-17",
+   "sl_price": 0.0869,
+   "sl_algo_id": 2000001441487641,
+   "tp_price": 0.10521000000000001,
+   "tp_algo_id": 2000001441487643,
+   "tag": "人工恢复(记录丢失)",
+   "tp_tier": 0.15
+  },
+  "CROSSUSDT": {
+   "symbol": "CROSSUSDT",
+   "direction": "LONG",
+   "qty": 719.0,
+   "entry": 0.174203,
+   "open_time": 1789691144964,
+   "date": "2026-09-18",
+   "sl_price": 0.16549000000000003,
+   "sl_algo_id": 2000001443291264,
+   "tp_price": 0.20034000000000002,
+   "tp_algo_id": 2000001443291266,
+   "tag": "260918",
+   "tp_tier": 0.15
+  },
+  "INJUSDT": {
+   "symbol": "INJUSDT",
+   "direction": "LONG",
+   "qty": 21.9,
+   "entry": 5.685,
+   "open_time": 1789691146193,
+   "date": "2026-09-18",
+   "sl_price": 5.4,
+   "sl_algo_id": 2000001443291291,
+   "tp_price": 6.538,
+   "tp_algo_id": 2000001443291296,
+   "tag": "260918",
+   "tp_tier": 0.15
+  },
+  "CARVUSDT": {
+   "symbol": "CARVUSDT",
+   "direction": "LONG",
+   "qty": 3544.0,
+   "entry": 0.0353084,
+   "open_time": 1789691147475,
+   "date": "2026-09-18",
+   "sl_price": 0.03354,
+   "sl_algo_id": 2000001443291316,
+   "tp_price": 0.04061,
+   "tp_algo_id": 2000001443291317,
+   "tag": "260918",
+   "tp_tier": 0.15
+  },
+  "LABUSDT": {
+   "symbol": "LABUSDT",
+   "direction": "LONG",
+   "qty": 2468.0,
+   "entry": 0.05067,
+   "open_time": 1789691149893,
+   "date": "2026-09-18",
+   "sl_price": 0.048130000000000006,
+   "sl_algo_id": 2000001443291346,
+   "tp_price": 0.058280000000000005,
+   "tp_algo_id": 2000001443291347,
+   "tag": "260918",
+   "tp_tier": 0.15
+  },
+  "STXUSDT": {
+   "symbol": "STXUSDT",
+   "direction": "LONG",
+   "qty": 500.0,
+   "entry": 0.2497,
+   "open_time": 1789691151101,
+   "date": "2026-09-18",
+   "sl_price": 0.23720000000000002,
+   "sl_algo_id": 2000001443291388,
+   "tp_price": 0.2872,
+   "tp_algo_id": 2000001443291391,
+   "tag": "260918",
    "tp_tier": 0.15
   }
  },
@@ -1441,22 +1460,117 @@
    "net_u": 9.25
   },
   {
-   "symbol": "BRUSDT",
+   "symbol": "DASHUSDT",
    "direction": "LONG",
-   "qty": 1366.0,
-   "entry": 0.0914838,
-   "open_time": 1789604774449,
+   "qty": 2.464,
+   "entry": 50.73,
+   "open_time": 1789518348111,
+   "date": "2026-09-16",
+   "sl_price": 48.19,
+   "sl_algo_id": 2000001438091178,
+   "tp_price": 58.34,
+   "tp_algo_id": 2000001438091179,
+   "tag": "260916",
+   "tp_tier": 0.15,
+   "trigger": "止盈",
+   "exit": 58.32,
+   "exit_time": 1789606346796,
+   "gross_pct": 14.96,
+   "net_u": 18.5766
+  },
+  {
+   "symbol": "SYNUSDT",
+   "direction": "LONG",
+   "qty": 706.0,
+   "entry": 0.1767,
+   "open_time": 1789604781712,
    "date": "2026-09-17",
-   "sl_price": 0.0869,
-   "sl_algo_id": 2000001440841218,
-   "tp_price": 0.10521000000000001,
-   "tp_algo_id": 2000001440841220,
+   "sl_price": 0.1678,
+   "sl_algo_id": 2000001440841374,
+   "tp_price": 0.2033,
+   "tp_algo_id": 2000001440841377,
    "tag": "260917",
-   "trigger": "离场(未知)",
-   "exit": 0.64651,
-   "exit_time": 1789605663823,
-   "gross_pct": 606.69,
-   "net_u": 0.0
+   "tp_tier": 0.15,
+   "trigger": "止损",
+   "exit": 0.1678,
+   "exit_time": 1789605719338,
+   "gross_pct": -5.04,
+   "net_u": -6.405
+  },
+  {
+   "symbol": "ZENUSDT",
+   "direction": "LONG",
+   "qty": 20.1,
+   "entry": 6.213,
+   "open_time": 1789518355368,
+   "date": "2026-09-16",
+   "sl_price": 5.902,
+   "sl_algo_id": 2000001438091443,
+   "tp_price": 7.1450000000000005,
+   "tp_algo_id": 2000001438091445,
+   "tag": "260916",
+   "tp_tier": 0.15,
+   "trigger": "止盈",
+   "exit": 7.15,
+   "exit_time": 1789633732308,
+   "gross_pct": 15.08,
+   "net_u": 18.6833
+  },
+  {
+   "symbol": "COTIUSDT",
+   "direction": "LONG",
+   "qty": 7227.0,
+   "entry": 0.0172783,
+   "open_time": 1789604779296,
+   "date": "2026-09-17",
+   "sl_price": 0.016413999999999998,
+   "sl_algo_id": 2000001440841322,
+   "tp_price": 0.019871,
+   "tp_algo_id": 2000001440841324,
+   "tag": "260917",
+   "tp_tier": 0.15,
+   "trigger": "止盈",
+   "exit": 0.0198365,
+   "exit_time": 1789654205295,
+   "gross_pct": 14.81,
+   "net_u": 18.4149
+  },
+  {
+   "symbol": "LAUSDT",
+   "direction": "LONG",
+   "qty": 1834.9,
+   "entry": 0.0683468,
+   "open_time": 1789604778092,
+   "date": "2026-09-17",
+   "sl_price": 0.06492,
+   "sl_algo_id": 2000001440841301,
+   "tp_price": 0.0786,
+   "tp_algo_id": 2000001440841302,
+   "tag": "260917",
+   "tp_tier": 0.15,
+   "trigger": "止损",
+   "exit": 0.06492,
+   "exit_time": 1789657432155,
+   "gross_pct": -5.01,
+   "net_u": -6.0341
+  },
+  {
+   "symbol": "DRIFTUSDT",
+   "direction": "LONG",
+   "qty": 7961.0,
+   "entry": 0.0157473,
+   "open_time": 1789691148685,
+   "date": "2026-09-18",
+   "sl_price": 0.014950000000000001,
+   "sl_algo_id": 2000001443291331,
+   "tp_price": 0.01811,
+   "tp_algo_id": 2000001443291332,
+   "tag": "260918",
+   "trigger": "止损",
+   "exit": 0.01487,
+   "exit_time": 1789691249998,
+   "gross_pct": -5.57,
+   "net_u": -7.1061
   }
  ],
  "days": {
@@ -1626,6 +1740,33 @@
    "skipped": [],
    "avail_u": 1101.9,
    "n_planned": 10
+  },
+  "2026-09-18": {
+   "opened_long": [
+    "CROSSUSDT",
+    "INJUSDT",
+    "CARVUSDT",
+    "DRIFTUSDT",
+    "LABUSDT",
+    "STXUSDT"
+   ],
+   "opened_short": [],
+   "skipped": [
+    "EGLDUSDT(LONG)(与在持重叠)",
+    "OPENUSDT(LONG)(与在持重叠)",
+    "TUSDT(LONG)(与在持重叠)",
+    "COLLECTUSDT(LONG)(与在持重叠)"
+   ],
+   "avail_u": 1019.7,
+   "n_planned": 10
   }
- }
+ },
+ "repairs": [
+  {
+   "ts": "2026-09-17T15:36:08.138925+08:00",
+   "what": "删除嵌合脏记录 BRUSDT(date=2026-09-17, 离场(未知), gross=+606.69%)",
+   "why": "08:30 notarize 的 git rebase 对 daily-rewritten 的 hybrid_live_state.json 做三方合并, 键行与值行来自不同版本",
+   "also": "BSBUSDT 的 1366 张仓已还原到 st[open] 并重挂 SL/TP (此前裸奔约7小时)"
+  }
+ ]
 }
