@@ -1,45 +1,24 @@
 {
- "updated": "2026-09-16 04:38",
- "target_date": "2026-09-15",
- "score": 1.443,
- "pct": 39.7,
- "bucket": "偏紧",
+ "updated": "2026-09-18 08:00",
+ "target_date": "2026-09-18",
+ "score": 1.549,
+ "pct": 51.2,
+ "bucket": "正常",
  "low_q_mean": 1.168,
  "high_q_mean": 1.891,
- "oos_rho": 0.1493,
- "oos_naive": 0.1278,
- "oos_rho_90d": -0.0627,
- "oos_naive_90d": 0.0635,
+ "oos_rho": 0.1499,
+ "oos_naive": 0.1304,
+ "oos_rho_90d": -0.0907,
+ "oos_naive_90d": 0.044,
  "degraded": true,
- "n_train": 561,
- "n_pred": 501,
- "pred_7d": 1.465,
- "pred_prev7d": 1.546,
- "act_7d": 0.982,
- "act_prev7d": 1.646,
- "act_7d_bucket": "荒期",
+ "n_train": 564,
+ "n_pred": 504,
+ "pred_7d": 1.442,
+ "pred_prev7d": 1.476,
+ "act_7d": 1.036,
+ "act_prev7d": 1.46,
+ "act_7d_bucket": "偏紧",
  "recent": [
-  {
-   "date": "2026-08-30",
-   "score": 1.74,
-   "bucket": "正常",
-   "actual": 0.558,
-   "actual_bucket": "荒期"
-  },
-  {
-   "date": "2026-08-31",
-   "score": 1.561,
-   "bucket": "正常",
-   "actual": 1.487,
-   "actual_bucket": "偏紧"
-  },
-  {
-   "date": "2026-09-01",
-   "score": 1.633,
-   "bucket": "正常",
-   "actual": 1.487,
-   "actual_bucket": "偏紧"
-  },
   {
    "date": "2026-09-02",
    "score": 1.423,
@@ -116,13 +95,34 @@
    "bucket": "偏紧",
    "actual": 1.673,
    "actual_bucket": "正常"
+  },
+  {
+   "date": "2026-09-13",
+   "score": 1.492,
+   "bucket": "偏紧",
+   "actual": 0.743,
+   "actual_bucket": "荒期"
+  },
+  {
+   "date": "2026-09-14",
+   "score": 1.357,
+   "bucket": "偏紧",
+   "actual": 1.115,
+   "actual_bucket": "偏紧"
+  },
+  {
+   "date": "2026-09-15",
+   "score": 1.436,
+   "bucket": "偏紧",
+   "actual": 0.743,
+   "actual_bucket": "荒期"
   }
  ],
  "feat": {
-  "disp5": 7.198,
-  "disp20": 6.823,
-  "br37": 0.781,
-  "br322": 1.255,
-  "btcamp": 1.254
+  "disp5": 8.132,
+  "disp20": 6.669,
+  "br37": 1.078,
+  "br322": 1.283,
+  "btcamp": 2.004
  }
 }
