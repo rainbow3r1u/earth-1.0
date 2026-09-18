@@ -182,24 +182,28 @@ def load_liu_status():
             L.append(f"✅ 刚{kind}: {sym} {pct:+.2f}% ({pnl:+.2f}U) {et:%H:%M}")
         L.append("    (已成交, 待 :41 对账落账)")
     L.append("")
-    L.append(f"📋 持仓 {len(rows)} 笔(按距止盈由近到远)")
+    # ★ 2026-09-18 修 bug: 原标题写 `持仓 {len(rows)} 笔` —— 而 rows 只含**有止盈单的**持仓,
+    #   已过48h窗口(无TP单)的持仓被漏计 ⇒ 用户看到"还是只有12笔", 实际是 12(有TP) + 5(已过窗口) = 17。
+    #   现在: 标题报**总数**; 无TP的也编号并入同一列表(排在末尾), 使"标题数字 = 列表行数"恒成立。
+    n_total = len(rows) + len(no_tp)
+    _note = f" (其中 {len(no_tp)} 笔已过48h窗口、无TP单, 排在末尾)" if no_tp else ""
+    L.append(f"📋 持仓 {n_total} 笔{_note}")
     L.append("─" * 30)
     for i, (sym, age, e, cur, tpv, pnl) in enumerate(rows, 1):
         gap = (tpv / cur - 1) * 100
         cur_pct = (cur / e - 1) * 100
         L.append(f"{i:>2}. {sym}")
         L.append(f"    距TP {gap:>5.2f}%  |  现浮 {cur_pct:>+6.2f}% ({pnl:>+6.2f}U)  |  持{age:>4.0f}h")
+    # 无TP单的持仓: 继续编号, 标明原因(与"标题数字=行数"一致)
+    for k, (sym, age, pnl, is_anom) in enumerate(no_tp, len(rows) + 1):
+        tag = "⚠️ 窗口内却无TP单(挂单丢失, 等对账重挂)" if is_anom else "已过48h窗口, 第3天放开跑(不上TP)"
+        L.append(f"{k:>2}. {sym}")
+        L.append(f"    无TP单 — {tag}  |  现浮 {pnl:>+6.2f}U  |  持{age:>4.0f}h")
     # 当日 08:21 刚开的批次 → 展示"触发即落袋"的金额
     if rows:
         gain = float(st['open'][rows[0][0]]['qty']) * (rows[0][4] - rows[0][2])
         L.append("─" * 30)
         L.append(f"🎯 最近一笔: {rows[0][0]} 还差 {rows[0][4]/rows[0][3]-1:+.2%} → 触发落袋约 {gain:+.2f}U")
-    if no_tp:
-        L.append("")
-        L.append(f"⚪ 无止盈单 {len(no_tp)} 笔")
-        for sym, age, pnl, is_anom in no_tp:
-            tag = "⚠️ 窗口内却无TP单(挂单丢失?等下次对账重挂)" if is_anom else "已过48h窗口, 第3天放开跑"
-            L.append(f"    {sym}  持{age:>4.0f}h  现浮 {pnl:>+6.2f}U  — {tag}")
     return '\n'.join(L)
 
 
