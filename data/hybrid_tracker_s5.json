@@ -1,6 +1,6 @@
 {
  "2026-08-03": {
-  "updated": "2026-09-17T00:50:01.957930+00:00",
+  "updated": "2026-09-18T00:50:01.288162+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": 182.7,
   "n_settled": 15,
@@ -159,7 +159,7 @@
   ]
  },
  "2026-08-04": {
-  "updated": "2026-09-17T00:50:01.957971+00:00",
+  "updated": "2026-09-18T00:50:01.288202+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": 254.4,
   "n_settled": 15,
@@ -318,7 +318,7 @@
   ]
  },
  "2026-08-05": {
-  "updated": "2026-09-17T00:50:01.957987+00:00",
+  "updated": "2026-09-18T00:50:01.288221+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": 459.1,
   "n_settled": 15,
@@ -477,7 +477,7 @@
   ]
  },
  "2026-08-06": {
-  "updated": "2026-09-17T00:50:01.957997+00:00",
+  "updated": "2026-09-18T00:50:01.288232+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": 176.6,
   "n_settled": 15,
@@ -636,7 +636,7 @@
   ]
  },
  "2026-08-07": {
-  "updated": "2026-09-17T00:50:01.958007+00:00",
+  "updated": "2026-09-18T00:50:01.288242+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": 849.7,
   "n_settled": 15,
@@ -795,7 +795,7 @@
   ]
  },
  "2026-08-08": {
-  "updated": "2026-09-17T00:50:01.958020+00:00",
+  "updated": "2026-09-18T00:50:01.288251+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": -82.5,
   "n_settled": 15,
@@ -954,7 +954,7 @@
   ]
  },
  "2026-08-09": {
-  "updated": "2026-09-17T00:50:01.958031+00:00",
+  "updated": "2026-09-18T00:50:01.288261+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": -209.9,
   "n_settled": 15,
@@ -1113,7 +1113,7 @@
   ]
  },
  "2026-08-10": {
-  "updated": "2026-09-17T00:50:01.958044+00:00",
+  "updated": "2026-09-18T00:50:01.288271+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": -31.7,
   "n_settled": 15,
@@ -1272,7 +1272,7 @@
   ]
  },
  "2026-08-11": {
-  "updated": "2026-09-17T00:50:01.958055+00:00",
+  "updated": "2026-09-18T00:50:01.288281+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": -16.4,
   "n_settled": 15,
@@ -1431,7 +1431,7 @@
   ]
  },
  "2026-08-12": {
-  "updated": "2026-09-17T00:50:01.958064+00:00",
+  "updated": "2026-09-18T00:50:01.288290+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": -130.8,
   "n_settled": 15,
@@ -1590,7 +1590,7 @@
   ]
  },
  "2026-08-13": {
-  "updated": "2026-09-17T00:50:01.958072+00:00",
+  "updated": "2026-09-18T00:50:01.288299+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": 446.5,
   "n_settled": 15,
@@ -1749,7 +1749,7 @@
   ]
  },
  "2026-08-14": {
-  "updated": "2026-09-17T00:50:01.958081+00:00",
+  "updated": "2026-09-18T00:50:01.288308+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": 294.5,
   "n_settled": 15,
@@ -1908,7 +1908,7 @@
   ]
  },
  "2026-08-15": {
-  "updated": "2026-09-17T00:50:01.958090+00:00",
+  "updated": "2026-09-18T00:50:01.288318+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": 39.5,
   "n_settled": 15,
@@ -2067,7 +2067,7 @@
   ]
  },
  "2026-08-16": {
-  "updated": "2026-09-17T00:50:01.958116+00:00",
+  "updated": "2026-09-18T00:50:01.288327+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": 28.0,
   "n_settled": 15,
@@ -2226,7 +2226,7 @@
   ]
  },
  "2026-08-17": {
-  "updated": "2026-09-17T00:50:01.958127+00:00",
+  "updated": "2026-09-18T00:50:01.288336+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": -104.1,
   "n_settled": 15,
@@ -2385,7 +2385,7 @@
   ]
  },
  "2026-08-18": {
-  "updated": "2026-09-17T00:50:01.958137+00:00",
+  "updated": "2026-09-18T00:50:01.288345+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": -45.4,
   "n_settled": 15,
@@ -2544,7 +2544,7 @@
   ]
  },
  "2026-08-19": {
-  "updated": "2026-09-17T00:50:01.958147+00:00",
+  "updated": "2026-09-18T00:50:01.288354+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": 135.5,
   "n_settled": 15,
@@ -2703,7 +2703,7 @@
   ]
  },
  "2026-08-20": {
-  "updated": "2026-09-17T00:50:01.958156+00:00",
+  "updated": "2026-09-18T00:50:01.288363+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": 125.1,
   "n_settled": 15,
@@ -2862,7 +2862,7 @@
   ]
  },
  "2026-08-21": {
-  "updated": "2026-09-17T00:50:01.958164+00:00",
+  "updated": "2026-09-18T00:50:01.288372+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": -6.2,
   "n_settled": 15,
@@ -3021,7 +3021,7 @@
   ]
  },
  "2026-08-22": {
-  "updated": "2026-09-17T00:50:01.958175+00:00",
+  "updated": "2026-09-18T00:50:01.288381+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": -142.2,
   "n_settled": 15,
@@ -3180,7 +3180,7 @@
   ]
  },
  "2026-08-23": {
-  "updated": "2026-09-17T00:50:01.958183+00:00",
+  "updated": "2026-09-18T00:50:01.288394+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": -4.6,
   "n_settled": 15,
@@ -3339,7 +3339,7 @@
   ]
  },
  "2026-08-24": {
-  "updated": "2026-09-17T00:50:01.958193+00:00",
+  "updated": "2026-09-18T00:50:01.288403+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": -47.8,
   "n_settled": 15,
@@ -3498,7 +3498,7 @@
   ]
  },
  "2026-08-25": {
-  "updated": "2026-09-17T00:50:01.958203+00:00",
+  "updated": "2026-09-18T00:50:01.288414+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": 1058.5,
   "n_settled": 15,
@@ -3657,7 +3657,7 @@
   ]
  },
  "2026-08-26": {
-  "updated": "2026-09-17T00:50:01.958215+00:00",
+  "updated": "2026-09-18T00:50:01.288424+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": 110.4,
   "n_settled": 15,
@@ -3816,7 +3816,7 @@
   ]
  },
  "2026-08-27": {
-  "updated": "2026-09-17T00:50:01.958224+00:00",
+  "updated": "2026-09-18T00:50:01.288434+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": 161.5,
   "n_settled": 15,
@@ -3975,7 +3975,7 @@
   ]
  },
  "2026-08-28": {
-  "updated": "2026-09-17T00:50:01.958233+00:00",
+  "updated": "2026-09-18T00:50:01.288443+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": -75.7,
   "n_settled": 15,
@@ -4134,7 +4134,7 @@
   ]
  },
  "2026-08-29": {
-  "updated": "2026-09-17T00:50:01.958242+00:00",
+  "updated": "2026-09-18T00:50:01.288455+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": -208.4,
   "n_settled": 15,
@@ -4293,7 +4293,7 @@
   ]
  },
  "2026-08-30": {
-  "updated": "2026-09-17T00:50:01.958253+00:00",
+  "updated": "2026-09-18T00:50:01.288464+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": -97.2,
   "n_settled": 15,
@@ -4452,7 +4452,7 @@
   ]
  },
  "2026-08-31": {
-  "updated": "2026-09-17T00:50:01.958264+00:00",
+  "updated": "2026-09-18T00:50:01.288474+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": 50.6,
   "n_settled": 15,
@@ -4611,7 +4611,7 @@
   ]
  },
  "2026-09-01": {
-  "updated": "2026-09-17T00:50:01.958273+00:00",
+  "updated": "2026-09-18T00:50:01.288483+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": -162.1,
   "n_settled": 15,
@@ -4770,7 +4770,7 @@
   ]
  },
  "2026-09-02": {
-  "updated": "2026-09-17T00:50:01.958283+00:00",
+  "updated": "2026-09-18T00:50:01.288544+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": 18.1,
   "n_settled": 15,
@@ -4929,7 +4929,7 @@
   ]
  },
  "2026-09-03": {
-  "updated": "2026-09-17T00:50:01.958291+00:00",
+  "updated": "2026-09-18T00:50:01.288555+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": 191.6,
   "n_settled": 15,
@@ -5088,7 +5088,7 @@
   ]
  },
  "2026-09-04": {
-  "updated": "2026-09-17T00:50:01.958300+00:00",
+  "updated": "2026-09-18T00:50:01.288564+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": -38.3,
   "n_settled": 15,
@@ -5247,7 +5247,7 @@
   ]
  },
  "2026-09-05": {
-  "updated": "2026-09-17T00:50:01.958307+00:00",
+  "updated": "2026-09-18T00:50:01.288572+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": 85.6,
   "n_settled": 15,
@@ -5406,7 +5406,7 @@
   ]
  },
  "2026-09-06": {
-  "updated": "2026-09-17T00:50:01.958317+00:00",
+  "updated": "2026-09-18T00:50:01.288581+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": -19.9,
   "n_settled": 15,
@@ -5565,7 +5565,7 @@
   ]
  },
  "2026-09-07": {
-  "updated": "2026-09-17T00:50:01.958325+00:00",
+  "updated": "2026-09-18T00:50:01.288591+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": 28.7,
   "n_settled": 15,
@@ -5724,7 +5724,7 @@
   ]
  },
  "2026-09-08": {
-  "updated": "2026-09-17T00:50:01.958332+00:00",
+  "updated": "2026-09-18T00:50:01.288599+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": -133.8,
   "n_settled": 15,
@@ -5883,7 +5883,7 @@
   ]
  },
  "2026-09-09": {
-  "updated": "2026-09-17T00:50:01.958339+00:00",
+  "updated": "2026-09-18T00:50:01.288607+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": -132.6,
   "n_settled": 15,
@@ -6042,7 +6042,7 @@
   ]
  },
  "2026-09-10": {
-  "updated": "2026-09-17T00:50:01.958349+00:00",
+  "updated": "2026-09-18T00:50:01.288615+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": -73.4,
   "n_settled": 15,
@@ -6201,7 +6201,7 @@
   ]
  },
  "2026-09-11": {
-  "updated": "2026-09-17T00:50:01.958358+00:00",
+  "updated": "2026-09-18T00:50:01.288624+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": 39.3,
   "n_settled": 15,
@@ -6360,7 +6360,7 @@
   ]
  },
  "2026-09-12": {
-  "updated": "2026-09-17T00:50:01.958365+00:00",
+  "updated": "2026-09-18T00:50:01.288631+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": -73.5,
   "n_settled": 15,
@@ -6519,7 +6519,7 @@
   ]
  },
  "2026-09-13": {
-  "updated": "2026-09-17T00:50:01.958373+00:00",
+  "updated": "2026-09-18T00:50:01.288639+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": 229.6,
   "n_settled": 15,
@@ -6678,7 +6678,7 @@
   ]
  },
  "2026-09-14": {
-  "updated": "2026-09-17T00:50:01.958380+00:00",
+  "updated": "2026-09-18T00:50:01.288650+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": -69.4,
   "n_settled": 15,
@@ -6837,7 +6837,7 @@
   ]
  },
  "2026-09-15": {
-  "updated": "2026-09-17T00:50:01.958389+00:00",
+  "updated": "2026-09-18T00:50:01.288662+00:00",
   "derived_from": "hybrid_tracker.json",
   "day_pnl_u": -188.2,
   "n_settled": 15,
@@ -6996,50 +6996,50 @@
   ]
  },
  "2026-09-16": {
-  "updated": "2026-09-17T00:50:01.958397+00:00",
+  "updated": "2026-09-18T00:50:01.288670+00:00",
   "derived_from": "hybrid_tracker.json",
-  "day_pnl_u": -108.6,
-  "n_settled": 7,
+  "day_pnl_u": 135.3,
+  "n_settled": 15,
   "n_total": 15,
   "trades": [
    {
     "direction": "LONG",
     "prob": 81.5,
     "entry": 50.62,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null,
+    "result": "+19.6%",
+    "trigger": "到期",
+    "time": "09-18 00:21",
+    "net_u": 58.3,
     "symbol": "DASHUSDT"
    },
    {
     "direction": "LONG",
     "prob": 80.9,
     "entry": 3.804,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null,
+    "result": "+4.4%",
+    "trigger": "到期",
+    "time": "09-18 00:21",
+    "net_u": 12.99,
     "symbol": "EGLDUSDT"
    },
    {
     "direction": "LONG",
     "prob": 78.3,
     "entry": 21.44,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null,
+    "result": "+18.6%",
+    "trigger": "到期",
+    "time": "09-18 00:21",
+    "net_u": 55.26,
     "symbol": "VVVUSDT"
    },
    {
     "direction": "LONG",
     "prob": 75.7,
     "entry": 0.02667,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null,
+    "result": "+8.1%",
+    "trigger": "到期",
+    "time": "09-18 00:21",
+    "net_u": 23.59,
     "symbol": "STRKUSDT"
    },
    {
@@ -7066,40 +7066,40 @@
     "direction": "LONG",
     "prob": 74.3,
     "entry": 0.012703,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null,
+    "result": "+9.7%",
+    "trigger": "到期",
+    "time": "09-18 00:21",
+    "net_u": 28.11,
     "symbol": "GRIFFAINUSDT"
    },
    {
     "direction": "LONG",
     "prob": 74.3,
     "entry": 6.203,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null,
+    "result": "+17.2%",
+    "trigger": "到期",
+    "time": "09-18 00:21",
+    "net_u": 51.18,
     "symbol": "ZENUSDT"
    },
    {
     "direction": "LONG",
     "prob": 73.9,
     "entry": 0.004451,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null,
+    "result": "-0.6%",
+    "trigger": "到期",
+    "time": "09-18 00:21",
+    "net_u": 1.17,
     "symbol": "TUSDT"
    },
    {
     "direction": "LONG",
     "prob": 73.4,
     "entry": 0.02475,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null,
+    "result": "+4.6%",
+    "trigger": "到期",
+    "time": "09-18 00:21",
+    "net_u": 13.34,
     "symbol": "ENJUSDT"
    },
    {
@@ -7155,10 +7155,10 @@
   ]
  },
  "2026-09-17": {
-  "updated": "2026-09-17T00:50:01.958404+00:00",
+  "updated": "2026-09-18T00:50:01.288677+00:00",
   "derived_from": "hybrid_tracker.json",
-  "day_pnl_u": -31.0,
-  "n_settled": 2,
+  "day_pnl_u": -93.0,
+  "n_settled": 6,
   "n_total": 15,
   "trades": [
    {
@@ -7265,10 +7265,10 @@
     "direction": "SHORT",
     "prob": 87.9,
     "entry": 23.921,
-    "result": "⏳未到期",
-    "trigger": "进行中",
-    "time": "-",
-    "net_u": null,
+    "result": "-5.0%",
+    "trigger": "止损",
+    "time": "09-17 04:17",
+    "net_u": -15.5,
     "symbol": "VVVUSDT"
    },
    {
@@ -7285,6 +7285,155 @@
     "direction": "SHORT",
     "prob": 86.0,
     "entry": 0.65118,
+    "result": "-5.0%",
+    "trigger": "止损",
+    "time": "09-17 01:43",
+    "net_u": -15.51,
+    "symbol": "BRUSDT"
+   },
+   {
+    "direction": "SHORT",
+    "prob": 84.8,
+    "entry": 0.23282,
+    "result": "-5.0%",
+    "trigger": "止损",
+    "time": "09-17 02:55",
+    "net_u": -15.51,
+    "symbol": "USELESSUSDT"
+   },
+   {
+    "direction": "SHORT",
+    "prob": 83.9,
+    "entry": 0.019857,
+    "result": "-5.0%",
+    "trigger": "止损",
+    "time": "09-17 02:25",
+    "net_u": -15.51,
+    "symbol": "AKEUSDT"
+   }
+  ]
+ },
+ "2026-09-18": {
+  "updated": "2026-09-18T00:50:01.288685+00:00",
+  "derived_from": "hybrid_tracker.json",
+  "day_pnl_u": -15.5,
+  "n_settled": 1,
+  "n_total": 15,
+  "trades": [
+   {
+    "direction": "LONG",
+    "prob": 86.7,
+    "entry": 3.973,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null,
+    "symbol": "EGLDUSDT"
+   },
+   {
+    "direction": "LONG",
+    "prob": 84.1,
+    "entry": 0.1365,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null,
+    "symbol": "OPENUSDT"
+   },
+   {
+    "direction": "LONG",
+    "prob": 77.2,
+    "entry": 0.17871,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null,
+    "symbol": "CROSSUSDT"
+   },
+   {
+    "direction": "LONG",
+    "prob": 76.5,
+    "entry": 5.679,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null,
+    "symbol": "INJUSDT"
+   },
+   {
+    "direction": "LONG",
+    "prob": 76.4,
+    "entry": 0.03529,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null,
+    "symbol": "CARVUSDT"
+   },
+   {
+    "direction": "LONG",
+    "prob": 76.3,
+    "entry": 0.004424,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null,
+    "symbol": "TUSDT"
+   },
+   {
+    "direction": "LONG",
+    "prob": 76.1,
+    "entry": 0.01581,
+    "result": "-5.0%",
+    "trigger": "止损",
+    "time": "09-18 00:27",
+    "net_u": -15.51,
+    "symbol": "DRIFTUSDT"
+   },
+   {
+    "direction": "LONG",
+    "prob": 75.3,
+    "entry": 0.01686,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null,
+    "symbol": "COLLECTUSDT"
+   },
+   {
+    "direction": "LONG",
+    "prob": 75.0,
+    "entry": 0.05074,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null,
+    "symbol": "LABUSDT"
+   },
+   {
+    "direction": "LONG",
+    "prob": 74.1,
+    "entry": 0.2502,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null,
+    "symbol": "STXUSDT"
+   },
+   {
+    "direction": "SHORT",
+    "prob": 89.8,
+    "entry": 0.0018196,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null,
+    "symbol": "ONEUSDT"
+   },
+   {
+    "direction": "SHORT",
+    "prob": 88.4,
+    "entry": 0.67129,
     "result": "⏳未到期",
     "trigger": "进行中",
     "time": "-",
@@ -7293,8 +7442,8 @@
    },
    {
     "direction": "SHORT",
-    "prob": 84.8,
-    "entry": 0.23282,
+    "prob": 84.1,
+    "entry": 0.26061,
     "result": "⏳未到期",
     "trigger": "进行中",
     "time": "-",
@@ -7303,13 +7452,23 @@
    },
    {
     "direction": "SHORT",
-    "prob": 83.9,
-    "entry": 0.019857,
+    "prob": 83.6,
+    "entry": 0.021318,
     "result": "⏳未到期",
     "trigger": "进行中",
     "time": "-",
     "net_u": null,
     "symbol": "AKEUSDT"
+   },
+   {
+    "direction": "SHORT",
+    "prob": 83.2,
+    "entry": 0.09326,
+    "result": "⏳未到期",
+    "trigger": "进行中",
+    "time": "-",
+    "net_u": null,
+    "symbol": "BULLAUSDT"
    }
   ]
  }
