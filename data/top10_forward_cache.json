@@ -5668,5 +5668,131 @@
     "pnl": -5.0
    }
   ]
+ },
+ "2026-09-17": {
+  "long": [
+   {
+    "sym": "ZKCUSDT",
+    "prob": 88.1,
+    "state": "NO_DATA",
+    "pnl": null
+   },
+   {
+    "sym": "IOUSDT",
+    "prob": 87.6,
+    "state": "NO_DATA",
+    "pnl": null
+   },
+   {
+    "sym": "BSBUSDT",
+    "prob": 77.7,
+    "state": "NO_DATA",
+    "pnl": null
+   },
+   {
+    "sym": "COLLECTUSDT",
+    "prob": 69.6,
+    "state": "NO_DATA",
+    "pnl": null
+   },
+   {
+    "sym": "JCTUSDT",
+    "prob": 66.5,
+    "state": "NO_DATA",
+    "pnl": null
+   },
+   {
+    "sym": "LAUSDT",
+    "prob": 64.7,
+    "state": "NO_DATA",
+    "pnl": null
+   },
+   {
+    "sym": "COTIUSDT",
+    "prob": 64.2,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "1000CATUSDT",
+    "prob": 64.0,
+    "state": "NO_DATA",
+    "pnl": null
+   },
+   {
+    "sym": "SYNUSDT",
+    "prob": 63.5,
+    "state": "NO_DATA",
+    "pnl": null
+   },
+   {
+    "sym": "OPENUSDT",
+    "prob": 63.1,
+    "state": "NO_DATA",
+    "pnl": null
+   }
+  ],
+  "short": [
+   {
+    "sym": "VVVUSDT",
+    "prob": 87.9,
+    "state": "NO_DATA",
+    "pnl": null
+   },
+   {
+    "sym": "BULLAUSDT",
+    "prob": 87.7,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "BRUSDT",
+    "prob": 86.0,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "USELESSUSDT",
+    "prob": 84.8,
+    "state": "NO_DATA",
+    "pnl": null
+   },
+   {
+    "sym": "AKEUSDT",
+    "prob": 83.9,
+    "state": "NO_DATA",
+    "pnl": null
+   },
+   {
+    "sym": "LABUSDT",
+    "prob": 81.6,
+    "state": "NO_DATA",
+    "pnl": null
+   },
+   {
+    "sym": "AINUSDT",
+    "prob": 75.8,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "POWERUSDT",
+    "prob": 72.5,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "SYNUSDT",
+    "prob": 71.8,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "RIVERUSDT",
+    "prob": 71.1,
+    "state": "SL",
+    "pnl": -5.0
+   }
+  ]
  }
 }
