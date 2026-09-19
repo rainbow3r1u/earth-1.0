@@ -109,3 +109,11 @@ logs/
 
 # 晨报图表(可再生成: build_btc_alt_chart 09:00每日重建, sync也排除.png)
 data/charts/
+
+# ── 运行时状态账本: 移出 git 跟踪 (2026-09-19 用户拍板方案B1) ──
+# 原因: 这两个文件同时被 ①git跟踪 ②实盘执行器每小时改写 ③每日同步推到 main,
+#   导致 08:30 公证的 git rebase 对其做三方合并 → 9/17 嵌合记录事故 → 孤儿仓裸奔7小时。
+# 现: 本地不跟踪(不参与任何 git 合并); GitHub 备份改由同步脚本推到 **state-backup 分支**。
+# ⚠️ 不要删除这两条, 也不要再 git add 它们 —— 否则事故会复发。
+data/hybrid_live_state.json
+data/residual_live_state.json
