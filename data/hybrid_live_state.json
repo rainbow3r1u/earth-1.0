@@ -265,20 +265,6 @@
    "tp_algo_id": 2000001446109195,
    "tag": "260919",
    "tp_tier": 0.15
-  },
-  "CROSSUSDT": {
-   "symbol": "CROSSUSDT",
-   "direction": "LONG",
-   "qty": 851.0,
-   "entry": 0.1467889,
-   "open_time": 1789777568105,
-   "date": "2026-09-19",
-   "sl_price": 0.13944,
-   "sl_algo_id": 2000001446109237,
-   "tp_price": 0.16881000000000002,
-   "tp_algo_id": 2000001446109243,
-   "tag": "260919",
-   "tp_tier": 0.15
   }
  },
  "history": [
@@ -1758,6 +1744,25 @@
    "exit_time": 1789777391731,
    "gross_pct": 11.02,
    "net_u": 13.5425
+  },
+  {
+   "symbol": "CROSSUSDT",
+   "direction": "LONG",
+   "qty": 851.0,
+   "entry": 0.1467889,
+   "open_time": 1789777568105,
+   "date": "2026-09-19",
+   "sl_price": 0.13944,
+   "sl_algo_id": 2000001446109237,
+   "tp_price": 0.16881000000000002,
+   "tp_algo_id": 2000001446109243,
+   "tag": "260919",
+   "tp_tier": 0.15,
+   "trigger": "止损",
+   "exit": 0.1393159,
+   "exit_time": 1789794621419,
+   "gross_pct": -5.09,
+   "net_u": -6.4877
   }
  ],
  "days": {
