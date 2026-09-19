@@ -51,13 +51,34 @@ fi
 #    2026-09-08 补丁: add/add冲突(同名新文件两边都有, 如同步脚本已上传的.sh镜像)
 #    -X theirs 解不了 → 手动 git checkout --theirs 取本地后 --continue, 重试一次
 #    (注意rebase语境: ours=远程基线, theirs=被重放的本地快照 — 与merge相反)
+#    2026-09-19 补丁: 原正则 ^(UU|AA|DD) **漏了 modify/delete(UD/DU/AU/UA)** —— 而
+#      "把账本移出 git 跟踪"(git rm --cached) 的实施过程正好会制造 DU/UD;
+#      漏检 ⇒ 走"rebase失败已回滚"分支 ⇒ **当天公证失败, 且会天天失败**。
+#      现: 全部冲突类型都纳入 → 由下面的 resolver 按类型分别处置(见 step 3b)。
 if ! git rebase -X theirs "$REMOTE/$BRANCH" >> "$LOG" 2>&1; then
-  # 收集冲突文件(add/add或UU), 一律取本地版
-  CONFLICTS=$(git status --porcelain | grep -E '^(UU|AA|DD)' | awk '{print $2}')
+  # 3b) 收集**全部**冲突类型, 按类型处置:
+  #     · 普通内容冲突(UU/AA/DD)      → git checkout --theirs(取本地快照) + add
+  #     · modify/delete(UD/DU/AU/UA)  → 分两种:
+  #         - 账本类文件(*_live_state.json): **保持"不跟踪"**(我们正要把它们移出 git)
+  #         - 其它文件: 一律 add -A 保留本地工作区现状(本地永远是最新真值)
+  CONFLICTS=$(git status --porcelain | grep -E '^(UU|AA|DD|UD|DU|AU|UA)' | awk '{print $2}')
   if [ -n "$CONFLICTS" ]; then
-    echo "$(date +%F-%T) 检测到add/add级冲突, 取本地版重试: $CONFLICTS" >> "$LOG"
-    echo "$CONFLICTS" | xargs -I{} git checkout --theirs {} >> "$LOG" 2>&1 || true
-    echo "$CONFLICTS" | xargs -I{} git add {} >> "$LOG" 2>&1 || true
+    echo "$(date +%F-%T) 检测到冲突, 按类型处置: $CONFLICTS" >> "$LOG"
+    for _c in $CONFLICTS; do
+      _st=$(git status --porcelain -- "$_c" | cut -c1-2)
+      case "$_st" in
+        DU|UD|AU|UA)
+          if echo "$_c" | grep -q '_live_state\.json$'; then
+            # 账本类: 目标状态是"不被 git 跟踪" → 确认删除
+            git rm -q -f --cached -- "$_c" >> "$LOG" 2>&1 || true
+          else
+            git add -A -- "$_c" >> "$LOG" 2>&1 || true
+          fi ;;
+        *)
+          git checkout --theirs -- "$_c" >> "$LOG" 2>&1 || true
+          git add -- "$_c" >> "$LOG" 2>&1 || true ;;
+      esac
+    done
     if GIT_EDITOR=true git rebase --continue >> "$LOG" 2>&1; then
       echo "$(date +%F-%T) 冲突自动解决, rebase 重试成功" >> "$LOG"
     else
