@@ -329,5 +329,25 @@
 "STXUSDT"
 ],
 "rv": {}
+},
+"2026-09-19": {
+"date": "2026-09-19",
+"rv_day": "2026-09-18",
+"hi": [],
+"mid": [],
+"lo": [],
+"missing": [
+"KITEUSDT",
+"POWERUSDT",
+"REDUSDT",
+"ZAMAUSDT",
+"BTWUSDT",
+"SANDUSDT",
+"CHIPUSDT",
+"AEROUSDT",
+"QUSDT",
+"CROSSUSDT"
+],
+"rv": {}
 }
 }
