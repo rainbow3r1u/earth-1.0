@@ -5542,5 +5542,131 @@
     "pnl": 10.0
    }
   ]
+ },
+ "2026-09-16": {
+  "long": [
+   {
+    "sym": "DASHUSDT",
+    "prob": 81.5,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "EGLDUSDT",
+    "prob": 80.9,
+    "state": "EXP48",
+    "pnl": 4.44
+   },
+   {
+    "sym": "VVVUSDT",
+    "prob": 78.3,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "STRKUSDT",
+    "prob": 75.7,
+    "state": "EXP48",
+    "pnl": 8.06
+   },
+   {
+    "sym": "XPINUSDT",
+    "prob": 75.7,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "BRUSDT",
+    "prob": 74.5,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "GRIFFAINUSDT",
+    "prob": 74.3,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "ZENUSDT",
+    "prob": 74.3,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "TUSDT",
+    "prob": 73.9,
+    "state": "EXP48",
+    "pnl": -0.61
+   },
+   {
+    "sym": "ENJUSDT",
+    "prob": 73.4,
+    "state": "EXP48",
+    "pnl": 4.65
+   }
+  ],
+  "short": [
+   {
+    "sym": "AINUSDT",
+    "prob": 88.0,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "SYNUSDT",
+    "prob": 88.0,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "VTHOUSDT",
+    "prob": 87.7,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "LSKUSDT",
+    "prob": 86.1,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "龙虾USDT",
+    "prob": 85.5,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "CHIPUSDT",
+    "prob": 77.7,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "BULLAUSDT",
+    "prob": 74.6,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "CVCUSDT",
+    "prob": 68.1,
+    "state": "SL",
+    "pnl": -5.0
+   },
+   {
+    "sym": "SAGAUSDT",
+    "prob": 66.0,
+    "state": "TP",
+    "pnl": 10.0
+   },
+   {
+    "sym": "FLOCKUSDT",
+    "prob": 65.7,
+    "state": "SL",
+    "pnl": -5.0
+   }
+  ]
  }
 }
