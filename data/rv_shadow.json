@@ -309,5 +309,25 @@
 "OPENUSDT"
 ],
 "rv": {}
+},
+"2026-09-18": {
+"date": "2026-09-18",
+"rv_day": "2026-09-17",
+"hi": [],
+"mid": [],
+"lo": [],
+"missing": [
+"EGLDUSDT",
+"OPENUSDT",
+"CROSSUSDT",
+"INJUSDT",
+"CARVUSDT",
+"TUSDT",
+"DRIFTUSDT",
+"COLLECTUSDT",
+"LABUSDT",
+"STXUSDT"
+],
+"rv": {}
 }
 }
