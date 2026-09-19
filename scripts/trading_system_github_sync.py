@@ -13,6 +13,44 @@ import os, sys, json, base64, hashlib, urllib.request, urllib.error, urllib.pars
 HOME = os.path.expanduser('~')
 ROOT = os.path.join(HOME, 'websocket_new')
 REPO = 'rainbow3r1u/earth-1.0'
+# ── 状态备份分支 (2026-09-19 立, 用户拍板方案B1) ──────────────────────────────
+# 背景(2026-09-17 嵌合记录事故): 运行时账本 data/*_live_state.json 同时被
+#   ① git 跟踪 ② 每日被实盘执行器改写 ③ 每日被本脚本推到 main
+#   → 08:30 公证的 `git rebase -X theirs` 要对它做**三方合并** → 内容被改
+#   → 账本出现嵌合记录 → 对账误判"已离场" → 交易所真仓变孤儿且裸奔 7 小时。
+# 处置: 把这类"纯运行时状态"改推到**独立分支 state-backup** ——
+#   · main 上不再有它们 → 本地 git add -A 抓不到 → rebase 两棵树里都没有
+#     → **没有三方合并、没有 merge driver、没有窗口期**
+#   · 备份仍在 GitHub(另一分支), 且本脚本用 Contents API 直推(**本来就不合并**)
+#   · 公证完全不受影响(公证对象是 data/pred_*.json, 与账本无关)
+# ⚠️ state-backup **必须从 main 创建一次**(含当时的账本), 之后 main 才会摘除它们。
+STATE_BACKUP_BRANCH = 'state-backup'
+STATE_BACKUP_PREFIXES = (
+    'data/hybrid_live_state',       # 刘账户账本(实盘执行器每小时改写)
+    'data/residual_live_state',     # 果账户账本(同上)
+)
+
+
+def branch_for(rel, default):
+    """纯运行时状态 → 备份分支; 其余(代码/预告/影子账本) → 默认分支 main。"""
+    return STATE_BACKUP_BRANCH if rel.startswith(STATE_BACKUP_PREFIXES) else default
+
+
+def ensure_branch(repo, branch, from_branch):
+    """备份分支不存在则从 from_branch 的 HEAD 创建(git Data API)。
+    已存在 → 直接返回 True(幂等)。"""
+    import urllib.error as _ue
+    try:
+        api('GET', f'https://api.github.com/repos/{repo}/branches/{urllib.parse.quote(branch)}')
+        return True
+    except _ue.HTTPError as e:
+        if e.code != 404:
+            raise
+    _, ref = api('GET', f'https://api.github.com/repos/{repo}/git/ref/heads/{urllib.parse.quote(from_branch)}')
+    sha = ref['object']['sha']
+    api('POST', f'https://api.github.com/repos/{repo}/git/refs',
+        {'ref': f'refs/heads/{branch}', 'sha': sha})
+    return True
 STATE_DIR = os.path.join(HOME, '.cache', 'trading_system_github_sync')
 MANIFEST = os.path.join(STATE_DIR, 'manifest.json')
 LOG = os.path.join(HOME, 'logs', 'trading_system_github_sync.log')
@@ -210,6 +248,11 @@ def main():
         status_payload['message'] = f'ERROR default_branch: {e}'
         write_status(status_payload)
         return
+    # 2026-09-19: 确保状态备份分支存在(不存在则从 main 创建, 幂等)
+    try:
+        ensure_branch(REPO, STATE_BACKUP_BRANCH, branch)
+    except Exception as e:
+        log(f'  WARN 备份分支 {STATE_BACKUP_BRANCH} 创建/校验失败: {e} (状态文件将暂仍推 main)')
     current = {}
     changed, removed = [], []
     ok_files, fail_files, ok_del, fail_del = set(), set(), set(), set()
@@ -232,17 +275,18 @@ def main():
         try:
             with open(path, 'rb') as f:
                 content = f.read()
-            status = upload_file(REPO, branch, rel, content, f'sync trading system: {rel}')
+            _br = branch_for(rel, branch)          # 2026-09-19: 运行时状态 → 备份分支
+            status = upload_file(REPO, _br, rel, content, f'sync trading system: {rel}')
             ok_files.add(rel)
-            log(f'  uploaded {rel} ({status}) [{i}/{len(changed)}]')
+            log(f'  uploaded {rel} ({status}) [{i}/{len(changed)}] -> {_br}')
         except Exception as e:
             fail_files.add(rel)
             log(f'  FAIL upload {rel}: {e}')
     for rel in removed:
-        sha = file_sha(REPO, branch, rel)
+        sha = file_sha(REPO, branch_for(rel, branch), rel)      # 2026-09-19: 按分支查 sha
         if sha:
             try:
-                status = delete_file(REPO, branch, rel, sha)
+                status = delete_file(REPO, branch_for(rel, branch), rel, sha)   # 2026-09-19
                 ok_del.add(rel)
                 log(f'  deleted {rel} ({status})')
             except Exception as e:
