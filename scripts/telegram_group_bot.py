@@ -5,7 +5,7 @@
   TG_CHAT_ID     群/频道 id
 不配置时本地预览。
 """
-import json, os, sys, glob
+import json, os, sys, glob, datetime
 from pathlib import Path
 
 BASE = Path(__file__).resolve().parents[1]
@@ -95,10 +95,25 @@ def load_liu_status():
     import hybrid_live as H
 
     CST = datetime.timezone(datetime.timedelta(hours=8))
-    acct = H.signed('GET', '/fapi/v2/account')
-    wallet = float(acct['totalWalletBalance'])
-    upnl = float(acct['totalUnrealizedProfit'])
-    equity = float(acct['totalMarginBalance'])
+    # ★ 2026-09-19 修: 原实现直接 acct['totalWalletBalance'] —— 而 hybrid_live.signed() 在出错时
+    #   返回 `{'error':True,...}` 或 `{'code':-xxxx,'msg':...}`(**不抛异常**),
+    #   于是 KeyError → 整个脚本崩掉 → **消息静默消失**(2026-09-19 09:15 实际发生, 用户报"没发过")。
+    #   现: 重试 2 次; 仍失败则**照发**, 在标题里标明"账户查询失败", 绝不静默。
+    acct = None; acct_err = None
+    for _attempt in range(3):
+        _a = H.signed('GET', '/fapi/v2/account')
+        if isinstance(_a, dict) and 'totalMarginBalance' in _a:
+            acct = _a; break
+        acct_err = (str(_a.get('msg') or _a.get('code') or _a)[:120]
+                    if isinstance(_a, dict) else str(_a)[:120])
+        if _attempt < 2:
+            __import__('time').sleep(2)
+    if acct is None:
+        wallet = upnl = equity = None
+    else:
+        wallet = float(acct['totalWalletBalance'])
+        upnl = float(acct['totalUnrealizedProfit'])
+        equity = float(acct['totalMarginBalance'])
 
     rate = None
     try:
@@ -119,9 +134,14 @@ def load_liu_status():
     #   真相是它 22:10:05 止盈成交了, 但账本要等 :41 对账才落账(最多滞后34分钟);
     #   而 TP 条件单触发后即消失, 于是"账本还在 + TP单没了"被误判成"放开跑"。
     pr = H.signed('GET', '/fapi/v2/positionRisk')
-    live_syms = {p['symbol'] for p in pr if abs(float(p.get('positionAmt', 0))) > 0} \
-        if isinstance(pr, list) else set(st['open'])
+    if isinstance(pr, list):
+        live_syms = {p['symbol'] for p in pr if abs(float(p.get('positionAmt', 0))) > 0}
+    else:
+        # 查不到实时持仓时退回账本(并在正文标明), 而不是崩掉
+        live_syms = set(st['open'])
+        _pr_failed = True
 
+    _pr_failed = False
     rows, no_tp, just_closed = [], [], []
     for sym, p in st['open'].items():
         try:
@@ -166,9 +186,13 @@ def load_liu_status():
     just_closed.sort(key=lambda z: z[4])
 
     L = []
-    L.append(f"💼 刘账户 · {datetime.datetime.now(CST):%m-%d %H:%M}")
+    L.append(f"💼 刘账户 · {datetime.datetime.now(CST):%m-%d %H:%M}"
+             + ("  ⚠️实时持仓查询失败, 已退回账本" if _pr_failed else ""))
     L.append("")
-    if rate:
+    if wallet is None:
+        L.append(f"⚠️ 账户查询失败(已重试3次): {acct_err}")
+        L.append("   (持仓部分仍为交易所实时数据, 不受影响)")
+    elif rate:
         L.append(f"钱包余额    {wallet:>9,.2f}U ≈ {wallet*rate:>10,.2f} CNY")
         L.append(f"未实现盈亏  {upnl:>+9,.2f}U")
         L.append(f"总权益      {equity:>9,.2f}U ≈ {equity*rate:>10,.2f} CNY")
@@ -212,7 +236,21 @@ if __name__ == '__main__':
     if mode == 'pnl':
         send_tg(load_daily_pnl())
     elif mode == 'liu':
-        send_tg(load_liu_status())
+        # ★ 2026-09-19: 观测器**绝不能静默失败**。原实现异常直接冒泡 → 日志留个 traceback,
+        #   用户那边"消息就是不来了", 完全不知道发生了什么(2026-09-19 09:15 实际发生)。
+        #   现在: 任何异常都转成一条消息发出去。
+        try:
+            send_tg(load_liu_status())
+        except Exception as _e:
+            import traceback
+            print(traceback.format_exc())
+            try:
+                send_tg(f"⚠️ 刘账户状态推送失败(脚本异常, 与交易无关)\n\n"
+                        f"{type(_e).__name__}: {_e}\n\n"
+                        f"时间 {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+                        f"详情见 logs/tg_bot.log")
+            except Exception:
+                pass
     else:
         date_str = sys.argv[2] if len(sys.argv) > 2 else None
         ds, msg = load_today_signals(date_str)
